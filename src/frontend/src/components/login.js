@@ -2,6 +2,7 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
+import Button from "./Button"; // Import the Button component
 import "./Login.css"; // Custom CSS for styling
 
 const Login = () => {
@@ -54,9 +55,12 @@ const Login = () => {
                             <a href="#!">Forgot password?</a>
                         </div>
 
-                        <button type="submit" className="login-btn">
-                            Sign in
-                        </button>
+                        <Button
+                            name="Login"
+                            clickHandler={handleLogin}
+                            blue={true}
+                            wide={true}
+                        />
 
                         {error && <p className="error-message">{error}</p>}
                     </form>
