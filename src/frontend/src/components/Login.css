@@ -77,22 +77,6 @@
     text-decoration: underline;
   }
   
-  /* Buttons */
-  .login-btn {
-    width: 100%;
-    padding: 10px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-  }
-  
-  .login-btn:hover {
-    background: #0056b3;
-  }
-  
   .error-message {
     color: red;
     font-size: 14px;
@@ -124,7 +108,7 @@
   /* Right Side */
   .login-right {
     width: 50%;
-    background: linear-gradient(to right, #007bff, #6610f2);
+    background: linear-gradient(to left, #f89d15, #6610f2);
     display: flex;
     align-items: center;
     justify-content: center;

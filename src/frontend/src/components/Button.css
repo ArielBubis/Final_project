@@ -1,31 +1,32 @@
 .component-button {
-    display: inline-block;
-    margin: 5px;
-  }
-  
-  .component-button button {
-    background-color: #f0f0f0;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .component-button button:hover {
-    background-color: #e0e0e0;
-  }
-  
-  .component-button.blue button {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  .component-button.blue button:hover {
-    background-color: #0056b3;
-  }
-  
-  .component-button.wide button {
-    width: 100%;
-  }
+  display: inline-block;
+  margin: 5px;
+}
+
+.component-button button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.component-button button:hover {
+  background-color: #0056b3;
+}
+
+.component-button.blue button {
+  background-color: #007bff;
+  color: white;
+}
+
+.component-button.blue button:hover {
+  background-color: #0056b3;
+}
+
+.component-button.wide button {
+  width: 100%;
+}
