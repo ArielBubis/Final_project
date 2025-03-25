@@ -9,7 +9,9 @@
     top: 0;
     display: flex;
     flex-direction: column;
+    justify-content: space-between; /* Ensure logout button stays at the bottom */
     transition: transform 0.3s ease-in-out;
+    box-sizing: border-box; /* Ensure padding is included in the width/height */
 }
 
 /* Hide sidebar on small screens */
@@ -56,6 +58,23 @@
     cursor: pointer;
     align-self: flex-end;
     margin-bottom: 10px;
+}
+
+/* Logout button */
+.logout-button {
+    padding: 10px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    width: 100%; /* Make it span the full width of the sidebar */
+    margin-top: 10px;
+}
+
+.logout-button:hover {
+    background-color: #c0392b;
 }
 
 /* Hamburger menu button */

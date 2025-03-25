@@ -9,63 +9,69 @@ import { Menu } from "lucide-react";
 import "./App.css";
 
 const App = () => {
-    const [user, setUser] = useState(null);
-    const [userRole, setUserRole] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Sidebar toggle state
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Sidebar toggle state
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            if (currentUser) {
-                setUser(currentUser);
-                // Fetch user role from Firestore (replace with real Firestore call)
-                const mockUserRole = "teacher"; // Example: "teacher" or "admin"
-                setUserRole(mockUserRole);
-            } else {
-                setUser(null);
-                setUserRole(null);
-            }
-            setLoading(false);
-        });
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prevState) => !prevState);
+  };
 
-        return () => unsubscribe();
-    }, []);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        // Fetch user role from Firestore (replace with real Firestore call)
+        const mockUserRole = "teacher"; // Example: "teacher" or "admin"
+        setUserRole(mockUserRole);
+      } else {
+        setUser(null);
+        setUserRole(null);
+      }
+      setLoading(false);
+    });
 
-    if (loading) {
-        return <div>Loading...</div>;
-    }
+    return () => unsubscribe();
+  }, []);
 
-    return (
-        <Router>
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+   <Router>
             <div className="app-container">
-                {/* Sidebar Toggle Button for Small Screens */}
+                {/* Render Sidebar only when the user is logged in */}
                 {user && userRole && (
-                    <button className="menu-button md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                        <Menu size={24} />
-                    </button>
+                    <>
+                        <button className="menu-button md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                            <Menu size={24} />
+                        </button>
+                        <Sidebar userRole={userRole} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+                    </>
                 )}
 
-                {/* Sidebar */}
-                {user && userRole && <Sidebar userRole={userRole} isOpen={isSidebarOpen} toggleSidebar={setIsSidebarOpen} />}
-
                 {/* Main Content */}
-                <div className={`main-content ${isSidebarOpen ? "sidebar-open" : ""}`}>
+                <div className={`main-content ${user && isSidebarOpen ? "sidebar-open" : ""}`}>
                     <Routes>
-                        {!user ? (
-                            <Route path="*" element={<Navigate to="/login" replace />} />
-                        ) : (
+                        {user ? (
                             <>
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-                                {/* Add other routes here */}
                                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                            </>
+                        ) : (
+                            <>
+                                <Route path="/login" element={<Login />} />
+                                <Route path="*" element={<Navigate to="/login" replace />} />
                             </>
                         )}
                     </Routes>
                 </div>
             </div>
         </Router>
-    );
+  );
 };
 
 export default App;

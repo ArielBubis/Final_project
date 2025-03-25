@@ -1,6 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Replace useHistory with useNavigate
 import PropTypes from "prop-types";
+import { getAuth, signOut } from "firebase/auth"; // Import Firebase auth
 import "./SideBar.css";
 
 // Define menu items based on user roles
@@ -16,6 +17,19 @@ export const menuItems = {
 };
 
 const Sidebar = ({ userRole, isOpen, toggleSidebar }) => {
+    const navigate = useNavigate(); // Initialize useNavigate hook
+
+    const handleLogout = async () => {
+        try {
+            const auth = getAuth();
+            await signOut(auth);
+            toggleSidebar(false); // 🔹 Close sidebar before navigating
+            navigate("/login"); // 🔹 Navigate to login page
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
+    };      
+
     return (
         <div className={`sidebar ${isOpen ? "open" : ""}`}>
             <button className="close-btn md:hidden" onClick={() => toggleSidebar(false)}>✖</button>
@@ -26,6 +40,7 @@ const Sidebar = ({ userRole, isOpen, toggleSidebar }) => {
                     </li>
                 ))}
             </ul>
+            <button className="logout-button" onClick={handleLogout}>Logout</button>
         </div>
     );
 };
