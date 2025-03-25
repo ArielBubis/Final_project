@@ -55,12 +55,14 @@ const Login = () => {
                             <a href="#!">Forgot password?</a>
                         </div>
 
+                        <div className="component-button">
                         <Button
-                            name="Login"
-                            clickHandler={handleLogin}
+                            label="Login"
+                            onClick={handleLogin} // Passing handleLogin directly to onClick
                             blue={true}
                             wide={true}
                         />
+                        </div>
 
                         {error && <p className="error-message">{error}</p>}
                     </form>
