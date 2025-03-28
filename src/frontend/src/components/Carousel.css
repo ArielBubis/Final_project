@@ -1,0 +1,59 @@
+.carousel-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-cards {
+  width: 80%;
+  overflow: hidden;
+}
+
+.carousel-cards-wrapper {
+  display: flex;
+  transition: transform 0.3s ease-in-out;
+}
+
+.carousel-card {
+  min-width: 50%; /* Adjust width for two items */
+  margin-right: 20px;
+  height: 200px; /* Adjust height as needed */
+  background-color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-button {
+  position: absolute;
+  top: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.carousel-button:disabled {
+  background-color: #ddd; /* Light grey to indicate inactive state */
+  cursor: not-allowed;    /* Change cursor to indicate it's not clickable */
+}
+
+.carousel-button.prev {
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.carousel-button.next {
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.carousel-button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}

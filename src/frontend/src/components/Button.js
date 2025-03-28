@@ -11,8 +11,6 @@ export default function Button({ label, onClick, type, className , blue, wide })
     className
   ].filter(Boolean).join(" "); // Filter out empty strings and join with space
 
-  console.log("Button Class: ", buttonClass);  // Log class name to ensure blue is passed correctly
-
   return (
     <button 
       type={type} 
