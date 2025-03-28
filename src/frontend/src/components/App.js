@@ -40,37 +40,37 @@ const App = () => {
   }
 
   return (
-   <Router>
-            <div className="app-container">
-                {/* Render Sidebar only when the user is logged in */}
-                {user && userRole && (
-                    <>
-                        <button className="menu-button md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                            <Menu size={24} />
-                        </button>
-                        <Sidebar userRole={userRole} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-                    </>
-                )}
+    <Router>
+      <div className="app-container">
+        {/* Render Sidebar only when the user is logged in */}
+        {user && userRole ? (
+          <>
+            <button className="menu-button md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+              <Menu size={24} />
+            </button>
+            <Sidebar userRole={userRole} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          </>
+        ) : null }
 
-                {/* Main Content */}
-                <div className={`main-content ${user && isSidebarOpen ? "sidebar-open" : ""}`}>
-                    <Routes>
-                        {user ? (
-                            <>
-                                <Route path="/dashboard" element={<Dashboard />} />
-                                <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                            </>
-                        ) : (
-                            <>
-                                <Route path="/login" element={<Login />} />
-                                <Route path="*" element={<Navigate to="/login" replace />} />
-                            </>
-                        )}
-                    </Routes>
-                </div>
-            </div>
-        </Router>
+        {/* Main Content */}
+        <div className={`main-content ${user && isSidebarOpen ? "sidebar-open" : ""}`}>
+          <Routes>
+            {user ? (
+              <>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </>
+            ) : (
+              <>
+                <Route path="/login" element={<Login />} />
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </>
+            )}
+          </Routes>
+        </div>
+      </div>
+    </Router>
   );
 };
 

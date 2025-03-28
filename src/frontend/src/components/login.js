@@ -23,61 +23,62 @@ const Login = () => {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-box">
-                {/* Left Column */}
-                <div className="login-left">
-                    <h1>Login</h1>
+        <div className="app-container"> {/* Wrap in app-container */}
+            <div className="login-container">
+                <div className="login-box">
+                    {/* Left Column */}
+                    <div className="login-left">
+                        <h1>Login</h1>
 
-                    {/* Login Form */}
-                    <form onSubmit={handleLogin} className="login-form">
-                        <div className="input-group">
-                            <label>Email address</label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
+                        {/* Login Form */}
+                        <form onSubmit={handleLogin} className="login-form">
+                            <div className="input-group">
+                                <label>Email address</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
 
-                        <div className="input-group">
-                            <label>Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                        </div>
+                            <div className="input-group">
+                                <label>Password</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
 
-                        <div className="forgot-password">
-                            <a href="#!">Forgot password?</a>
-                        </div>
+                            <div className="forgot-password">
+                                <a href="#!">Forgot password?</a>
+                            </div>
 
-                        <div className="component-button">
-                        <Button
-                            label="Login"
-                            onClick={handleLogin} // Passing handleLogin directly to onClick
-                            blue={true}
-                            wide={true}
-                        />
-                        </div>
+                            <div className="component-button">
+                                <Button
+                                    label="Login"
+                                    onClick={handleLogin} // Passing handleLogin directly to onClick
+                                    blue={true}
+                                    wide={true}
+                                />
+                            </div>
 
-                        {error && <p className="error-message">{error}</p>}
-                    </form>
+                            {error && <p className="error-message">{error}</p>}
+                        </form>
+                    </div>
 
-                </div>
-
-                {/* Right Column */}
-                <div className="login-right">
-                    <div className="info-box">
-                        <div className="login-logo">
-                            <img
-                                src="https://icons.veryicon.com/png/o/business/colorful-office-icons/book-52.png"
-                                alt="Logo"
-                            />
-                            <h4>ClassInsight</h4>
+                    {/* Right Column */}
+                    <div className="login-right">
+                        <div className="info-box">
+                            <div className="login-logo">
+                                <img
+                                    src="https://icons.veryicon.com/png/o/business/colorful-office-icons/book-52.png"
+                                    alt="Logo"
+                                />
+                                <h4>ClassInsight</h4>
+                            </div>
                         </div>
                     </div>
                 </div>
