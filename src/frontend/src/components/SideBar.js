@@ -1,10 +1,9 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom"; // Replace useHistory with useNavigate
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
-import { getAuth, signOut } from "firebase/auth"; // Import Firebase auth
+import { getAuth, signOut } from "firebase/auth";
 import "./SideBar.css";
 
-// Define menu items based on user roles
 export const menuItems = {
     teacher: [
         { name: "Dashboard", path: "/dashboard" },
@@ -16,40 +15,58 @@ export const menuItems = {
     ]
 };
 
-const Sidebar = ({ userRole, isOpen, toggleSidebar }) => {
-    const navigate = useNavigate(); // Initialize useNavigate hook
+const Sidebar = ({ userRole }) => {
+    const navigate = useNavigate();
+    
+    const initialSidebarState = sessionStorage.getItem("sidebarOpen") === "false" ? false : true;
+    const [isOpen, setIsOpen] = useState(initialSidebarState);
+
+    useEffect(() => {
+        sessionStorage.setItem("sidebarOpen", isOpen);
+    }, [isOpen]);
+
+    const toggleSidebar = (state) => {
+        setIsOpen(state);
+    };
 
     const handleLogout = async () => {
         try {
             const auth = getAuth();
             await signOut(auth);
-            toggleSidebar(false); // 🔹 Close sidebar before navigating
-            navigate("/login"); // 🔹 Navigate to login page
+            toggleSidebar(false);
+            navigate("/login");
         } catch (error) {
             console.error("Logout failed:", error);
         }
-    };      
+    };
 
     return (
-        <div className={`sidebar ${isOpen ? "open" : ""}`}>
-            <button className="close-btn md:hidden" onClick={() => toggleSidebar(false)}>✖</button>
-            <ul>
-                {menuItems[userRole]?.map((item) => (
-                    <li key={item.path}>
-                        <Link to={item.path} onClick={() => toggleSidebar(false)}>{item.name}</Link>
-                    </li>
-                ))}
-            </ul>
-            <button className="logout-button" onClick={handleLogout}>Logout</button>
-        </div>
+        <>
+            {!isOpen && (
+                <button className="menu-button" onClick={() => toggleSidebar(true)}>☰</button>
+            )}
+
+            <div className={`sidebar ${isOpen ? "open" : ""}`}>
+                {/* Close button only on small screens */}
+                <div className="close-btn-wrapper">
+                    <button className="close-btn" onClick={() => toggleSidebar(false)}>✖</button>
+                </div>
+
+                <ul>
+                    {menuItems[userRole]?.map((item) => (
+                        <li key={item.path}>
+                            <Link to={item.path} onClick={() => toggleSidebar(false)}>{item.name}</Link>
+                        </li>
+                    ))}
+                </ul>
+                <button className="logout-button" onClick={handleLogout}>Logout</button>
+            </div>
+        </>
     );
 };
 
-// Define PropTypes
 Sidebar.propTypes = {
-    userRole: PropTypes.oneOf(["teacher", "admin"]).isRequired,
-    isOpen: PropTypes.bool.isRequired,
-    toggleSidebar: PropTypes.func.isRequired
+    userRole: PropTypes.oneOf(["teacher", "admin"]).isRequired
 };
 
 export default Sidebar;
