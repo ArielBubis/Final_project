@@ -45,9 +45,6 @@ const App = () => {
         {/* Render Sidebar only when the user is logged in */}
         {user && userRole ? (
           <>
-            <button className="menu-button md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-              <Menu size={24} />
-            </button>
             <Sidebar userRole={userRole} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
           </>
         ) : null }

@@ -25,6 +25,21 @@
     }
 }
 
+/* Hide close button on larger screens */
+@media (min-width: 768px) {
+    .sidebar .close-btn {
+        display: none !important;
+    }
+}
+
+.sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar:not(.open) {
+    transform: translateX(-100%);
+}
+
 /* Sidebar links */
 .sidebar ul {
     list-style: none;
@@ -51,6 +66,7 @@
 
 /* Close button for mobile sidebar */
 .close-btn {
+    display: block;
     background: none;
     border: none;
     color: white;
@@ -80,13 +96,13 @@
 /* Hamburger menu button */
 .menu-button {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 10px;
+    left: 10px;
     background: none;
     border: none;
-    color: black;
-    cursor: pointer;
+    color: rgb(0, 0, 0);
     font-size: 24px;
+    cursor: pointer;
 }
 
 /* Adjust content when sidebar is open */
@@ -95,12 +111,4 @@
     transition: margin-left 0.3s ease-in-out;
 }
 
-@media screen and (max-width: 768px) {
-    .main-content {
-        margin-left: 0;
-    }
 
-    .main-content.sidebar-open {
-        margin-left: 250px;
-    }
-}
