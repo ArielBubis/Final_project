@@ -1,0 +1,103 @@
+Users: 
+{  
+   "userId": String,  
+   "userType": String,  // "student", "teacher"  
+   "firstName": String,  
+   "lastName": String,  
+   "email": String,  
+   "gender": String  
+}  
+
+Students:
+{  
+   "studentId": String,  
+   "userId": String,  // Reference to users collection  
+   "registrationDate": Date,  
+   "courses": [ 
+    {  
+       "courseId": String, // reference to courses collection
+       "courseName": String,  
+       "finalScore" : Integer,
+       "modules": [
+        {
+            "moduleId": Stgring, // reference to modules collection
+            "totalExpertiseRate": Double, 
+            "completion": Double,
+            "assigments": [
+            {
+                "assigmentId": String // // reference to assigments
+                "totalTime": Date, 
+                "totalScore": Integer,
+                "notes": String,
+                "questions": [
+                {
+                    "questionNumber": Integer, // reference to questions collection
+                    "score": Double,
+                    "note": String
+                }
+                ]
+            }
+            ]
+        }
+       ]
+    }  
+   ]  
+}  
+
+Teachers:
+{  
+   "teacherId": String,  
+   "userId": String,  // Reference to users collection  
+   "schoolName": String,  
+   "courses": [  
+    {  
+       "objectId": String, 
+       "courseId": String,  // reference to course collection
+       "courseName": String  
+    }
+   ]  
+}  
+
+Courses:
+{  
+   "courseId": String,  
+   "courseName": String,  
+   "activeCode": String,  
+   "isEnabled": Boolean,  
+   "school": {  
+     "schoolId": String,  
+     "name": String  
+   },  
+   "modules": [  
+    {  
+       "moduleId": String,  
+       "moduleTitle": String,  
+       "description": String,  
+       "isActive": Boolean,  
+       "isRequired": Boolean  
+    }  
+   ],  
+   "assignments": [  
+    {  
+       "assignmentId": String,  
+       "title": String,  
+       "category": String,  
+       "dueDate": Date,  
+       "maxScore": Number,  
+       "hasMarkers": Boolean,  
+       "isActive": Boolean,  
+       "gradingScale": String,
+       "questions": [  
+        {  
+            "questionNumber": Integer,  
+            "title": String,  
+            "questionText": String,  
+            "maxPoints": Number,  
+        }
+       ]
+    }
+   ]    
+}  
+   
+ 
+
