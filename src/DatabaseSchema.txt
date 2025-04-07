@@ -28,14 +28,7 @@ Students:
                 "assigmentId": String // // reference to assigments
                 "totalTime": Date, 
                 "totalScore": Integer,
-                "notes": String,
-                "questions": [
-                {
-                    "questionNumber": Integer, // reference to questions collection
-                    "score": Double,
-                    "note": String
-                }
-                ]
+                "notes": String
             }
             ]
         }
@@ -86,15 +79,7 @@ Courses:
        "maxScore": Number,  
        "hasMarkers": Boolean,  
        "isActive": Boolean,  
-       "gradingScale": String,
-       "questions": [  
-        {  
-            "questionNumber": Integer,  
-            "title": String,  
-            "questionText": String,  
-            "maxPoints": Number,  
-        }
-       ]
+       "gradingScale": String
     }
    ]    
 }  
