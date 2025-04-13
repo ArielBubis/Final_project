@@ -1,10 +1,22 @@
 .dashboard-container {
+    flex-grow: 1;
+    padding: 5%;
+    background-color: #ecf0f1;
+    min-height: 100vh;
     display: flex;
-    height: 100vh;
+    flex-direction: column;
+    box-sizing: border-box; 
 }
 
-/* Sidebar */
-.sidebar {
+@media (max-width: 768px) {
+    .dashboard-container {
+      padding-top: 80px; /* Add some space for mobile sidebar */
+      padding-left: 5%;
+      padding-right: 5%;
+    }
+}
+
+/* .sidebar {
     width: 250px;
     background-color: #2c3e50;
     color: white;
@@ -39,7 +51,6 @@
     background-color: #34495e;
 }
 
-/* Logout Button */
 .logout-button {
     margin-top: auto;
     padding: 10px;
@@ -54,9 +65,7 @@
     background-color: #c0392b;
 }
 
-/* Main Content */
 .main-content {
-    flex-grow: 1;
     padding: 20px;
     background-color: #ecf0f1;
-}
+} */

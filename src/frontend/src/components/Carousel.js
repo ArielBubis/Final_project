@@ -3,6 +3,8 @@ import "./Carousel.css";
 
 const Carousel = ({ items }) => {
   const [currentIndex, setCurrentIndex] = useState(0); // Start from the first item
+  const [itemsPerView, setItemsPerView] = useState(window.innerWidth <= 768 ? 1 : 2);
+
 
   // Handle the next item action (move by 2 items at a time)
   const nextItem = () => {

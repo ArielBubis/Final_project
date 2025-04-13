@@ -50,7 +50,7 @@ const App = () => {
         ) : null }
 
         {/* Main Content */}
-        <div className={`main-content ${user && isSidebarOpen ? "sidebar-open" : ""}`}>
+        <div className="main-content">
           <Routes>
             {user ? (
               <>
