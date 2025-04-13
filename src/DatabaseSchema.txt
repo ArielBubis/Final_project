@@ -17,6 +17,7 @@ Students:
     {  
        "courseId": String, // reference to courses collection
        "courseName": String,  
+       "classLevel": String,
        "finalScore" : Integer,
        "modules": [
         {

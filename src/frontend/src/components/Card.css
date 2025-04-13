@@ -1,6 +1,5 @@
 /* Card.css */
 .card {
-    background-color: #ffffff;
     border-radius: 1rem;
     padding: 1rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -10,20 +9,30 @@
     align-items: center;
     overflow: hidden;
   }
-  
+
   .card:hover {
     transform: translateY(-4px);
+  }
+
+  .card-course {
+    margin-right: 5%;
+    background-color: #ffffff;
+  }
+  
+  .card-student {
+    margin-right: 5%;
+    background-color: #ffffff;
   }
   
   /* Sizes */
   .card-sm {
-    width: 180px;
-    height: 220px;
+    width: 150px;
+    height: 130px;
   }
   
   .card-md {
-    width: 220px;
-    height: 280px;
+    width: 210px;
+    height: 200px;
   }
   
   .card-lg {

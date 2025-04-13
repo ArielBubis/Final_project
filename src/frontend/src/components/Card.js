@@ -2,8 +2,8 @@
 import React from "react";
 import "./Card.css";
 
-const Card = ({ data, imageKey = null, size = "md" }) => {
-  if (!data) return null;
+const Card = ({ data, imageKey, size, type }) => {
+  const cardClass = `card ${size ? `card-${size}` : ""} ${type ? `card-${type}` : ""}`;
 
   const sizeClass = {
     sm: "card-sm",
@@ -12,23 +12,16 @@ const Card = ({ data, imageKey = null, size = "md" }) => {
   }[size] || "card-md";
 
   return (
-    <div className={`card ${sizeClass}`}>
-      {imageKey && data[imageKey] && (
-        <img
-          src={data[imageKey]}
-          alt="visual"
-          className="card-image"
-        />
-      )}
+    <div className={cardClass}>
+      <img src={data[imageKey]} alt={data.name} className="card-image" />
       <div className="card-content">
-        {Object.entries(data).map(([key, value]) => {
-          if (key === imageKey) return null;
-          return (
-            <div key={key} className="card-field">
-              <span className="card-key">{key}:</span> {value}
+        {Object.keys(data).map((key) => (
+          key !== imageKey && (
+            <div className="card-field" key={key}>
+              <span className="card-key">{key}:</span> {data[key]}
             </div>
-          );
-        })}
+          )
+        ))}
       </div>
     </div>
   );
