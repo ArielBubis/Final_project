@@ -1,24 +1,33 @@
-import React, { useState } from "react";
-import "./Carousel.css";
+import React, { useState, useEffect } from "react";
+import "../styles/styles.css";
 
 const Carousel = ({ items }) => {
   const [currentIndex, setCurrentIndex] = useState(0); // Start from the first item
   const [itemsPerView, setItemsPerView] = useState(window.innerWidth <= 768 ? 1 : 2);
 
-
-  // Handle the next item action (move by 2 items at a time)
+  // Ensure proper scrolling logic for the carousel
   const nextItem = () => {
-    if (currentIndex < items.length - 2) {
-      setCurrentIndex((prevIndex) => prevIndex + 2);
+    if (currentIndex < items.length - itemsPerView) {
+      setCurrentIndex((prevIndex) => prevIndex + 1);
     }
   };
 
-  // Handle the previous item action (move by 2 items at a time)
   const prevItem = () => {
     if (currentIndex > 0) {
-      setCurrentIndex((prevIndex) => prevIndex - 2);
+      setCurrentIndex((prevIndex) => prevIndex - 1);
     }
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerView(window.innerWidth <= 768 ? 1 : 2);
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize(); // Set initial value
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <div className="carousel-container">

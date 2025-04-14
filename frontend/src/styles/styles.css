@@ -1,0 +1,329 @@
+/* Consolidated styles from all components */
+
+/* App.css */
+.app-container {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  background-color: #ecf0f1;
+  height: 100vh;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-content {
+    margin-top: 60px;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    flex-grow: 1;
+  }
+}
+
+/* Button.css */
+.component-button {
+  display: inline-block;
+  margin: 5px;
+}
+
+.component-button button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.component-button button:hover {
+  background-color: #0056b3;
+}
+
+/* Card.css */
+.card {
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+.card-course {
+  margin-right: 5%;
+  background-color: #ffffff;
+}
+
+.card-student {
+  margin-right: 5%;
+  background-color: #ffffff;
+}
+
+/* Sizes */
+.card-sm {
+  width: 150px;
+  height: 130px;
+}
+
+.card-md {
+  width: 210px;
+  height: 200px;
+}
+
+.card-lg {
+  width: 260px;
+  height: 320px;
+}
+
+.card-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+}
+
+.card-content {
+  width: 100%;
+  text-align: center;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.card-field {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-key {
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+/* Carousel.css */
+.carousel-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-cards {
+  width: 80%;
+  overflow: hidden;
+}
+
+.carousel-cards-wrapper {
+  display: flex;
+  transition: transform 0.3s ease-in-out;
+}
+
+.carousel-card {
+  margin-right: 5%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.carousel-button {
+  position: absolute;
+  top: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+.carousel-button.prev {
+  left: 10px;
+}
+
+.carousel-button.next {
+  right: 10px;
+}
+
+.carousel-button:disabled {
+  background-color: #ddd;
+  cursor: not-allowed;
+}
+
+/* Dashboard.css */
+.dashboard-container {
+  flex-grow: 1;
+  padding: 0% 5% 5% 5%;
+  background-color: #ecf0f1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding-top: 80px;
+    padding-left: 5%;
+    padding-right: 5%;
+  }
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #2c3e50;
+  color: white;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  justify-content: space-between;
+  transition: transform 0.3s ease-in-out;
+}
+
+.sidebar h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.sidebar nav ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar nav ul li {
+  margin: 10px 0;
+}
+
+.sidebar nav ul li a {
+  text-decoration: none;
+  color: white;
+  display: block;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.sidebar nav ul li a:hover {
+  background-color: #34495e;
+}
+
+.logout-button {
+  margin-top: auto;
+  padding: 10px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background-color: #c0392b;
+}
+
+@media screen and (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 768px) {
+  .sidebar .close-btn {
+    display: none !important;
+  }
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar:not(.open) {
+  transform: translateX(-100%);
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar ul li {
+  margin-bottom: 15px;
+}
+
+.sidebar ul li a {
+  color: white;
+  text-decoration: none;
+  font-size: 18px;
+  display: block;
+  padding: 10px;
+  transition: background 0.3s ease;
+}
+
+.sidebar ul li a:hover {
+  background-color: #34495e;
+  border-radius: 5px;
+}
+
+.close-btn {
+  display: block;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  align-self: flex-end;
+  margin-bottom: 10px;
+}
+
+.menu-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: none;
+  border: none;
+  color: rgb(0, 0, 0);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.main-content {
+  padding: 20px;
+  background-color: #ecf0f1;
+  margin-left: 0; /* Removed margin-left to eliminate white space */
+}
+

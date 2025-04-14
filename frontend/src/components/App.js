@@ -6,7 +6,7 @@ import Sidebar from "./SideBar"; // Import Sidebar
 import Dashboard from "./Dashboard";
 import Login from "./login";
 import { Menu } from "lucide-react";
-import "./App.css";
+import "../styles/styles.css";
 
 const App = () => {
   const [user, setUser] = useState(null);

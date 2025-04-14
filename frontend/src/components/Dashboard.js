@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { fetchAllStudents } from "../services/studentService";
 import Carousel from "./Carousel"; // Import the Carousel component
 import Card from "./Card"; // Import the Card component
-import "./Dashboard.css";
-import "./Card.css"; // Import the Card CSS for styling
+import "../styles/styles.css";
 
 const Dashboard = () => {
   const profilePicUrl = "https://cdn-icons-png.flaticon.com/512/8847/8847419.png";

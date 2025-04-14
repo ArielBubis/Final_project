@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import "./Button.css";
+import "../styles/styles.css";
 
 export default function Button({ label, onClick, type, className , blue, wide }) {
    // Determine if button should be blue or wide

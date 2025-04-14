@@ -1,6 +1,6 @@
 // Card.js
 import React from "react";
-import "./Card.css";
+import "../styles/styles.css";
 
 const Card = ({ data, imageKey, size, type }) => {
   const cardClass = `card ${size ? `card-${size}` : ""} ${type ? `card-${type}` : ""}`;
