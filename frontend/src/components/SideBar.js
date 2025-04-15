@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
 import { useUI } from "../contexts/UIContext";
-import "../styles/Sidebar.css";
+import styles from "../styles/modules/Sidebar.module.css";
+import classNames from "classnames";
 
 export const menuItems = {
     teacher: [
@@ -31,26 +32,35 @@ const Sidebar = ({ userRole }) => {
         }
     };
 
+    const sidebarClasses = classNames(
+        styles.sidebar,
+        { [styles.open]: isSidebarOpen, [styles.closed]: !isSidebarOpen }
+    );
+
     return (
         <>
             {!isSidebarOpen && (
-                <button className="menu-button" onClick={() => toggleSidebar(true)}>☰</button>
+                <button className={styles.menuButton} onClick={() => toggleSidebar(true)}>☰</button>
             )}
 
-            <div className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
+            <div className={sidebarClasses}>
                 {/* Close button only on small screens */}
-                <div className="close-btn-wrapper">
-                    <button className="close-btn" onClick={() => toggleSidebar(false)}>✖</button>
+                <div>
+                    <button className={styles.closeBtn} onClick={() => toggleSidebar(false)}>✖</button>
                 </div>
 
-                <ul>
-                    {menuItems[userRole]?.map((item) => (
-                        <li key={item.path}>
-                            <Link to={item.path} onClick={() => toggleSidebar(false)}>{item.name}</Link>
-                        </li>
-                    ))}
-                </ul>
-                <button className="logout-button" onClick={handleLogout}>Logout</button>
+                <nav className={styles.nav}>
+                    <ul>
+                        {menuItems[userRole]?.map((item) => (
+                            <li key={item.path}>
+                                <Link to={item.path} className={styles.navLink} onClick={() => toggleSidebar(false)}>
+                                    {item.name}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+                <button className={styles.logoutButton} onClick={handleLogout}>Logout</button>
             </div>
         </>
     );

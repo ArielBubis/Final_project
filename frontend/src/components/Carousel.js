@@ -1,7 +1,7 @@
-// filepath: e:\Libraries\My Documents\University\Year 4\FinalProject\website\Final_project\frontend\src\components\Carousel.js
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
-import "../styles/Carousel.css";
+import styles from "../styles/modules/Carousel.module.css";
+import classNames from "classnames";
 
 const Carousel = ({ items }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -40,30 +40,42 @@ const Carousel = ({ items }) => {
     transform: `translateX(-${currentIndex * (100 / itemsPerView)}%)`,
   }), [currentIndex, itemsPerView]);
 
+  const prevButtonClasses = classNames(
+    styles.carouselButton, 
+    styles.prev, 
+    { [styles.disabled]: currentIndex === 0 }
+  );
+
+  const nextButtonClasses = classNames(
+    styles.carouselButton, 
+    styles.next, 
+    { [styles.disabled]: currentIndex >= items.length - itemsPerView }
+  );
+
   return (
-    <div className="carousel-container">
+    <div className={styles.carouselContainer}>
       <button
-        className="carousel-button prev"
+        className={prevButtonClasses}
         onClick={prevItem}
         disabled={currentIndex === 0}
         aria-label="Previous items"
       >
         &lt;
       </button>
-      <div className="carousel-cards">
+      <div className={styles.carouselCards}>
         <div
-          className="carousel-cards-wrapper"
+          className={styles.carouselCardsWrapper}
           style={transformStyle}
         >
           {items.map((item, index) => (
-            <div className="carousel-card" key={index}>
+            <div className={styles.carouselCard} key={index}>
               {item}
             </div>
           ))}
         </div>
       </div>
       <button
-        className="carousel-button next"
+        className={nextButtonClasses}
         onClick={nextItem}
         disabled={currentIndex >= items.length - itemsPerView}
         aria-label="Next items"

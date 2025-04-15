@@ -12,33 +12,33 @@
 .card:hover {
   transform: translateY(-4px);
 }
-.card-course {
+
+.course {
   margin-right: 5%;
   background-color: #ffffff;
 }
 
-.card-student {
+.student {
   margin-right: 5%;
   background-color: #ffffff;
 }
 
-/* Sizes */
-.card-sm {
+.sm {
   width: 150px;
   height: 130px;
 }
 
-.card-md {
+.md {
   width: 210px;
   height: 200px;
 }
 
-.card-lg {
+.lg {
   width: 260px;
   height: 320px;
 }
 
-.card-image {
+.cardImage {
   width: 80px;
   height: 80px;
   border-radius: 50%;
@@ -46,7 +46,7 @@
   margin-bottom: 1rem;
 }
 
-.card-content {
+.cardContent {
   width: 100%;
   text-align: center;
   font-size: 0.9rem;
@@ -55,13 +55,13 @@
   gap: 0.25rem;
 }
 
-.card-field {
+.cardField {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.card-key {
+.cardKey {
   font-weight: bold;
   text-transform: capitalize;
 }

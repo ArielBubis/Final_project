@@ -1,4 +1,4 @@
-.popup-overlay {
+.popupOverlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -11,7 +11,7 @@
   z-index: 1000;
 }
 
-.popup-container {
+.popupContainer {
   background-color: white;
   border-radius: 8px;
   width: 400px;
@@ -20,15 +20,15 @@
   overflow: hidden;
 }
 
-.popup-container.success {
+.success {
   border-top: 5px solid #28a745;
 }
 
-.popup-container.error {
+.error {
   border-top: 5px solid #dc3545;
 }
 
-.popup-header {
+.popupHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -36,12 +36,12 @@
   border-bottom: 1px solid #eee;
 }
 
-.popup-header h3 {
+.popupHeader h3 {
   margin: 0;
   font-weight: 600;
 }
 
-.close-button {
+.closeButton {
   background: none;
   border: none;
   font-size: 24px;
@@ -49,21 +49,21 @@
   color: #aaa;
 }
 
-.close-button:hover {
+.closeButton:hover {
   color: #333;
 }
 
-.popup-body {
+.popupBody {
   padding: 20px;
 }
 
-.popup-footer {
+.popupFooter {
   padding: 15px 20px;
   text-align: right;
   border-top: 1px solid #eee;
 }
 
-.popup-button {
+.popupButton {
   background-color: #007bff;
   color: white;
   border: none;
@@ -72,6 +72,6 @@
   cursor: pointer;
 }
 
-.popup-button:hover {
+.popupButton:hover {
   background-color: #0069d9;
 }

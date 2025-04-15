@@ -2,8 +2,8 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
-import Button from "./Button"; // Import the Button component
-import "../styles/Login.css"; // Consolidated CSS for styling
+import Button from "./Button";
+import styles from "../styles/modules/Login.module.css";
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -23,16 +23,16 @@ const Login = () => {
     };
 
     return (
-        <div className="app-container"> {/* Wrap in app-container */}
-            <div className="login-container">
-                <div className="login-box">
+        <div className={styles.appContainer}>
+            <div className={styles.loginContainer}>
+                <div className={styles.loginBox}>
                     {/* Left Column */}
-                    <div className="login-left">
+                    <div className={styles.loginLeft}>
                         <h1>Login</h1>
 
                         {/* Login Form */}
-                        <form onSubmit={handleLogin} className="login-form">
-                            <div className="input-group">
+                        <form onSubmit={handleLogin} className={styles.loginForm}>
+                            <div className={styles.inputGroup}>
                                 <label>Email address</label>
                                 <input
                                     type="email"
@@ -42,7 +42,7 @@ const Login = () => {
                                 />
                             </div>
 
-                            <div className="input-group">
+                            <div className={styles.inputGroup}>
                                 <label>Password</label>
                                 <input
                                     type="password"
@@ -52,28 +52,26 @@ const Login = () => {
                                 />
                             </div>
 
-                            <div className="forgot-password">
+                            <div className={styles.forgotPassword}>
                                 <a href="#!">Forgot password?</a>
                             </div>
 
-                            <div className="component-button">
-                                <Button
-                                    label="Login"
-                                    onClick={handleLogin}
-                                    type="submit"
-                                    variant="primary"
-                                    size="wide"
-                                />
-                            </div>
+                            <Button
+                                label="Login"
+                                onClick={handleLogin}
+                                type="submit"
+                                variant="primary"
+                                size="wide"
+                            />
 
-                            {error && <p className="error-message">{error}</p>}
+                            {error && <p className={styles.errorMessage}>{error}</p>}
                         </form>
                     </div>
 
                     {/* Right Column */}
-                    <div className="login-right">
-                        <div className="info-box">
-                            <div className="login-logo">
+                    <div className={styles.loginRight}>
+                        <div className={styles.infoBox}>
+                            <div className={styles.loginLogo}>
                                 <img
                                     src="https://icons.veryicon.com/png/o/business/colorful-office-icons/book-52.png"
                                     alt="Logo"

@@ -5,23 +5,23 @@ import Dashboard from "./Dashboard";
 import Login from "./login";
 import { useAuth } from "../contexts/AuthContext";
 import { AppProvider } from "../contexts/AppProvider";
-import "../styles/styles.css";
+import styles from "../styles/modules/App.module.css";
 
 // AppContent component to use the auth hook
 const AppContent = () => {
   const { currentUser, userRole, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   return (
-    <div className="app-container">
+    <div className={styles.appContainer}>
       {/* Render Sidebar only when the user is logged in */}
       {currentUser && userRole && <Sidebar userRole={userRole} />}
 
       {/* Main Content */}
-      <div className="main-content">
+      <div className={styles.mainContent}>
         <Routes>
           {currentUser ? (
             <>

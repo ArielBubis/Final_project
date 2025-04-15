@@ -1,4 +1,4 @@
-.carousel-container {
+.carouselContainer {
   position: relative;
   width: 100%;
   display: flex;
@@ -6,17 +6,17 @@
   justify-content: center;
 }
 
-.carousel-cards {
+.carouselCards {
   width: 80%;
   overflow: hidden;
 }
 
-.carousel-cards-wrapper {
+.carouselCardsWrapper {
   display: flex;
   transition: transform 0.3s ease-in-out;
 }
 
-.carousel-card {
+.carouselCard {
   margin-right: 5%;
   display: flex;
   justify-content: center;
@@ -25,7 +25,7 @@
   box-sizing: border-box;
 }
 
-.carousel-button {
+.carouselButton {
   position: absolute;
   top: 50%;
   background-color: rgba(0, 0, 0, 0.5);
@@ -37,15 +37,15 @@
   transform: translateY(-50%);
 }
 
-.carousel-button.prev {
+.prev {
   left: 10px;
 }
 
-.carousel-button.next {
+.next {
   right: 10px;
 }
 
-.carousel-button:disabled {
+.disabled {
   background-color: #ddd;
   cursor: not-allowed;
 }

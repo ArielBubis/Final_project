@@ -16,16 +16,16 @@
   margin-bottom: 20px;
 }
 
-.sidebar nav ul {
+.nav ul {
   list-style: none;
   padding: 0;
 }
 
-.sidebar nav ul li {
+.nav ul li {
   margin: 10px 0;
 }
 
-.sidebar nav ul li a {
+.navLink {
   text-decoration: none;
   color: white;
   display: block;
@@ -33,11 +33,11 @@
   border-radius: 5px;
 }
 
-.sidebar nav ul li a:hover {
+.navLink:hover {
   background-color: #34495e;
 }
 
-.logout-button {
+.logoutButton {
   margin-top: auto;
   padding: 10px;
   background-color: #e74c3c;
@@ -47,60 +47,19 @@
   cursor: pointer;
 }
 
-.logout-button:hover {
+.logoutButton:hover {
   background-color: #c0392b;
 }
 
-@media screen and (max-width: 768px) {
-  .sidebar {
-    width: 100%;
-    height: auto;
-    transform: translateX(-100%);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-}
-
-@media (min-width: 768px) {
-  .sidebar .close-btn {
-    display: none !important;
-  }
-}
-
-.sidebar.open {
+.open {
   transform: translateX(0);
 }
 
-.sidebar:not(.open) {
+.closed {
   transform: translateX(-100%);
 }
 
-.sidebar ul {
-  list-style: none;
-  padding: 0;
-}
-
-.sidebar ul li {
-  margin-bottom: 15px;
-}
-
-.sidebar ul li a {
-  color: white;
-  text-decoration: none;
-  font-size: 18px;
-  display: block;
-  padding: 10px;
-  transition: background 0.3s ease;
-}
-
-.sidebar ul li a:hover {
-  background-color: #34495e;
-  border-radius: 5px;
-}
-
-.close-btn {
+.closeBtn {
   display: block;
   background: none;
   border: none;
@@ -111,7 +70,7 @@
   margin-bottom: 10px;
 }
 
-.menu-button {
+.menuButton {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -120,4 +79,17 @@
   color: rgb(0, 0, 0);
   font-size: 24px;
   cursor: pointer;
+}
+
+@media screen and (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+}
+
+@media (min-width: 768px) {
+  .closeBtn {
+    display: none !important;
+  }
 }
