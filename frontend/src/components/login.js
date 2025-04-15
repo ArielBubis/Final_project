@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
 import Button from "./Button"; // Import the Button component
-import "../styles/styles.css"; // Consolidated CSS for styling
+import "../styles/Login.css"; // Consolidated CSS for styling
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -59,9 +59,10 @@ const Login = () => {
                             <div className="component-button">
                                 <Button
                                     label="Login"
-                                    onClick={handleLogin} // Passing handleLogin directly to onClick
-                                    blue={true}
-                                    wide={true}
+                                    onClick={handleLogin}
+                                    type="submit"
+                                    variant="primary"
+                                    size="wide"
                                 />
                             </div>
 

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
-import { getAuth, signOut } from "firebase/auth";
-import "../styles/styles.css";
+import { useAuth } from "../contexts/AuthContext";
+import { useUI } from "../contexts/UIContext";
+import "../styles/Sidebar.css";
 
 export const menuItems = {
     teacher: [
@@ -17,22 +18,12 @@ export const menuItems = {
 
 const Sidebar = ({ userRole }) => {
     const navigate = useNavigate();
-    
-    const initialSidebarState = sessionStorage.getItem("sidebarOpen") === "false" ? false : true;
-    const [isOpen, setIsOpen] = useState(initialSidebarState);
-
-    useEffect(() => {
-        sessionStorage.setItem("sidebarOpen", isOpen);
-    }, [isOpen]);
-
-    const toggleSidebar = (state) => {
-        setIsOpen(state);
-    };
+    const { logout } = useAuth();
+    const { isSidebarOpen, toggleSidebar } = useUI();
 
     const handleLogout = async () => {
         try {
-            const auth = getAuth();
-            await signOut(auth);
+            await logout();
             toggleSidebar(false);
             navigate("/login");
         } catch (error) {
@@ -42,11 +33,11 @@ const Sidebar = ({ userRole }) => {
 
     return (
         <>
-            {!isOpen && (
+            {!isSidebarOpen && (
                 <button className="menu-button" onClick={() => toggleSidebar(true)}>☰</button>
             )}
 
-            <div className={`sidebar ${isOpen ? "open" : ""}`}>
+            <div className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
                 {/* Close button only on small screens */}
                 <div className="close-btn-wrapper">
                     <button className="close-btn" onClick={() => toggleSidebar(false)}>✖</button>

@@ -1,72 +1,52 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
-import { auth } from "../firebaseConfig"; // Import Firebase auth
-import { onAuthStateChanged } from "firebase/auth";
-import Sidebar from "./SideBar"; // Import Sidebar
+import Sidebar from "./SideBar";
 import Dashboard from "./Dashboard";
 import Login from "./login";
-import { Menu } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { AppProvider } from "../contexts/AppProvider";
 import "../styles/styles.css";
 
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Sidebar toggle state
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prevState) => !prevState);
-  };
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        // Fetch user role from Firestore (replace with real Firestore call)
-        const mockUserRole = "teacher"; // Example: "teacher" or "admin"
-        setUserRole(mockUserRole);
-      } else {
-        setUser(null);
-        setUserRole(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+// AppContent component to use the auth hook
+const AppContent = () => {
+  const { currentUser, userRole, loading } = useAuth();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <Router>
-      <div className="app-container">
-        {/* Render Sidebar only when the user is logged in */}
-        {user && userRole ? (
-          <>
-            <Sidebar userRole={userRole} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-          </>
-        ) : null }
+    <div className="app-container">
+      {/* Render Sidebar only when the user is logged in */}
+      {currentUser && userRole && <Sidebar userRole={userRole} />}
 
-        {/* Main Content */}
-        <div className="main-content">
-          <Routes>
-            {user ? (
-              <>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </>
-            ) : (
-              <>
-                <Route path="/login" element={<Login />} />
-                <Route path="*" element={<Navigate to="/login" replace />} />
-              </>
-            )}
-          </Routes>
-        </div>
+      {/* Main Content */}
+      <div className="main-content">
+        <Routes>
+          {currentUser ? (
+            <>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/login" element={<Login />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </>
+          )}
+        </Routes>
       </div>
+    </div>
+  );
+};
+
+const App = () => {
+  return (
+    <Router>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
     </Router>
   );
 };
