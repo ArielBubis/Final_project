@@ -4,7 +4,7 @@ src/frontend/src/firebaseConfig.js
 *.rar
 
 .venv
-
+/data
 # dependencies
 /node_modules
 /.pnp
@@ -29,3 +29,5 @@ yarn-error.log*
 
 src/firebase.rar
 src/frontend/src/firebaseConfig.js
+DataBaseSchema2.txt
+serviceAccountKey.json

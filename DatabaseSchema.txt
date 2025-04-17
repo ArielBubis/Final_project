@@ -1,89 +1,133 @@
-Users: 
-{  
-   "userId": String,  
-   "userType": String,  // "student", "teacher"  
-   "firstName": String,  
-   "lastName": String,  
-   "email": String,  
-   "gender": String  
-}  
+{
+  "collections": {
+    "users": {
+      "userId": {
+        "firstName": "String",
+        "lastName": "String",
+        "email": "String",
+        "gender": "String",
+        "roles": {
+          "student": "Boolean",
+          "teacher": "Boolean",
+          "admin": "Boolean"
+        },
+        "createdAt": "Timestamp"
+      }
+    },
+    
+    "schools": {
+      "schoolId": {
+         "schoolId": String,         // Unique school ID
+         "name": String,
+         "location": String,
+         "ranking": Number,
+         "specialization": String,
+         "studentCapacity": Number,
+         "foundingYear": Number,
+         "website": String,
+      }
+    },
+    
+    "teachers": {
+      "teacherId": {
+        "userId": "String",
+        "schoolId": "String"
+      }
+    },
+    
+    "students": {
+      "studentId": {
+        "userId": "String",
+        "registrationDate": "Timestamp"
+      }
+    },
+    
+    "courses": {
+      "courseId": {
+        "courseName": "String",
+        "description": String,
+        "schoolId": "String",
+        "teacherId": "String",
+        "activeCode": "String",
+        "isEnabled": "Boolean",
+        "createdAt": "Timestamp",
+        "startDate": Date,
+        "endDate": Date,
+        "subjectArea": String,
+        "published": Boolean,
 
-Students:
-{  
-   "studentId": String,  
-   "userId": String,  // Reference to users collection  
-   "registrationDate": Date,  
-   "courses": [ 
-    {  
-       "courseId": String, // reference to courses collection
-       "courseName": String,  
-       "classLevel": String,
-       "finalScore" : Integer,
-       "modules": [
-        {
-            "moduleId": Stgring, // reference to modules collection
-            "totalExpertiseRate": Double, 
-            "completion": Double,
-            "assigments": [
-            {
-                "assigmentId": String // // reference to assigments
-                "totalTime": Date, 
-                "totalScore": Integer,
-                "notes": String
+        "subcollections": {
+          "modules": {
+            "moduleId": {
+              "moduleTitle": "String",
+              "description": "String",
+              "isRequired": "Boolean"
+              "sequenceNumber": Number
+              "description": String,
             }
-            ]
+          },
+          
+          "assignments": {
+            "assignmentId": {
+              "title": "String",
+              "moduleId": "String",
+              "description": String,
+              "assignmentType": String,
+              "averageScore": Number,
+              "submissionRate": Number,
+              "dueDate": "Timestamp",
+              "maxScore": "Number",
+              "lateRate": Number,
+              "createdAt": Date,
+              "maxAttempts": Number,
+            }
+          }
         }
-       ]
-    }  
-   ]  
-}  
-
-Teachers:
-{  
-   "teacherId": String,  
-   "userId": String,  // Reference to users collection  
-   "schoolName": String,  
-   "courses": [  
-    {  
-       "objectId": String, 
-       "courseId": String,  // reference to course collection
-       "courseName": String  
+      }
+    },
+    
+    "enrollments": {
+      "enrollmentId": {
+        "studentId": "String",
+        "courseId": "String",
+        "classLevel": "String",
+        "finalScore": "Number",
+      }
+    },
+    
+    "studentProgress": {
+      "studentId": {
+        "subcollections": {
+          "courses": {
+            "courseId": {
+              "summary": {
+                "overallCompletion": "Number",
+                "overallScore": "Number",
+                "lastAccessed": "Timestamp"
+              },
+              
+              "subcollections": {
+                "modules": {
+                  "moduleId": {
+                    "totalExpertiseRate": "Number",
+                    "completion": "Number",
+                    "lastAccessed": "Timestamp"
+                  }
+                },
+                
+                "assignments": {
+                  "assignmentId": {
+                    "totalScore": "Number",
+                    "totalTime": "Number",
+                    "notes": "String",
+                    "submittedAt": "Timestamp"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
-   ]  
-}  
-
-Courses:
-{  
-   "courseId": String,  
-   "courseName": String,  
-   "activeCode": String,  
-   "isEnabled": Boolean,  
-   "school": {  
-     "schoolId": String,  
-     "name": String  
-   },  
-   "modules": [  
-    {  
-       "moduleId": String,  
-       "moduleTitle": String,  
-       "description": String,  
-       "isActive": Boolean,  
-       "isRequired": Boolean  
-    }  
-   ],  
-   "assignments": [  
-    {  
-       "assignmentId": String,  
-       "title": String,  
-       "category": String,  
-       "dueDate": Date,  
-       "maxScore": Number,  
-       "hasMarkers": Boolean,  
-       "isActive": Boolean,  
-       "gradingScale": String
-    }
-   ]    
-}  
-   
- 
-
+  }
+}
