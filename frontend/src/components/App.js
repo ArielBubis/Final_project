@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-d
 import Sidebar from "./SideBar";
 import Dashboard from "./Dashboard";
 import Login from "./login";
+import Reports from "./Reports/Reports";
 import { useAuth } from "../contexts/AuthContext";
 import { AppProvider } from "../contexts/AppProvider";
 import styles from "../styles/modules/App.module.css";
@@ -26,6 +27,7 @@ const AppContent = () => {
           {currentUser ? (
             <>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/report" element={<Reports />} />
               <Route path="/login" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </>

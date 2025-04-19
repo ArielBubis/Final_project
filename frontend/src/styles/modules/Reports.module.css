@@ -1,0 +1,83 @@
+/* Reports.module.css */
+.reportsContainer {
+  flex-grow: 1;
+  padding: 20px;
+  background-color: #f9f9f9;
+}
+
+.pageHeader {
+  margin-bottom: 20px;
+}
+
+.pageHeader h1 {
+  margin-bottom: 5px;
+  font-size: 24px;
+}
+
+.pageHeader p {
+  color: #666;
+}
+
+.reportsTabs {
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.teacherOverviewDashboard {
+  padding: 10px;
+}
+
+.sectionTitle {
+  margin-bottom: 20px;
+}
+
+.overviewMetrics {
+  margin-bottom: 20px;
+}
+
+.metricCard {
+  text-align: center;
+  height: 100%;
+}
+
+.metricCard h2 {
+  font-size: 28px;
+  margin-top: 10px;
+}
+
+.chartCard {
+  margin-bottom: 20px;
+}
+
+.activitySection {
+  margin-top: 20px;
+}
+
+.tableCard {
+  height: 100%;
+}
+
+.placeholder {
+  text-align: center;
+  padding: 40px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  margin: 20px 0;
+}
+
+.placeholder h3 {
+  margin-bottom: 10px;
+  color: #555;
+}
+
+.placeholder p {
+  color: #888;
+}
+
+@media (max-width: 768px) {
+  .reportsContainer {
+    padding: 10px;
+  }
+}

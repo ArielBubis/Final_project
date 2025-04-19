@@ -21,10 +21,10 @@ async function importCsvToFirebase(csvFolder) {
       teachers: false,
       students: false,
       courses: false,
-      modules: false, 
-      assignments: false,
+      modules: true, 
+      assignments: true,
       enrollments: false,
-      studentProgress: true // Set to false if already imported
+      studentProgress: false // Set to false if already imported
     };
     
     // Load all CSV data first
@@ -151,17 +151,27 @@ async function importCsvToFirebase(csvFolder) {
     // Import courses
     if (importOptions.courses && csvData['courses.csv']) {
       console.log('Importing courses...');
+      console.log('First course record sample:', JSON.stringify(csvData['courses.csv'][0])); // Debug first record
+      
       await importCollection(csvData['courses.csv'], 'courses', record => {
-        const teacherId = parseArray(record.teachers)[0] || null; // Take first teacher as primary
+        console.log('Processing course:', record.id);
         
-        return {
+        const parsedTeachers = parseArray(record.teachers);
+        console.log('Parsed teachers for course', record.id, ':', parsedTeachers);
+        const teacherId = parsedTeachers[0] || null; // Take first teacher as primary
+        console.log('Selected teacherId:', teacherId);
+        
+        const parsedStudents = parseArray(record.students);
+        console.log('Parsed students for course', record.id, ':', parsedStudents);
+        
+        const formattedCourse = {
           courseId: record.id,
           courseName: record.name,
           description: record.description,
           schoolId: record.schoolId,
           teacherId: teacherId,
-          teachers: parseArray(record.teachers),
-          activeCode: record.accessCode,
+          teachers: parsedTeachers,
+          activeCode: record.accessCode, // Note: accessCode in CSV maps to activeCode in Firestore
           isEnabled: true,
           createdAt: formatDate(record.createdAt),
           startDate: formatDate(record.startDate),
@@ -169,8 +179,11 @@ async function importCsvToFirebase(csvFolder) {
           subjectArea: record.subjectArea,
           published: record.published === 'true' || record.published === 'True',
           durationWeeks: parseInt(record.durationWeeks) || null,
-          students: parseArray(record.students)
+          students: parsedStudents
         };
+        
+        console.log('Formatted course object:', JSON.stringify(formattedCourse));
+        return formattedCourse;
       });
     }
 
@@ -500,24 +513,18 @@ async function importCollection(records, collectionName, formatFunction) {
       })
     );
     
-    // Only add non-existing documents to the batch
-    let skipCount = 0;
+    // Always add all documents to the batch - overwrite existing ones
+    let overwriteCount = 0;
     existChecks.forEach(({ docRef, formattedRecord, exists }) => {
-      if (!exists) {
-        batch.set(docRef, formattedRecord);
-      } else {
-        skipCount++;
+      batch.set(docRef, formattedRecord);
+      if (exists) {
+        overwriteCount++;
       }
     });
     
-    if (skipCount === currentBatch.length) {
-      console.log(`Skipping batch ${Math.floor(i/batchSize) + 1} of ${collectionName} - all documents exist`);
-      continue;
-    }
-    
     try {
       await batch.commit();
-      console.log(`Imported batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(records.length/batchSize)} to ${collectionName} (skipped ${skipCount} existing documents)`);
+      console.log(`Imported batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(records.length/batchSize)} to ${collectionName} (overwrote ${overwriteCount} existing documents)`);
       // Add delay between batches to avoid hitting quota limits
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
@@ -542,18 +549,42 @@ function formatDate(dateStr) {
 function parseArray(value) {
   if (!value) return [];
   try {
+    // For debugging
+    console.log('Parsing array value:', value, 'Type:', typeof value);
+    
     if (Array.isArray(value)) return value;
     if (typeof value === 'string') {
-      if (value.trim().startsWith('[') && value.trim().endsWith(']')) {
-        // Handle array strings with double quotes, e.g., "[\"item1\", \"item2\"]"
-        return JSON.parse(value.replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
-      } else {
-        return value.split(',').map(item => item.trim()).filter(Boolean);
+      // Handle the specific format from CSV: "[""id1"", ""id2""]"
+      if (value.includes('""')) {
+        console.log('Detected special format with double quotes');
+        const cleanedString = value.replace(/\[""/g, '["').replace(/""\]/g,'"]').replace(/"", ""/g, '","');
+        console.log('Cleaned string:', cleanedString);
+        try {
+          const parsed = JSON.parse(cleanedString);
+          console.log('Successfully parsed special format:', parsed);
+          return parsed;
+        } catch (parseErr) {
+          console.warn('Error parsing special format:', parseErr);
+          // Fall back to comma splitting
+        }
       }
+      
+      if (value.trim().startsWith('[') && value.trim().endsWith(']')) {
+        try {
+          // Handle standard JSON array strings
+          return JSON.parse(value.replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
+        } catch (jsonErr) {
+          console.warn('Error parsing JSON array:', jsonErr, 'Value:', value);
+          // Fall back to comma splitting
+        }
+      }
+      
+      // Default fallback: split by comma
+      return value.split(',').map(item => item.trim()).filter(Boolean);
     }
     return [];
   } catch (e) {
-    console.warn('Error parsing array:', e);
+    console.warn('Error parsing array:', e, 'Value:', value);
     // Fallback: Try to parse comma-separated strings
     try {
       return value.split(',').map(item => item.trim()).filter(Boolean);
