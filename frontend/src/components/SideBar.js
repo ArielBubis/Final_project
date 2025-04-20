@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
 import { useUI } from "../contexts/UIContext";
 import styles from "../styles/modules/Sidebar.module.css";
 import classNames from "classnames";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
 export const menuItems = {
     teacher: [
@@ -19,8 +21,47 @@ export const menuItems = {
 
 const Sidebar = ({ userRole }) => {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, currentUser } = useAuth();
     const { isSidebarOpen, toggleSidebar } = useUI();
+    const [teacherName, setTeacherName] = useState("");
+
+    useEffect(() => {
+        const fetchTeacherData = async () => {
+            if (currentUser && currentUser.uid) {
+                try {
+                    // First check in the users collection
+                    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+                    
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        if (userData.firstName && userData.lastName) {
+                            setTeacherName(`${userData.firstName} ${userData.lastName}`);
+                            return;
+                        }
+                    }
+
+                    // If not found or incomplete in users, check teachers collection
+                    const teacherDoc = await getDoc(doc(db, "teachers", currentUser.uid));
+                    
+                    if (teacherDoc.exists()) {
+                        const teacherData = teacherDoc.data();
+                        if (teacherData.firstName && teacherData.lastName) {
+                            setTeacherName(`${teacherData.firstName} ${teacherData.lastName}`);
+                            return;
+                        }
+                    }
+                    
+                    // Fallback to displayName or email if no name found in either collection
+                    setTeacherName(currentUser.displayName || currentUser.email.split('@')[0] || 'Teacher');
+                } catch (error) {
+                    console.error("Error fetching teacher data:", error);
+                    setTeacherName(currentUser.displayName || 'Teacher');
+                }
+            }
+        };
+
+        fetchTeacherData();
+    }, [currentUser]);
 
     const handleLogout = async () => {
         try {
@@ -47,6 +88,11 @@ const Sidebar = ({ userRole }) => {
                 {/* Close button only on small screens */}
                 <div>
                     <button className={styles.closeBtn} onClick={() => toggleSidebar(false)}>✖</button>
+                </div>
+
+                {/* Welcome message with teacher's name from Firestore */}
+                <div className={styles.welcomeMessage}>
+                    Welcome, {teacherName || 'Teacher'}
                 </div>
 
                 <nav className={styles.nav}>

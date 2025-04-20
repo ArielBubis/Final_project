@@ -10,7 +10,14 @@
   justify-content: space-between;
   transition: transform 0.3s ease-in-out;
 }
-
+.welcomeMessage {
+  padding: 20px;
+  text-align: center;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+  color: #fff;
+}
 .sidebar h2 {
   text-align: center;
   margin-bottom: 20px;
