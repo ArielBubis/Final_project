@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { auth } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
 import { 
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged
 } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 // Create the context
 const AuthContext = createContext(null);
@@ -49,12 +50,39 @@ export const AuthProvider = ({ children }) => {
 
   // Effect to monitor auth state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        // Here you would normally fetch the user role from Firestore
-        // For now using a mock value as in your original code
-        setUserRole("teacher");
+        // Fetch user role from Firestore
+        try {
+          let role = "user"; // Default role
+          
+          // Check if user exists in Firestore
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            console.log("User data:", userData);
+            if (userData.roles) {
+              if (userData.roles.admin) {
+                console.log("User is an admin");
+                role = "admin";
+              } else if (userData.roles.teacher) {
+                console.log("User is a teacher");
+                role = "teacher";
+              } else if (userData.roles.student) {
+                console.log("User is a student");
+                role = "student";
+              }
+            }
+          }
+          
+          setUserRole(role);
+        } catch (err) {
+          console.error("Error fetching user role:", err);
+          // Default to teacher role for backward compatibility
+          setUserRole("teacher");
+        }
       } else {
         setCurrentUser(null);
         setUserRole(null);

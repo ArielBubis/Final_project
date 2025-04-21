@@ -16,10 +16,18 @@ export const menuItems = {
         { name: "Courses", path: "/courses" },
         { name: "Students", path: "/students" },
         { name: "Performance", path: "/performance" }
+    ],
+    admin: [
+        { name: "Dashboard", path: "/dashboard" },
+        { name: "Admin Dashboard", path: "/admin" },
+        { name: "Teacher Management", path: "/admin/teachers" },
+        { name: "System Reports", path: "/admin/reports" },
+        { name: "Settings", path: "/admin/settings" }
     ]
 };
 
 const Sidebar = ({ userRole }) => {
+    console.log("Sidebar rendered with userRole:", userRole);
     const navigate = useNavigate();
     const { logout, currentUser } = useAuth();
     const { isSidebarOpen, toggleSidebar } = useUI();
@@ -78,6 +86,9 @@ const Sidebar = ({ userRole }) => {
         { [styles.open]: isSidebarOpen, [styles.closed]: !isSidebarOpen }
     );
 
+    // Determine the appropriate menu based on user role (admin or teacher)
+    const roleBasedMenu = menuItems[userRole] || menuItems.teacher;
+
     return (
         <>
             {!isSidebarOpen && (
@@ -97,7 +108,7 @@ const Sidebar = ({ userRole }) => {
 
                 <nav className={styles.nav}>
                     <ul>
-                        {menuItems[userRole]?.map((item) => (
+                        {roleBasedMenu.map((item) => (
                             <li key={item.path}>
                                 <Link to={item.path} className={styles.navLink} onClick={() => toggleSidebar(false)}>
                                     {item.name}

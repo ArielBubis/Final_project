@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { Tabs } from 'antd';
 import TeacherOverview from './TeacherOverview';
+import { useAuth } from '../../contexts/AuthContext';
 import styles from '../../styles/modules/Reports.module.css';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
+
   const items = [
     {
       key: 'overview',
       label: 'Overview',
-      children: <TeacherOverview />
+      children: <TeacherOverview isAdminView={isAdmin} />
     },
   ];
 
@@ -20,9 +24,14 @@ const Reports = () => {
   return (
     <div className={styles.teacherOverviewDashboard}>
       <div className={styles.dashboardHeader}>
-        <h1 className={styles.dashboardTitle}>Teacher Report Dashboard</h1>
+        <h1 className={styles.dashboardTitle}>
+          {isAdmin ? 'System-wide Report Dashboard' : 'Teacher Report Dashboard'}
+        </h1>
         <p className={styles.dashboardSubtitle}>
-          Comprehensive analytics and insights for teacher performance monitoring
+          {isAdmin 
+            ? 'Comprehensive analytics and insights across all courses and teachers' 
+            : 'Comprehensive analytics and insights for teacher performance monitoring'
+          }
         </p>
       </div>
       
@@ -30,6 +39,7 @@ const Reports = () => {
         activeKey={activeTab} 
         onChange={handleTabChange} 
         items={items}
+        isAdminView={isAdmin}
         className={styles.reportsTabs}
       />
     </div>

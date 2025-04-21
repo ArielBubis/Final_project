@@ -1,0 +1,144 @@
+/* AdminDashboard.module.css */
+.adminDashboard {
+  padding: 20px;
+  background-color: #f9f9f9;
+}
+
+.dashboardOverview {
+  margin-top: 10px;
+}
+
+.welcomeTitle {
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.welcomeSubtitle {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.statsRow {
+  margin-bottom: 30px;
+}
+
+.statCard {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+  border-radius: 8px;
+  transition: transform 0.3s;
+  height: 100%;
+}
+
+.statCard:hover {
+  transform: translateY(-3px);
+}
+
+.quickActions {
+  margin-top: 30px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: #444;
+}
+
+.actionCard {
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.actionCard:hover {
+  border-color: #1890ff;
+}
+
+/* Teacher Management styles */
+.teacherManagement {
+  margin-top: 10px;
+}
+
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tableTitle h2 {
+  margin-bottom: 4px;
+  font-size: 20px;
+}
+
+.tableTitle p {
+  color: #666;
+  margin-bottom: 0;
+}
+
+.tableActions {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+/* Teacher Form styles */
+.teacherForm {
+  padding: 8px;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Teacher Courses styles */
+.teacherCourses {
+  padding: 8px;
+}
+
+.summaryStats {
+  margin-bottom: 20px;
+}
+
+.coursesTable {
+  margin-top: 16px;
+}
+
+/* Error messages */
+.error {
+  padding: 20px;
+  color: #f5222d;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .tableHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .tableActions {
+    margin-top: 16px;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .tableActions > * {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .welcomeTitle {
+    font-size: 24px;
+  }
+  
+  .welcomeSubtitle {
+    font-size: 14px;
+  }
+}

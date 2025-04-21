@@ -26,9 +26,11 @@ import {
 } from 'recharts';
 import styles from '../../styles/modules/Reports.module.css';
 
-const TeacherOverview = () => {
+const { Option } = Select;
+
+const TeacherOverview = ({ isAdminView = false }) => {
   const { currentUser } = useAuth();
-  const { fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats } = useData();
+  const { fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, fetchAllCourses, teachers, courseData, loading: dataLoading } = useData();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentDisplayCount, setStudentDisplayCount] = useState(10);
@@ -49,6 +51,7 @@ const TeacherOverview = () => {
     timeSeriesData: [],
     atRiskStudents: []
   });
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82CA9D', '#8DD1E1', '#A4DE6C'];
 
@@ -60,28 +63,41 @@ const TeacherOverview = () => {
         setLoading(true);
         setError(null);
         
-        // Using teacher's email instead of UID
-        const teacherEmail = currentUser.email;
-        console.log('Fetching data for teacher email:', teacherEmail);
+        let courses = [];
+        let students = [];
+        let courseStats = [];
         
-        // Get teacher's courses by email
-        const courses = await fetchTeacherCourses(teacherEmail);
-        console.log('Fetched courses:', courses);
+        if (isAdminView) {
+          // Admin view: fetch all courses or filtered by selected teacher
+          if (selectedTeacher) {
+            // If a specific teacher is selected, fetch their courses
+            courses = await fetchTeacherCourses(selectedTeacher.email);
+            students = await fetchStudentsByTeacher(selectedTeacher.email);
+          } else {
+            // Otherwise fetch all courses data from context
+            courses = courseData || [];
+            
+            // For admin overview without teacher selection,
+            // we'll use aggregated course stats instead of students
+            students = []; // No specific students to show in overall view
+          }
+        } else {
+          // Teacher view: fetch only this teacher's courses
+          const teacherEmail = currentUser.email;
+          courses = await fetchTeacherCourses(teacherEmail);
+          students = await fetchStudentsByTeacher(teacherEmail);
+        }
         
         if (courses.length === 0) {
-          setError("No courses found for this teacher. Please create a course or check your account.");
+          setError(isAdminView ? 
+            "No course data available. Please check system configuration." : 
+            "No courses found for this teacher. Please create a course or check your account.");
           setLoading(false);
           return;
         }
         
-        // Get all students in teacher's courses using email
-        const students = await fetchStudentsByTeacher(teacherEmail);
-        console.log('Fetched students:', students);
-        
         // Get detailed stats for each course
-        const coursePromises = courses.map(course => fetchCourseStats(course.courseId));
-        const courseStats = await Promise.all(coursePromises);
-        console.log('Fetched course stats:', courseStats);
+        courseStats = await Promise.all(courses.map(course => fetchCourseStats(course.courseId)));
         
         // Process data for visualization
         const coursesData = courses.map((course) => {
@@ -244,7 +260,8 @@ const TeacherOverview = () => {
     };
     
     loadDashboardData();
-  }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats]);
+  }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, 
+      isAdminView, selectedTeacher, courseData]);
   
   // Update student performance data when display count changes
   useEffect(() => {
@@ -258,7 +275,17 @@ const TeacherOverview = () => {
     }
   }, [studentDisplayCount, allStudents]);
 
-  if (loading) {
+  // Handle teacher selection change for admin view
+  const handleTeacherChange = (teacherId) => {
+    if (teacherId === 'all') {
+      setSelectedTeacher(null);
+    } else {
+      const teacher = teachers.find(t => t.id === teacherId);
+      setSelectedTeacher(teacher);
+    }
+  };
+
+  if (loading || dataLoading) {
     return <Spin size="large" tip="Loading dashboard data..." />;
   }
 
@@ -346,6 +373,25 @@ const TeacherOverview = () => {
       label: 'Overview',
       children: (
         <>
+          {/* Teacher selector for admins */}
+          {isAdminView && (
+            <div className={styles.teacherSelector}>
+              <Select
+                placeholder="Select teacher to view"
+                style={{ width: 300, marginBottom: 16 }}
+                onChange={handleTeacherChange}
+                defaultValue="all"
+              >
+                <Option value="all">All Teachers (System Overview)</Option>
+                {teachers.map(teacher => (
+                  <Option key={teacher.id} value={teacher.id}>
+                    {teacher.firstName} {teacher.lastName} ({teacher.courseCount} courses)
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          )}
+          
           {/* Overview Section */}
           <Row gutter={[16, 16]} className={styles.overviewMetrics}>
             <Col xs={24} sm={12} md={6}>
@@ -371,7 +417,7 @@ const TeacherOverview = () => {
               <AntCard title="Student Engagement" className={styles.metricCard}>
                 <Progress 
                   type="circle" 
-                  percent={Math.round(overviewData.activeStudents / overviewData.totalStudents * 100 || 0)} 
+                  percent={Math.round(overviewData.activeStudents / (overviewData.totalStudents || 1) * 100)} 
                   width={80}
                   strokeColor="#1890ff"
                 />
@@ -660,13 +706,14 @@ const TeacherOverview = () => {
   ];
 
   return (
-      
+    <>
       <Tabs 
         activeKey={activeTab} 
         onChange={setActiveTab} 
         items={items}
         className={styles.reportsTabs}
       />
+    </>
   );
 };
 

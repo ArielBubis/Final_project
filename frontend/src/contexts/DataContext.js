@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { fetchAllStudents } from "../services/studentService";
+import { fetchAllTeachers, fetchAllCourses } from "../services/adminService";
 import { db } from "../firebaseConfig";
 import { 
   collection, 
@@ -25,17 +26,11 @@ export const useData = () => {
 
 export const DataProvider = ({ children }) => {
   const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [courseData, setCourseData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
-  // Example course data (moved from Dashboard.js)
-  const courseData = [
-    { name: "Math 101", level: "Beginner", thumbnailUrl: "https://via.placeholder.com/80" },
-    { name: "History 202", level: "Intermediate", thumbnailUrl: "https://via.placeholder.com/80" },
-    { name: "Physics 303", level: "Advanced", thumbnailUrl: "https://via.placeholder.com/80" },
-    { name: "Calculus 1", level: "Intermediate", thumbnailUrl: "https://via.placeholder.com/80" }
-  ];
-
   useEffect(() => {
     const loadStudents = async () => {
       try {
@@ -53,6 +48,27 @@ export const DataProvider = ({ children }) => {
     
     loadStudents();
   }, []);
+
+  // Function to load data for admin dashboard
+  const loadAdminData = async () => {
+    try {
+      setLoading(true);
+      // Load all teachers
+      const fetchedTeachers = await fetchAllTeachers();
+      setTeachers(fetchedTeachers);
+      
+      // Load all courses
+      const fetchedCourses = await fetchAllCourses();
+      setCourseData(fetchedCourses);
+      
+      setError("");
+    } catch (err) {
+      setError("Failed to load admin dashboard data");
+      console.error("Error loading admin data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch courses taught by a specific teacher with all relevant data
   const fetchTeacherCourses = async (teacherIdOrEmail) => {
@@ -360,12 +376,14 @@ export const DataProvider = ({ children }) => {
 
   const value = {
     students,
+    teachers,
     courseData,
     loading,
     error,
     fetchTeacherCourses,
     fetchStudentsByTeacher,
-    fetchCourseStats
+    fetchCourseStats,
+    loadAdminData
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
