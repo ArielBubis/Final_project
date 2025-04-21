@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const UIContext = createContext(null);
 
@@ -20,14 +20,16 @@ export const UIProvider = ({ children }) => {
     sessionStorage.setItem("sidebarOpen", isSidebarOpen);
   }, [isSidebarOpen]);
   
-  const toggleSidebar = (state) => {
-    setIsSidebarOpen(typeof state === "boolean" ? state : !isSidebarOpen);
-  };
+  // Use useCallback to memoize the toggleSidebar function
+  const toggleSidebar = useCallback((state) => {
+    setIsSidebarOpen(prev => typeof state === "boolean" ? state : !prev);
+  }, []);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = React.useMemo(() => ({
     isSidebarOpen,
     toggleSidebar
-  };
+  }), [isSidebarOpen, toggleSidebar]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 };

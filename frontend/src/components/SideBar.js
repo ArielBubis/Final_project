@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
@@ -26,12 +26,16 @@ export const menuItems = {
     ]
 };
 
-const Sidebar = ({ userRole }) => {
-    console.log("Sidebar rendered with userRole:", userRole);
+const Sidebar = React.memo(({ userRole }) => {
     const navigate = useNavigate();
     const { logout, currentUser } = useAuth();
     const { isSidebarOpen, toggleSidebar } = useUI();
     const [teacherName, setTeacherName] = useState("");
+    
+    // Memoize toggle function to prevent recreating it on each render
+    const handleToggleSidebar = useCallback((state) => {
+        toggleSidebar(state);
+    }, [toggleSidebar]);
 
     useEffect(() => {
         const fetchTeacherData = async () => {
@@ -71,15 +75,16 @@ const Sidebar = ({ userRole }) => {
         fetchTeacherData();
     }, [currentUser]);
 
-    const handleLogout = async () => {
+    // Memoize logout handler
+    const handleLogout = useCallback(async () => {
         try {
             await logout();
-            toggleSidebar(false);
+            handleToggleSidebar(false);
             navigate("/login");
         } catch (error) {
             console.error("Logout failed:", error);
         }
-    };
+    }, [logout, navigate, handleToggleSidebar]);
 
     const sidebarClasses = classNames(
         styles.sidebar,
@@ -87,18 +92,34 @@ const Sidebar = ({ userRole }) => {
     );
 
     // Determine the appropriate menu based on user role (admin or teacher)
+    // Use useMemo to prevent recalculation on every render
     const roleBasedMenu = menuItems[userRole] || menuItems.teacher;
+
+    // Memoize the link click handler
+    const handleLinkClick = useCallback(() => {
+        handleToggleSidebar(false);
+    }, [handleToggleSidebar]);
 
     return (
         <>
             {!isSidebarOpen && (
-                <button className={styles.menuButton} onClick={() => toggleSidebar(true)}>☰</button>
+                <button 
+                    className={styles.menuButton} 
+                    onClick={() => handleToggleSidebar(true)}
+                >
+                    ☰
+                </button>
             )}
 
             <div className={sidebarClasses}>
                 {/* Close button only on small screens */}
                 <div>
-                    <button className={styles.closeBtn} onClick={() => toggleSidebar(false)}>✖</button>
+                    <button 
+                        className={styles.closeBtn} 
+                        onClick={() => handleToggleSidebar(false)}
+                    >
+                        ✖
+                    </button>
                 </div>
 
                 {/* Welcome message with teacher's name from Firestore */}
@@ -110,7 +131,11 @@ const Sidebar = ({ userRole }) => {
                     <ul>
                         {roleBasedMenu.map((item) => (
                             <li key={item.path}>
-                                <Link to={item.path} className={styles.navLink} onClick={() => toggleSidebar(false)}>
+                                <Link 
+                                    to={item.path} 
+                                    className={styles.navLink} 
+                                    onClick={handleLinkClick}
+                                >
                                     {item.name}
                                 </Link>
                             </li>
@@ -121,7 +146,7 @@ const Sidebar = ({ userRole }) => {
             </div>
         </>
     );
-};
+});
 
 Sidebar.propTypes = {
     userRole: PropTypes.oneOf(["teacher", "admin"]).isRequired

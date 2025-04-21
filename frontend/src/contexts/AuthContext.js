@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { auth, db } from "../firebaseConfig";
 import { 
   signInWithEmailAndPassword,
@@ -25,8 +25,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Login function
-  const login = async (email, password) => {
+  // Login function - memoize with useCallback
+  const login = useCallback(async (email, password) => {
     try {
       setError("");
       await signInWithEmailAndPassword(auth, email, password);
@@ -35,10 +35,10 @@ export const AuthProvider = ({ children }) => {
       setError("Invalid email or password");
       return false;
     }
-  };
+  }, []);
 
-  // Logout function
-  const logout = async () => {
+  // Logout function - memoize with useCallback
+  const logout = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
       return true;
@@ -46,11 +46,16 @@ export const AuthProvider = ({ children }) => {
       setError("Failed to log out");
       return false;
     }
-  };
+  }, []);
 
   // Effect to monitor auth state
   useEffect(() => {
+    let isMounted = true;
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Only update state if the component is still mounted
+      if (!isMounted) return;
+      
       if (user) {
         setCurrentUser(user);
         // Fetch user role from Firestore
@@ -77,30 +82,44 @@ export const AuthProvider = ({ children }) => {
             }
           }
           
-          setUserRole(role);
+          if (isMounted) {
+            setUserRole(role);
+          }
         } catch (err) {
           console.error("Error fetching user role:", err);
           // Default to teacher role for backward compatibility
-          setUserRole("teacher");
+          if (isMounted) {
+            setUserRole("teacher");
+          }
         }
       } else {
-        setCurrentUser(null);
-        setUserRole(null);
+        if (isMounted) {
+          setCurrentUser(null);
+          setUserRole(null);
+        }
       }
-      setLoading(false);
+      
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     currentUser,
     userRole,
     login,
     logout,
     error,
     loading
-  };
+  }), [currentUser, userRole, login, logout, error, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
