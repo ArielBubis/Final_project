@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { fetchAllStudents } from "../services/studentService";
 import { fetchAllTeachers, fetchAllCourses } from "../services/adminService";
 import { db } from "../firebaseConfig";
@@ -8,8 +8,9 @@ import {
   query, 
   where, 
   doc, 
-  getDoc, 
-  collectionGroup 
+  getDoc,
+  collectionGroup,
+  onSnapshot
 } from "firebase/firestore";
 
 // Create the context
@@ -31,146 +32,187 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
+  // Cache for expensive queries to avoid redundant fetches
+  const [teacherCoursesCache] = useState(new Map());
+  const [courseStatsCache] = useState(new Map());
+  const [teacherStudentsCache] = useState(new Map());
+  
   useEffect(() => {
+    let isMounted = true;
+    
     const loadStudents = async () => {
       try {
         setLoading(true);
         const fetchedStudents = await fetchAllStudents();
-        setStudents(fetchedStudents);
-        setError("");
+        
+        if (isMounted) {
+          setStudents(fetchedStudents);
+          setError("");
+        }
       } catch (err) {
-        setError("Failed to load students");
-        console.error("Error loading students:", err);
+        if (isMounted) {
+          setError("Failed to load students");
+          console.error("Error loading students:", err);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     loadStudents();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Function to load data for admin dashboard
-  const loadAdminData = async () => {
+  // Memoize loadAdminData function
+  const loadAdminData = useCallback(async () => {
+    let isMounted = true;
+    setLoading(true);
+    
     try {
-      setLoading(true);
-      // Load all teachers
-      const fetchedTeachers = await fetchAllTeachers();
-      setTeachers(fetchedTeachers);
+      // Load teachers and courses in parallel for better performance
+      const [fetchedTeachers, fetchedCourses] = await Promise.all([
+        fetchAllTeachers(),
+        fetchAllCourses()
+      ]);
       
-      // Load all courses
-      const fetchedCourses = await fetchAllCourses();
-      setCourseData(fetchedCourses);
-      
-      setError("");
+      if (isMounted) {
+        setTeachers(fetchedTeachers);
+        setCourseData(fetchedCourses);
+        setError("");
+      }
     } catch (err) {
-      setError("Failed to load admin dashboard data");
-      console.error("Error loading admin data:", err);
+      if (isMounted) {
+        setError("Failed to load admin dashboard data");
+        console.error("Error loading admin data:", err);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
-  };
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  // Fetch courses taught by a specific teacher with all relevant data
-  const fetchTeacherCourses = async (teacherIdOrEmail) => {
+  // Memoized function to fetch teacher courses with caching
+  const fetchTeacherCourses = useCallback(async (teacherIdOrEmail) => {
+    // Check cache first to avoid redundant fetches
+    if (teacherCoursesCache.has(teacherIdOrEmail)) {
+      return teacherCoursesCache.get(teacherIdOrEmail);
+    }
+    
     try {
       console.log(`Fetching courses for teacher: ${teacherIdOrEmail}`);
       
-      // First, try to find the teacher by email
+      // Determine if we're looking up by email or ID
       let teacherId = teacherIdOrEmail;
-      let isEmail = teacherIdOrEmail.includes('@');
+      const isEmail = teacherIdOrEmail.includes('@');
       
-      // If an email is provided, find the teacher ID from the users collection
-      console.log(`Finding teacher by email: ${teacherIdOrEmail}`);
-      const usersQuery = query(collection(db, "users"), where("email", "==", teacherIdOrEmail));
-      const usersSnapshot = await getDocs(usersQuery);
-              
-      // Get the first matching user
-      const userData = usersSnapshot.docs[0];
-      teacherId = userData.id;
-      console.log(`Found user with ID: ${teacherId} for email: ${teacherIdOrEmail}`);
+      // If email provided, find the teacher ID
+      if (isEmail) {
+        console.log(`Finding teacher by email: ${teacherIdOrEmail}`);
+        const usersQuery = query(collection(db, "users"), where("email", "==", teacherIdOrEmail));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        if (usersSnapshot.docs.length === 0) {
+          console.log(`No user found with email: ${teacherIdOrEmail}`);
+          return [];
+        }
+        
+        teacherId = usersSnapshot.docs[0].id;
+        console.log(`Found user with ID: ${teacherId} for email: ${teacherIdOrEmail}`);
+      }
       
-      
-      // Now find the teacher's document with the located ID
+      // Fetch teacher document
       const teacherDoc = await getDoc(doc(db, "teachers", teacherId));
       
       let courseIds = [];
       
-      // If the teacher document exists and has courses
+      // Get course IDs from teacher document
       if (teacherDoc.exists() && teacherDoc.data().courses) {
         courseIds = teacherDoc.data().courses;
         console.log(`Found ${courseIds.length} courses in teacher document`);
       } else {
-        // // Fallback: Query courses where the teacher is listed as the primary teacher
+        // Fallback: Query courses where the teacher is listed as the primary teacher
+        // Only uncomment if needed
         // const coursesQuery = query(collection(db, "courses"), where("teacherId", "==", teacherId));
         // const coursesSnapshot = await getDocs(coursesQuery);
-        
         // courseIds = coursesSnapshot.docs.map(doc => doc.id);
         // console.log(`Found ${courseIds.length} courses with teacherId = ${teacherId}`);
       }
       
-      // If no courses found, return empty array
       if (courseIds.length === 0) {
         console.log("No courses found for teacher");
         return [];
       }
       
-      // Fetch detailed course data for each course ID
-      const coursesData = await Promise.all(
-        courseIds.map(async (courseId) => {
-          const courseDoc = await getDoc(doc(db, "courses", courseId));
-          
-          if (!courseDoc.exists()) {
-            console.log(`Course ${courseId} not found`);
-            return null;
-          }
-          
-          const courseData = courseDoc.data();
-          
-          // Fetch the number of students enrolled in this course
-          const enrollmentsQuery = query(
-            collection(db, "enrollments"),
-            where("courseId", "==", courseId)
-          );
-          const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
-          
-          // Fetch the modules for this course
-          const modulesQuery = query(collection(db, "courses", courseId, "modules"));
-          const modulesSnapshot = await getDocs(modulesQuery);
-          const modules = modulesSnapshot.docs.map(doc => ({
-            moduleId: doc.id,
-            ...doc.data()
-          }));
-          
-          // Get placeholder image if no thumbnail is available
-          const thumbnailUrl = courseData.thumbnailUrl || "https://via.placeholder.com/80";
-          
-          return {
-            courseId,
-            courseName: courseData.courseName || "Unnamed Course",
-            description: courseData.description || "",
-            subjectArea: courseData.subjectArea || "General",
-            startDate: courseData.startDate,
-            endDate: courseData.endDate,
-            students: enrollmentsSnapshot.docs.map(doc => doc.data().studentId),
-            studentCount: enrollmentsSnapshot.docs.length,
-            modules: modules,
-            moduleCount: modules.length,
-            thumbnailUrl,
-            published: courseData.published || false
-          };
-        })
-      );
+      // Batch fetch course data in parallel for better performance
+      const courseDataPromises = courseIds.map(async (courseId) => {
+        // Fetch course data, enrollments, and modules in parallel
+        const [courseDoc, enrollmentsSnapshot, modulesSnapshot] = await Promise.all([
+          getDoc(doc(db, "courses", courseId)),
+          getDocs(query(collection(db, "enrollments"), where("courseId", "==", courseId))),
+          getDocs(query(collection(db, "courses", courseId, "modules")))
+        ]);
+        
+        if (!courseDoc.exists()) {
+          console.log(`Course ${courseId} not found`);
+          return null;
+        }
+        
+        const courseData = courseDoc.data();
+        const modules = modulesSnapshot.docs.map(doc => ({
+          moduleId: doc.id,
+          ...doc.data()
+        }));
+        
+        // Get placeholder image if no thumbnail is available
+        const thumbnailUrl = courseData.thumbnailUrl || "https://via.placeholder.com/80";
+        
+        return {
+          courseId,
+          courseName: courseData.courseName || "Unnamed Course",
+          description: courseData.description || "",
+          subjectArea: courseData.subjectArea || "General",
+          startDate: courseData.startDate,
+          endDate: courseData.endDate,
+          students: enrollmentsSnapshot.docs.map(doc => doc.data().studentId),
+          studentCount: enrollmentsSnapshot.docs.length,
+          modules: modules,
+          moduleCount: modules.length,
+          thumbnailUrl,
+          published: courseData.published || false
+        };
+      });
       
-      // Filter out any null entries (courses that weren't found)
-      return coursesData.filter(Boolean);
+      // Wait for all parallel requests to complete
+      const coursesData = (await Promise.all(courseDataPromises)).filter(Boolean);
+      
+      // Cache the result for future use
+      teacherCoursesCache.set(teacherIdOrEmail, coursesData);
+      
+      return coursesData;
     } catch (error) {
       console.error("Error fetching teacher courses:", error);
       return [];
     }
-  };
+  }, [teacherCoursesCache]);
 
-  // Fetch students enrolled in a teacher's courses with performance data
-  const fetchStudentsByTeacher = async (teacherIdOrEmail) => {
+  // Memoized function to fetch students by teacher with caching
+  const fetchStudentsByTeacher = useCallback(async (teacherIdOrEmail) => {
+    // Check cache first
+    if (teacherStudentsCache.has(teacherIdOrEmail)) {
+      return teacherStudentsCache.get(teacherIdOrEmail);
+    }
+    
     try {
       console.log(`Fetching students for teacher: ${teacherIdOrEmail}`);
       
@@ -185,18 +227,22 @@ export const DataProvider = ({ children }) => {
       
       console.log(`Found ${courseIds.length} courses, fetching enrollments`);
       
-      // Get all enrollments for these courses
-      const studentIds = new Set();
-      const studentCourseMap = new Map(); // Map to track which courses each student is in
+      // Collect all enrollment queries to run in parallel
+      const enrollmentQueries = courseIds.map(courseId => 
+        getDocs(query(collection(db, "enrollments"), where("courseId", "==", courseId)))
+      );
       
-      for (const courseId of courseIds) {
-        const enrollmentsQuery = query(
-          collection(db, "enrollments"),
-          where("courseId", "==", courseId)
-        );
-        const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
+      // Run all enrollment queries in parallel
+      const enrollmentSnapshots = await Promise.all(enrollmentQueries);
+      
+      // Process results to get unique students and their course mappings
+      const studentIds = new Set();
+      const studentCourseMap = new Map();
+      
+      enrollmentSnapshots.forEach((snapshot, index) => {
+        const courseId = courseIds[index];
         
-        enrollmentsSnapshot.docs.forEach(docSnap => {
+        snapshot.docs.forEach(docSnap => {
           const data = docSnap.data();
           if (data.studentId) {
             studentIds.add(data.studentId);
@@ -205,6 +251,7 @@ export const DataProvider = ({ children }) => {
             if (!studentCourseMap.has(data.studentId)) {
               studentCourseMap.set(data.studentId, []);
             }
+            
             studentCourseMap.get(data.studentId).push({
               courseId,
               courseName: courses.find(c => c.courseId === courseId)?.courseName || "Unknown Course",
@@ -212,21 +259,21 @@ export const DataProvider = ({ children }) => {
             });
           }
         });
-      }
+      });
       
       console.log(`Found ${studentIds.size} unique students`);
       
-      // If no students found, return empty array
       if (studentIds.size === 0) return [];
       
-      // Fetch student details and progress data
+      // Batch fetch student details and progress data
       const studentPromises = Array.from(studentIds).map(async (studentId) => {
-        // Get basic user data
-        const userDoc = await getDoc(doc(db, "users", studentId));
-        const userData = userDoc.exists() ? userDoc.data() : {};
+        // Get user and student data in parallel
+        const [userDoc, studentDoc] = await Promise.all([
+          getDoc(doc(db, "users", studentId)),
+          getDoc(doc(db, "students", studentId))
+        ]);
         
-        // Get student-specific data
-        const studentDoc = await getDoc(doc(db, "students", studentId));
+        const userData = userDoc.exists() ? userDoc.data() : {};
         const studentData = studentDoc.exists() ? studentDoc.data() : {};
         
         // Calculate overall metrics across all courses for this student
@@ -235,30 +282,31 @@ export const DataProvider = ({ children }) => {
         let lastAccessedTimestamp = null;
         const courseCount = studentCourseMap.get(studentId)?.length || 0;
         
-        // Fetch progress data for all courses this student is enrolled in
-        for (const course of (studentCourseMap.get(studentId) || [])) {
-          try {
-            const progressDoc = await getDoc(doc(db, "studentProgress", studentId, "courses", course.courseId));
+        // Batch fetch progress data for all courses
+        const courseProgressPromises = (studentCourseMap.get(studentId) || []).map(course => 
+          getDoc(doc(db, "studentProgress", studentId, "courses", course.courseId))
+        );
+        
+        const progressDocs = await Promise.all(courseProgressPromises);
+        
+        // Process progress data
+        progressDocs.forEach(progressDoc => {
+          if (progressDoc.exists()) {
+            const progressData = progressDoc.data();
             
-            if (progressDoc.exists()) {
-              const progressData = progressDoc.data();
+            if (progressData.summary) {
+              totalScore += progressData.summary.overallScore || 0;
+              totalCompletion += progressData.summary.overallCompletion || 0;
               
-              if (progressData.summary) {
-                totalScore += progressData.summary.overallScore || 0;
-                totalCompletion += progressData.summary.overallCompletion || 0;
-                
-                // Track most recent access time
-                if (progressData.summary.lastAccessed && 
-                    (!lastAccessedTimestamp || 
-                     progressData.summary.lastAccessed.seconds > lastAccessedTimestamp.seconds)) {
-                  lastAccessedTimestamp = progressData.summary.lastAccessed;
-                }
+              // Track most recent access time
+              if (progressData.summary.lastAccessed && 
+                  (!lastAccessedTimestamp || 
+                   progressData.summary.lastAccessed.seconds > lastAccessedTimestamp.seconds)) {
+                lastAccessedTimestamp = progressData.summary.lastAccessed;
               }
             }
-          } catch (err) {
-            console.error(`Error fetching progress for student ${studentId} in course ${course.courseId}:`, err);
           }
-        }
+        });
         
         // Calculate averages
         const averageScore = courseCount > 0 ? totalScore / courseCount : 0;
@@ -278,28 +326,61 @@ export const DataProvider = ({ children }) => {
         };
       });
       
-      return await Promise.all(studentPromises);
+      const students = await Promise.all(studentPromises);
+      
+      // Cache the result
+      teacherStudentsCache.set(teacherIdOrEmail, students);
+      
+      return students;
     } catch (error) {
       console.error("Error fetching students by teacher:", error);
       return [];
     }
-  };
+  }, [fetchTeacherCourses, teacherStudentsCache]);
 
-  // Fetch detailed statistics for a specific course
-  const fetchCourseStats = async (courseId) => {
+  // Memoized function to fetch course statistics with caching
+  const fetchCourseStats = useCallback(async (courseId) => {
+    // Check cache first
+    if (courseStatsCache.has(courseId)) {
+      return courseStatsCache.get(courseId);
+    }
+    
     try {
       console.log(`Fetching stats for course: ${courseId}`);
       
-      // Get enrollments for this course
-      const enrollmentsQuery = query(
-        collection(db, "enrollments"),
-        where("courseId", "==", courseId)
-      );
-      const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
+      // Get enrollments and assignments in parallel
+      const [enrollmentsSnapshot, assignmentsSnapshot] = await Promise.all([
+        getDocs(query(collection(db, "enrollments"), where("courseId", "==", courseId))),
+        getDocs(query(collection(db, "courses", courseId, "assignments")))
+      ]);
+      
       const studentCount = enrollmentsSnapshot.docs.length;
+      const assignmentCount = assignmentsSnapshot.docs.length;
       
       // Extract student IDs
       const studentIds = enrollmentsSnapshot.docs.map(doc => doc.data().studentId);
+      
+      if (studentIds.length === 0) {
+        const emptyStats = {
+          courseId,
+          studentCount: 0,
+          assignmentCount,
+          averageScore: 0,
+          averageCompletion: 0,
+          activeLast7Days: 0,
+          activeLast30Days: 0,
+          activeRatio7Days: 0,
+          activeRatio30Days: 0
+        };
+        
+        courseStatsCache.set(courseId, emptyStats);
+        return emptyStats;
+      }
+      
+      // Calculate time thresholds for activity metrics
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       
       // Initialize statistics
       let totalScore = 0;
@@ -307,47 +388,39 @@ export const DataProvider = ({ children }) => {
       let activeLast7Days = 0;
       let activeLast30Days = 0;
       
-      const now = new Date();
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      // Batch fetch progress data for all students
+      const progressPromises = studentIds.map(studentId => 
+        getDoc(doc(db, "studentProgress", studentId, "courses", courseId))
+      );
       
-      // Fetch progress data for all students
-      for (const studentId of studentIds) {
-        try {
-          const progressDoc = await getDoc(doc(db, "studentProgress", studentId, "courses", courseId));
+      const progressDocs = await Promise.all(progressPromises);
+      
+      // Process progress data
+      progressDocs.forEach(progressDoc => {
+        if (progressDoc.exists()) {
+          const progressData = progressDoc.data();
           
-          if (progressDoc.exists()) {
-            const progressData = progressDoc.data();
+          if (progressData.summary) {
+            // Add to total statistics
+            totalScore += progressData.summary.overallScore || 0;
+            totalCompletion += progressData.summary.overallCompletion || 0;
             
-            if (progressData.summary) {
-              // Add to total statistics
-              totalScore += progressData.summary.overallScore || 0;
-              totalCompletion += progressData.summary.overallCompletion || 0;
-              
-              // Check for recent activity
-              if (progressData.summary.lastAccessed) {
-                const lastAccessTime = progressData.summary.lastAccessed.toDate();
-                if (lastAccessTime >= sevenDaysAgo) {
-                  activeLast7Days++;
-                }
-                if (lastAccessTime >= thirtyDaysAgo) {
-                  activeLast30Days++;
-                }
+            // Check for recent activity
+            if (progressData.summary.lastAccessed) {
+              const lastAccessTime = progressData.summary.lastAccessed.toDate();
+              if (lastAccessTime >= sevenDaysAgo) {
+                activeLast7Days++;
+              }
+              if (lastAccessTime >= thirtyDaysAgo) {
+                activeLast30Days++;
               }
             }
           }
-        } catch (err) {
-          console.error(`Error fetching progress for student ${studentId} in course ${courseId}:`, err);
         }
-      }
+      });
       
-      // Get course assignments
-      const assignmentsQuery = query(collection(db, "courses", courseId, "assignments"));
-      const assignmentsSnapshot = await getDocs(assignmentsQuery);
-      const assignmentCount = assignmentsSnapshot.docs.length;
-      
-      // Calculate averages
-      return {
+      // Calculate final statistics
+      const stats = {
         courseId,
         studentCount,
         assignmentCount,
@@ -358,6 +431,11 @@ export const DataProvider = ({ children }) => {
         activeRatio7Days: studentCount > 0 ? activeLast7Days / studentCount : 0,
         activeRatio30Days: studentCount > 0 ? activeLast30Days / studentCount : 0
       };
+      
+      // Cache the result
+      courseStatsCache.set(courseId, stats);
+      
+      return stats;
     } catch (error) {
       console.error("Error fetching course stats:", error);
       return {
@@ -372,9 +450,10 @@ export const DataProvider = ({ children }) => {
         activeRatio30Days: 0
       };
     }
-  };
+  }, [courseStatsCache]);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     students,
     teachers,
     courseData,
@@ -384,7 +463,17 @@ export const DataProvider = ({ children }) => {
     fetchStudentsByTeacher,
     fetchCourseStats,
     loadAdminData
-  };
+  }), [
+    students, 
+    teachers, 
+    courseData, 
+    loading, 
+    error, 
+    fetchTeacherCourses, 
+    fetchStudentsByTeacher,
+    fetchCourseStats,
+    loadAdminData
+  ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };

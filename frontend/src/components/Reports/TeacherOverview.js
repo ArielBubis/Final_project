@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { Card as AntCard, Row, Col, Table, Spin, Progress, Empty, Alert, Select, Tag, Badge, Tooltip as AntTooltip, Tabs } from 'antd';
@@ -25,12 +25,24 @@ import {
   PolarRadiusAxis
 } from 'recharts';
 import styles from '../../styles/modules/Reports.module.css';
+import { formatFirebaseTimestamp, processFirestoreData } from '../../utils/firebaseUtils';
 
 const { Option } = Select;
 
 const TeacherOverview = ({ isAdminView = false }) => {
+  // Contexts
   const { currentUser } = useAuth();
-  const { fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, fetchAllCourses, teachers, courseData, loading: dataLoading } = useData();
+  const { 
+    fetchTeacherCourses, 
+    fetchStudentsByTeacher, 
+    fetchCourseStats, 
+    fetchAllCourses, 
+    teachers, 
+    courseData, 
+    loading: dataLoading 
+  } = useData();
+  
+  // State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentDisplayCount, setStudentDisplayCount] = useState(10);
@@ -53,12 +65,56 @@ const TeacherOverview = ({ isAdminView = false }) => {
   });
   const [selectedTeacher, setSelectedTeacher] = useState(null);
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82CA9D', '#8DD1E1', '#A4DE6C'];
+  // Colors for charts
+  const COLORS = useMemo(() => [
+    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', 
+    '#8884d8', '#82CA9D', '#8DD1E1', '#A4DE6C'
+  ], []);
+  
+  // Custom pie chart label - moved before conditional returns to follow Rules of Hooks
+  const renderCustomizedPieLabel = useMemo(() => {
+    return ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }) => {
+      const RADIAN = Math.PI / 180;
+      const radius = innerRadius + (outerRadius - innerRadius) * 1.1;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
+      if (percent > 0.05) {
+        return (
+          <text 
+            x={x} 
+            y={y} 
+            fill={COLORS[index % COLORS.length]}
+            textAnchor={x > cx ? 'start' : 'end'} 
+            dominantBaseline="central"
+          >
+            {`${name}: ${(percent * 100).toFixed(0)}%`}
+          </text>
+        );
+      }
+      return null;
+    };
+  }, [COLORS]);
+  
+  // Memoize parallel data - moved before conditional returns to follow Rules of Hooks
+  const parallelData = useMemo(() => {
+    return overviewData.coursesData.map(course => ({
+      course: course.name,
+      averageScore: course.averageScore,
+      completion: course.completion,
+      engagement: course.engagement,
+      submissionRate: course.submissionRate
+    }));
+  }, [overviewData.coursesData]);
+
+  // Main effect to load dashboard data - optimized to prevent unnecessary rerenders
   useEffect(() => {
+    // Only run this effect if we have a current user
+    if (!currentUser?.email) return;
+    
+    let isMounted = true;
+    
     const loadDashboardData = async () => {
-      if (!currentUser?.email) return;
-      
       try {
         setLoading(true);
         setError(null);
@@ -70,34 +126,49 @@ const TeacherOverview = ({ isAdminView = false }) => {
         if (isAdminView) {
           // Admin view: fetch all courses or filtered by selected teacher
           if (selectedTeacher) {
-            // If a specific teacher is selected, fetch their courses
-            courses = await fetchTeacherCourses(selectedTeacher.email);
-            students = await fetchStudentsByTeacher(selectedTeacher.email);
+            // If a specific teacher is selected, fetch only their courses and students
+            const [teacherCourses, teacherStudents] = await Promise.all([
+              fetchTeacherCourses(selectedTeacher.email),
+              fetchStudentsByTeacher(selectedTeacher.email)
+            ]);
+            courses = teacherCourses;
+            students = processFirestoreData(teacherStudents); // Process timestamp data safely
           } else {
             // Otherwise fetch all courses data from context
             courses = courseData || [];
-            
-            // For admin overview without teacher selection,
-            // we'll use aggregated course stats instead of students
             students = []; // No specific students to show in overall view
           }
         } else {
-          // Teacher view: fetch only this teacher's courses
+          // Teacher view: fetch only this teacher's courses and students in parallel
           const teacherEmail = currentUser.email;
-          courses = await fetchTeacherCourses(teacherEmail);
-          students = await fetchStudentsByTeacher(teacherEmail);
+          const [teacherCourses, teacherStudents] = await Promise.all([
+            fetchTeacherCourses(teacherEmail),
+            fetchStudentsByTeacher(teacherEmail)
+          ]);
+          courses = teacherCourses;
+          students = processFirestoreData(teacherStudents); // Process timestamp data safely
         }
         
+        // Early exit if no courses or component unmounted
         if (courses.length === 0) {
-          setError(isAdminView ? 
-            "No course data available. Please check system configuration." : 
-            "No courses found for this teacher. Please create a course or check your account.");
-          setLoading(false);
+          if (isMounted) {
+            setError(isAdminView ? 
+              "No course data available. Please check system configuration." : 
+              "No courses found for this teacher. Please create a course or check your account."
+            );
+            setLoading(false);
+          }
           return;
         }
         
-        // Get detailed stats for each course
-        courseStats = await Promise.all(courses.map(course => fetchCourseStats(course.courseId)));
+        if (!isMounted) return;
+        
+        // Get detailed stats for each course in parallel
+        const statsPromises = courses.map(course => fetchCourseStats(course.courseId));
+        courseStats = await Promise.all(statsPromises);
+        courseStats = processFirestoreData(courseStats); // Process timestamp data safely
+        
+        if (!isMounted) return;
         
         // Process data for visualization
         const coursesData = courses.map((course) => {
@@ -118,7 +189,7 @@ const TeacherOverview = ({ isAdminView = false }) => {
         
         // Calculate active students (accessed course in last week)
         const activeStudents = students.filter(student => {
-          const lastAccess = student.lastAccessed?.toDate();
+          const lastAccess = formatFirebaseTimestamp(student.lastAccessed);
           if (!lastAccess) return false;
           const weekAgo = new Date();
           weekAgo.setDate(weekAgo.getDate() - 7);
@@ -135,22 +206,29 @@ const TeacherOverview = ({ isAdminView = false }) => {
           .sort((a, b) => {
             if (!a.lastAccessed) return 1;
             if (!b.lastAccessed) return -1;
-            return b.lastAccessed.seconds - a.lastAccessed.seconds;
+            
+            const dateA = formatFirebaseTimestamp(a.lastAccessed);
+            const dateB = formatFirebaseTimestamp(b.lastAccessed);
+            
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            
+            return dateB.getTime() - dateA.getTime();
           })
           .slice(0, 5)
           .map(s => ({
             student: `${s.firstName} ${s.lastName}`,
             activity: 'Accessed courses',
             course: s.courses[0]?.courseName || 'Unknown',  // Use first course as example
-            date: s.lastAccessed?.toDate()
+            date: formatFirebaseTimestamp(s.lastAccessed)
           }));
         
-        // Process all student performance data
+        // Process student performance data
         const allStudentPerformance = students
           .map(s => {
             // Calculate risk factors (mock data for demonstration)
             const missingAssignments = Math.floor(Math.random() * 10);
-            const lastAccessed = s.lastAccessed?.toDate();
+            const lastAccessed = formatFirebaseTimestamp(s.lastAccessed);
             const daysSinceLastAccess = lastAccessed ? 
               Math.floor((new Date() - lastAccessed) / (1000 * 60 * 60 * 24)) : 30;
             
@@ -234,36 +312,56 @@ const TeacherOverview = ({ isAdminView = false }) => {
           { name: 'Missing', value: Math.floor(Math.random() * 20) + 5 }
         ];
         
-        setAllStudents(allStudentPerformance);
+        if (isMounted) {
+          setAllStudents(allStudentPerformance);
           
-        setOverviewData({
-          totalCourses: courses.length,
-          totalStudents: students.length,
-          activeStudents,
-          averageCompletion,
-          coursesData,
-          recentActivity,
-          studentPerformance: allStudentPerformance.slice(0, studentDisplayCount),
-          gradeDistribution,
-          assignmentCompletionData,
-          studentEngagementData,
-          courseComparisonData: coursesData,
-          timeSeriesData,
-          atRiskStudents
-        });
+          setOverviewData({
+            totalCourses: courses.length,
+            totalStudents: students.length,
+            activeStudents,
+            averageCompletion,
+            coursesData,
+            recentActivity,
+            studentPerformance: allStudentPerformance.slice(0, studentDisplayCount),
+            gradeDistribution,
+            assignmentCompletionData,
+            studentEngagementData,
+            courseComparisonData: coursesData,
+            timeSeriesData,
+            atRiskStudents
+          });
+        }
       } catch (error) {
         console.error("Error loading dashboard data:", error);
-        setError("Failed to load dashboard data. Please try again later.");
+        if (isMounted) {
+          setError("Failed to load dashboard data. Please try again later.");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     loadDashboardData();
-  }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, 
-      isAdminView, selectedTeacher, courseData]);
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    currentUser, 
+    fetchTeacherCourses, 
+    fetchStudentsByTeacher, 
+    fetchCourseStats, 
+    isAdminView, 
+    selectedTeacher, 
+    courseData,
+    studentDisplayCount
+  ]);
   
   // Update student performance data when display count changes
+  // Separate effect to handle this specific state change
   useEffect(() => {
     if (allStudents.length > 0) {
       setOverviewData(prevData => ({
@@ -275,16 +373,17 @@ const TeacherOverview = ({ isAdminView = false }) => {
     }
   }, [studentDisplayCount, allStudents]);
 
-  // Handle teacher selection change for admin view
-  const handleTeacherChange = (teacherId) => {
+  // Memoized handler for teacher selection change
+  const handleTeacherChange = useCallback((teacherId) => {
     if (teacherId === 'all') {
       setSelectedTeacher(null);
     } else {
       const teacher = teachers.find(t => t.id === teacherId);
       setSelectedTeacher(teacher);
     }
-  };
+  }, [teachers]);
 
+  // Loading and error states
   if (loading || dataLoading) {
     return <Spin size="large" tip="Loading dashboard data..." />;
   }
@@ -325,29 +424,6 @@ const TeacherOverview = ({ isAdminView = false }) => {
     else if (completion <= 75) completionDistribution[2].value++;
     else completionDistribution[3].value++;
   });
-
-  // Custom pie chart label
-  const renderCustomizedPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 1.1;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    if (percent > 0.05) {
-      return (
-        <text 
-          x={x} 
-          y={y} 
-          fill={COLORS[index % COLORS.length]}
-          textAnchor={x > cx ? 'start' : 'end'} 
-          dominantBaseline="central"
-        >
-          {`${name}: ${(percent * 100).toFixed(0)}%`}
-        </text>
-      );
-    }
-    return null;
-  };
   
   // Generate parallel coordinates data for course comparison
   const parallelDomains = [
@@ -357,14 +433,6 @@ const TeacherOverview = ({ isAdminView = false }) => {
     { name: 'engagement', domain: [0, 100], type: 'number' },
     { name: 'submissionRate', domain: [0, 100], type: 'number' }
   ];
-  
-  const parallelData = overviewData.coursesData.map(course => ({
-    course: course.name,
-    averageScore: course.averageScore,
-    completion: course.completion,
-    engagement: course.engagement,
-    submissionRate: course.submissionRate
-  }));
   
   // Set up the tab items
   const items = [
@@ -717,4 +785,4 @@ const TeacherOverview = ({ isAdminView = false }) => {
   );
 };
 
-export default TeacherOverview;
+export default React.memo(TeacherOverview);

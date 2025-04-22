@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
@@ -18,7 +18,7 @@ export const menuItems = {
         { name: "Performance", path: "/performance" }
     ],
     admin: [
-        { name: "Dashboard", path: "/dashboard" },
+        // { name: "Dashboard", path: "/dashboard" },
         { name: "Admin Dashboard", path: "/admin" },
         { name: "Teacher Management", path: "/admin/teachers" },
         { name: "System Reports", path: "/admin/reports" },
@@ -26,53 +26,80 @@ export const menuItems = {
     ]
 };
 
+// Cache to avoid redundant teacher name fetches
+const teacherNameCache = new Map();
+
 const Sidebar = React.memo(({ userRole }) => {
     const navigate = useNavigate();
     const { logout, currentUser } = useAuth();
     const { isSidebarOpen, toggleSidebar } = useUI();
     const [teacherName, setTeacherName] = useState("");
     
-    // Memoize toggle function to prevent recreating it on each render
+    // Memoize toggle function to prevent recreation on each render
     const handleToggleSidebar = useCallback((state) => {
         toggleSidebar(state);
     }, [toggleSidebar]);
 
+    // Effect to fetch teacher data with proper cleanup and caching
     useEffect(() => {
+        if (!currentUser?.uid) return;
+        
+        // Check cache first
+        if (teacherNameCache.has(currentUser.uid)) {
+            setTeacherName(teacherNameCache.get(currentUser.uid));
+            return;
+        }
+        
+        let isMounted = true;
+        
         const fetchTeacherData = async () => {
-            if (currentUser && currentUser.uid) {
-                try {
-                    // First check in the users collection
-                    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-                    
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        if (userData.firstName && userData.lastName) {
-                            setTeacherName(`${userData.firstName} ${userData.lastName}`);
-                            return;
-                        }
-                    }
-
-                    // If not found or incomplete in users, check teachers collection
-                    const teacherDoc = await getDoc(doc(db, "teachers", currentUser.uid));
-                    
-                    if (teacherDoc.exists()) {
-                        const teacherData = teacherDoc.data();
-                        if (teacherData.firstName && teacherData.lastName) {
-                            setTeacherName(`${teacherData.firstName} ${teacherData.lastName}`);
-                            return;
-                        }
-                    }
-                    
-                    // Fallback to displayName or email if no name found in either collection
-                    setTeacherName(currentUser.displayName || currentUser.email.split('@')[0] || 'Teacher');
-                } catch (error) {
-                    console.error("Error fetching teacher data:", error);
-                    setTeacherName(currentUser.displayName || 'Teacher');
+            try {
+                // Batch fetch user and teacher data in parallel for efficiency
+                const [userDoc, teacherDoc] = await Promise.all([
+                    getDoc(doc(db, "users", currentUser.uid)),
+                    getDoc(doc(db, "teachers", currentUser.uid))
+                ]);
+                
+                if (!isMounted) return;
+                
+                // First try to get name from user document
+                if (userDoc.exists() && userDoc.data().firstName && userDoc.data().lastName) {
+                    const userData = userDoc.data();
+                    const name = `${userData.firstName} ${userData.lastName}`;
+                    setTeacherName(name);
+                    teacherNameCache.set(currentUser.uid, name);
+                    return;
+                }
+                
+                // Then try teacher document
+                if (teacherDoc.exists() && teacherDoc.data().firstName && teacherDoc.data().lastName) {
+                    const teacherData = teacherDoc.data();
+                    const name = `${teacherData.firstName} ${teacherData.lastName}`;
+                    setTeacherName(name);
+                    teacherNameCache.set(currentUser.uid, name);
+                    return;
+                }
+                
+                // Fallback
+                const fallbackName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Teacher';
+                setTeacherName(fallbackName);
+                teacherNameCache.set(currentUser.uid, fallbackName);
+            } catch (error) {
+                console.error("Error fetching teacher data:", error);
+                if (isMounted) {
+                    const fallbackName = currentUser.displayName || 'Teacher';
+                    setTeacherName(fallbackName);
+                    teacherNameCache.set(currentUser.uid, fallbackName);
                 }
             }
         };
-
+        
         fetchTeacherData();
+        
+        // Cleanup function
+        return () => {
+            isMounted = false;
+        };
     }, [currentUser]);
 
     // Memoize logout handler
@@ -86,14 +113,18 @@ const Sidebar = React.memo(({ userRole }) => {
         }
     }, [logout, navigate, handleToggleSidebar]);
 
-    const sidebarClasses = classNames(
-        styles.sidebar,
-        { [styles.open]: isSidebarOpen, [styles.closed]: !isSidebarOpen }
-    );
+    // Memoize CSS classes to prevent recreating objects on each render
+    const sidebarClasses = useMemo(() => {
+        return classNames(
+            styles.sidebar,
+            { [styles.open]: isSidebarOpen, [styles.closed]: !isSidebarOpen }
+        );
+    }, [isSidebarOpen]);
 
-    // Determine the appropriate menu based on user role (admin or teacher)
-    // Use useMemo to prevent recalculation on every render
-    const roleBasedMenu = menuItems[userRole] || menuItems.teacher;
+    // Memoize the menu items based on user role
+    const roleBasedMenu = useMemo(() => {
+        return menuItems[userRole] || menuItems.teacher;
+    }, [userRole]);
 
     // Memoize the link click handler
     const handleLinkClick = useCallback(() => {
