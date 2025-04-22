@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
-import { Card as AntCard, Row, Col, Table, Spin, Progress, Empty, Alert, Select, Tag, Badge, Tooltip as AntTooltip, Tabs } from 'antd';
+import { Card as AntCard, Row, Col, Table, Spin, Progress, Empty, Alert, Select, Tag, Badge, Tooltip as AntTooltip, Tabs, Statistic } from 'antd';
 import { 
   BarChart, 
   Bar, 
@@ -48,6 +48,9 @@ const TeacherOverview = ({ isAdminView = false }) => {
   const [studentDisplayCount, setStudentDisplayCount] = useState(10);
   const [activeTab, setActiveTab] = useState('overview');
   const [allStudents, setAllStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState('month');
+  const [showClassAverage, setShowClassAverage] = useState(false);
   const [overviewData, setOverviewData] = useState({
     totalCourses: 0,
     totalStudents: 0,
@@ -61,7 +64,9 @@ const TeacherOverview = ({ isAdminView = false }) => {
     studentEngagementData: [],
     courseComparisonData: [],
     timeSeriesData: [],
-    atRiskStudents: []
+    atRiskStudents: [],
+    individualStudentData: [],
+    studentActivityData: []
   });
   const [selectedTeacher, setSelectedTeacher] = useState(null);
 
@@ -236,11 +241,17 @@ const TeacherOverview = ({ isAdminView = false }) => {
             const trend = Math.random() > 0.7 ? -1 : (Math.random() > 0.3 ? 0 : 1);
             
             return {
-              id: s.id || `student-${Math.random().toString(36).substring(2, 9)}`,
+              id: s.studentId || s.id || `student-${Math.random().toString(36).substring(2, 9)}`,
+              studentId: s.studentId || s.id,
+              firstName: s.firstName,
+              lastName: s.lastName,
               student: `${s.firstName} ${s.lastName}`,
               score: s.averageScore || 0,
               completion: s.overallCompletion || 0,
               engagement: Math.min(100, Math.max(0, (s.overallCompletion || 0) + (Math.random() * 30 - 15))),
+              submissionRate: Math.floor(Math.random() * 100) + 1,
+              expertiseRate: Math.floor(Math.random() * 100) + 1,
+              timeSpent: Math.floor(Math.random() * 500) + 50, // in minutes
               missingAssignments,
               daysSinceLastAccess,
               trend,
@@ -255,10 +266,10 @@ const TeacherOverview = ({ isAdminView = false }) => {
         
         // Generate grade distribution data
         const gradeDistribution = [
-          { grade: 'A', count: 0, percentage: 0 },
-          { grade: 'B', count: 0, percentage: 0 },
-          { grade: 'C', count: 0, percentage: 0 },
-          { grade: 'D', count: 0, percentage: 0 },
+          { grade: '90', count: 0, percentage: 0 },
+          { grade: '80', count: 0, percentage: 0 },
+          { grade: '70', count: 0, percentage: 0 },
+          { grade: '60', count: 0, percentage: 0 },
           { grade: 'F', count: 0, percentage: 0 }
         ];
         
@@ -312,6 +323,58 @@ const TeacherOverview = ({ isAdminView = false }) => {
           { name: 'Missing', value: Math.floor(Math.random() * 20) + 5 }
         ];
         
+        // Generate data for individual student performance dashboard
+        const individualStudentData = allStudentPerformance.map(student => {
+          // Calculate class average for comparison
+          const classAvgCompletion = allStudentPerformance.reduce((sum, s) => sum + s.completion, 0) / allStudentPerformance.length;
+          const classAvgScore = allStudentPerformance.reduce((sum, s) => sum + s.score, 0) / allStudentPerformance.length;
+          const classAvgSubmissionRate = allStudentPerformance.reduce((sum, s) => sum + s.submissionRate, 0) / allStudentPerformance.length;
+          const classAvgExpertiseRate = allStudentPerformance.reduce((sum, s) => sum + s.expertiseRate, 0) / allStudentPerformance.length;
+          const classAvgTimeSpent = allStudentPerformance.reduce((sum, s) => sum + s.timeSpent, 0) / allStudentPerformance.length;
+          
+          return {
+            id: student.id,
+            studentId: student.studentId,
+            name: student.student,
+            radarData: [
+              { metric: 'Completion Rate', value: student.completion, classAverage: classAvgCompletion },
+              { metric: 'Overall Score', value: student.score, classAverage: classAvgScore },
+              { metric: 'Submission Rate', value: student.submissionRate, classAverage: classAvgSubmissionRate },
+              { metric: 'Expertise Rate', value: student.expertiseRate, classAverage: classAvgExpertiseRate },
+              { metric: 'Time Spent', value: student.timeSpent > 0 ? 100 : 0, classAverage: classAvgTimeSpent > 0 ? 100 : 0 }
+            ]
+          };
+        });
+        
+        // Generate student activity timeline data (mock data)
+        const studentActivityData = {};
+        
+        allStudentPerformance.forEach(student => {
+          const activities = [];
+          // Generate random access events
+          for (let i = 0; i < 20; i++) {
+            const randomDate = new Date();
+            randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 30));
+            randomDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+            
+            activities.push({
+              id: `activity-${i}-${student.id}`,
+              type: Math.random() > 0.5 ? 'access' : 'submission',
+              timestamp: randomDate,
+              duration: Math.floor(Math.random() * 60) + 5, // Minutes
+              intensity: Math.floor(Math.random() * 10) + 1, // 1-10 scale
+              course: courses[Math.floor(Math.random() * courses.length)]?.courseName || 'Unknown Course',
+              module: `Module ${Math.floor(Math.random() * 5) + 1}`
+            });
+          }
+          
+          // Sort activities by timestamp
+          activities.sort((a, b) => a.timestamp - b.timestamp);
+          
+          // Store in the map
+          studentActivityData[student.id] = activities;
+        });
+        
         if (isMounted) {
           setAllStudents(allStudentPerformance);
           
@@ -328,8 +391,15 @@ const TeacherOverview = ({ isAdminView = false }) => {
             studentEngagementData,
             courseComparisonData: coursesData,
             timeSeriesData,
-            atRiskStudents
+            atRiskStudents,
+            individualStudentData,
+            studentActivityData
           });
+          
+          // Set the first student as selected by default if we have students
+          if (allStudentPerformance.length > 0 && !selectedStudent) {
+            setSelectedStudent(allStudentPerformance[0]);
+          }
         }
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -357,7 +427,8 @@ const TeacherOverview = ({ isAdminView = false }) => {
     isAdminView, 
     selectedTeacher, 
     courseData,
-    studentDisplayCount
+    studentDisplayCount,
+    selectedStudent
   ]);
   
   // Update student performance data when display count changes
@@ -382,6 +453,22 @@ const TeacherOverview = ({ isAdminView = false }) => {
       setSelectedTeacher(teacher);
     }
   }, [teachers]);
+  
+  // Handler for student selection change
+  const handleStudentChange = useCallback((studentId) => {
+    const student = allStudents.find(s => s.id === studentId);
+    setSelectedStudent(student || null);
+  }, [allStudents]);
+  
+  // Handler for time period selection change
+  const handleTimePeriodChange = useCallback((period) => {
+    setSelectedTimePeriod(period);
+  }, []);
+  
+  // Handler for toggling class average in student performance chart
+  const toggleClassAverage = useCallback(() => {
+    setShowClassAverage(prev => !prev);
+  }, []);
 
   // Loading and error states
   if (loading || dataLoading) {
@@ -577,64 +664,262 @@ const TeacherOverview = ({ isAdminView = false }) => {
       ),
     },
     {
-      key: 'engagement',
-      label: 'Student Engagement',
+      key: 'individual-performance',
+      label: 'Individual Student Performance',
       children: (
         <>
-          <Row gutter={[16, 16]} className={styles.engagementSection}>
+          {/* Student selector and filters */}
+          <Row gutter={[16, 16]} className={styles.filterControls}>
             <Col xs={24} md={12}>
-              <AntCard title="Activity Timeline" className={styles.chartCard}>
-                <ResponsiveContainer width="100%" height={250}>
-                  <ComposedChart data={overviewData.timeSeriesData}>
-                    <CartesianGrid stroke="#f5f5f5" />
-                    <XAxis dataKey="date" scale="band" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Area type="monotone" dataKey="engagementLevel" fill="#8884d8" stroke="#8884d8" />
-                    <Bar dataKey="averageScore" barSize={20} fill="#413ea0" />
-                    <Line type="monotone" dataKey="engagementLevel" stroke="#ff7300" />
-                  </ComposedChart>
-                </ResponsiveContainer>
+              <AntCard title="Student Selection" className={styles.controlCard}>
+                <Select
+                  placeholder="Select student"
+                  style={{ width: '100%', marginBottom: 16 }}
+                  onChange={handleStudentChange}
+                  value={selectedStudent?.id}
+                >
+                  {allStudents.map(student => (
+                    <Option key={student.id} value={student.id}>
+                      {student.student}
+                    </Option>
+                  ))}
+                </Select>
+              </AntCard>
+            </Col>
+            <Col xs={24} md={12}>
+              <AntCard title="Performance Controls" className={styles.controlCard}>
+                <Row gutter={[16, 16]}>
+                  <Col span={12}>
+                    <Select
+                      value={selectedTimePeriod}
+                      onChange={handleTimePeriodChange}
+                      style={{ width: '100%' }}
+                    >
+                      <Option value="week">Last Week</Option>
+                      <Option value="month">Last Month</Option>
+                      <Option value="quarter">Last Quarter</Option>
+                      <Option value="year">Last Year</Option>
+                    </Select>
+                  </Col>
+                  <Col span={12}>
+                    <button 
+                      onClick={toggleClassAverage} 
+                      className={`${styles.toggleButton} ${showClassAverage ? styles.active : ''}`}
+                      style={{ 
+                        padding: '5px 10px', 
+                        border: '1px solid #d9d9d9', 
+                        borderRadius: '2px',
+                        background: showClassAverage ? '#1890ff' : 'white',
+                        color: showClassAverage ? 'white' : 'rgba(0,0,0,0.85)',
+                        cursor: 'pointer',
+                        width: '100%'
+                      }}
+                    >
+                      {showClassAverage ? 'Hide Class Average' : 'Show Class Average'}
+                    </button>
+                  </Col>
+                </Row>
+              </AntCard>
+            </Col>
+          </Row>
+
+          {/* A. Student Progress Overview Section */}
+          <Row gutter={[16, 16]} className={styles.performanceSection}>
+            <Col xs={24} md={24} lg={12}>
+              <AntCard title="Student Progress Overview" className={styles.chartCard}>
+                {selectedStudent && overviewData.individualStudentData.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <RadarChart 
+                        outerRadius="80%" 
+                        data={overviewData.individualStudentData.find(s => s.id === selectedStudent.id)?.radarData || []}
+                      >
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="metric" />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                        <Radar 
+                          name={`${selectedStudent.student}'s Performance`} 
+                          dataKey="value" 
+                          stroke="#8884d8" 
+                          fill="#8884d8" 
+                          fillOpacity={0.6} 
+                        />
+                        {showClassAverage && (
+                          <Radar 
+                            name="Class Average" 
+                            dataKey="classAverage" 
+                            stroke="#82ca9d" 
+                            fill="#82ca9d" 
+                            fillOpacity={0.2} 
+                          />
+                        )}
+                        <Legend />
+                        <Tooltip />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                    
+                    <div className={styles.metricDescription}>
+                      <h3>Key Performance Metrics</h3>
+                      <p>The radar chart shows the student's performance across five key metrics:</p>
+                      <ul>
+                        <li><strong>Completion Rate:</strong> How much of the course the student has completed</li>
+                        <li><strong>Overall Score:</strong> Average score across all assignments</li>
+                        <li><strong>Submission Rate:</strong> Percentage of assignments submitted on time</li>
+                        <li><strong>Expertise Rate:</strong> Mastery level of course concepts</li>
+                        <li><strong>Time Spent:</strong> Normalized time engagement with course materials</li>
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <Empty description="No student data available" />
+                )}
               </AntCard>
             </Col>
             
-            <Col xs={24} md={12}>
-              <AntCard title="Submission Timeliness" className={styles.chartCard}>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={overviewData.studentEngagementData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {overviewData.studentEngagementData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            {/* B. Student Activity Timeline Section */}
+            <Col xs={24} md={24} lg={12}>
+              <AntCard title="Student Activity Timeline" className={styles.chartCard}>
+                {selectedStudent && overviewData.studentActivityData[selectedStudent.id]?.length > 0 ? (
+                  <div className={styles.timelineContainer} style={{ height: '400px', overflowY: 'auto' }}>
+                    {overviewData.studentActivityData[selectedStudent.id]
+                      .filter(activity => {
+                        // Filter based on selected time period
+                        const now = new Date();
+                        const activityDate = activity.timestamp;
+                        if (selectedTimePeriod === 'week') {
+                          return now - activityDate <= 7 * 24 * 60 * 60 * 1000;
+                        } else if (selectedTimePeriod === 'month') {
+                          return now - activityDate <= 30 * 24 * 60 * 60 * 1000;
+                        } else if (selectedTimePeriod === 'quarter') {
+                          return now - activityDate <= 90 * 24 * 60 * 60 * 1000;
+                        } else {
+                          return now - activityDate <= 365 * 24 * 60 * 60 * 1000;
+                        }
+                      })
+                      .map((activity, index) => (
+                        <div 
+                          key={activity.id} 
+                          className={styles.timelineItem}
+                          style={{
+                            display: 'flex',
+                            margin: '10px 0',
+                            borderLeft: '3px solid',
+                            borderLeftColor: activity.type === 'access' ? '#1890ff' : '#52c41a',
+                            paddingLeft: '15px',
+                            position: 'relative'
+                          }}
+                        >
+                          <div 
+                            className={styles.timelineDot}
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '50%',
+                              background: activity.type === 'access' ? '#1890ff' : '#52c41a',
+                              position: 'absolute',
+                              left: '-7px',
+                              top: '5px'
+                            }}
+                          />
+                          <div className={styles.timelineContent} style={{ width: '100%' }}>
+                            <div className={styles.timelineHeader} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <strong>
+                                {activity.type === 'access' ? 'Accessed' : 'Submitted'}: {activity.module}
+                              </strong>
+                              <span>{activity.timestamp.toLocaleDateString()} {activity.timestamp.toLocaleTimeString()}</span>
+                            </div>
+                            <div className={styles.timelineDetails}>
+                              <p>Course: {activity.course}</p>
+                              <p>Duration: {activity.duration} minutes</p>
+                              <div 
+                                className={styles.intensityBar}
+                                style={{
+                                  width: '100%',
+                                  height: '10px',
+                                  background: '#f0f2f5',
+                                  marginTop: '5px'
+                                }}
+                              >
+                                <div 
+                                  className={styles.intensityFill}
+                                  style={{
+                                    width: `${activity.intensity * 10}%`,
+                                    height: '100%',
+                                    background: `rgba(${activity.type === 'access' ? '24, 144, 255' : '82, 196, 26'}, ${activity.intensity / 10})`,
+                                  }}
+                                />
+                              </div>
+                              <div className={styles.intensityLabel} style={{ fontSize: '12px', marginTop: '2px' }}>
+                                Engagement Intensity: {activity.intensity}/10
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <Empty description="No activity timeline data available" />
+                )}
+                <div className={styles.timelineControls} style={{ marginTop: '16px' }}>
+                  <div className={styles.timelineLegend} style={{ display: 'flex', gap: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1890ff' }}></div>
+                      <span>Access Events</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#52c41a' }}></div>
+                      <span>Submission Events</span>
+                    </div>
+                  </div>
+                </div>
               </AntCard>
             </Col>
           </Row>
           
-          <AntCard title="Module Access Frequency" className={styles.chartCard}>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={overviewData.coursesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="engagement" name="Module Access Frequency" fill="#1890ff" />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Student Performance Details */}
+          <AntCard title="Performance Details" className={styles.tableCard}>
+            {selectedStudent ? (
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={6}>
+                  <AntCard>
+                    <Statistic 
+                      title="Overall Score" 
+                      value={`${Math.round(selectedStudent.score)}%`} 
+                      valueStyle={{ color: selectedStudent.score > 70 ? '#3f8600' : (selectedStudent.score > 50 ? '#faad14' : '#cf1322') }}
+                    />
+                  </AntCard>
+                </Col>
+                <Col xs={24} md={6}>
+                  <AntCard>
+                    <Statistic 
+                      title="Completion Rate" 
+                      value={`${Math.round(selectedStudent.completion)}%`} 
+                      valueStyle={{ color: '#1890ff' }}
+                    />
+                  </AntCard>
+                </Col>
+                <Col xs={24} md={6}>
+                  <AntCard>
+                    <Statistic 
+                      title="Missing Assignments" 
+                      value={selectedStudent.missingAssignments} 
+                      valueStyle={{ color: selectedStudent.missingAssignments > 3 ? '#cf1322' : '#3f8600' }}
+                    />
+                  </AntCard>
+                </Col>
+                <Col xs={24} md={6}>
+                  <AntCard>
+                    <Statistic 
+                      title="Time Spent" 
+                      value={`${selectedStudent.timeSpent} mins`} 
+                      valueStyle={{ color: '#722ed1' }}
+                    />
+                  </AntCard>
+                </Col>
+              </Row>
+            ) : (
+              <Empty description="Select a student to view performance details" />
+            )}
           </AntCard>
         </>
       ),
