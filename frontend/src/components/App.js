@@ -6,6 +6,7 @@ import Login from "./login";
 import Reports from "./Reports/Reports";
 import AdminDashboard from "./Admin/AdminDashboard";
 import TeacherManagement from "./Admin/TeacherManagement";
+import { LanguageProvider } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
@@ -14,12 +15,12 @@ import styles from "../styles/modules/App.module.css";
 // Role-based route guard component
 const RoleBasedRoute = ({ element, requiredRole }) => {
   const { userRole } = useAuth();
-  
+
   // If user role doesn't match required role, redirect to dashboard
   if (requiredRole && userRole !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return element;
 };
 
@@ -61,25 +62,25 @@ const AppContent = () => {
               {/* Common routes */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/report" element={<Reports />} />
-              
+
               {/* Admin-specific routes */}
-              <Route 
-                path="/admin" 
-                element={<RoleBasedRoute element={<AdminDashboard />} requiredRole="admin" />} 
+              <Route
+                path="/admin"
+                element={<RoleBasedRoute element={<AdminDashboard />} requiredRole="admin" />}
               />
-              <Route 
-                path="/admin/teachers" 
-                element={<RoleBasedRoute element={<TeacherManagement />} requiredRole="admin" />} 
+              <Route
+                path="/admin/teachers"
+                element={<RoleBasedRoute element={<TeacherManagement />} requiredRole="admin" />}
               />
-              <Route 
-                path="/admin/reports" 
-                element={<RoleBasedRoute element={<AdminDashboard />} requiredRole="admin" />} 
+              <Route
+                path="/admin/reports"
+                element={<RoleBasedRoute element={<AdminDashboard />} requiredRole="admin" />}
               />
-              <Route 
-                path="/admin/settings" 
-                element={<RoleBasedRoute element={<AdminDashboard />} requiredRole="admin" />} 
+              <Route
+                path="/admin/settings"
+                element={<RoleBasedRoute element={<AdminDashboard />} requiredRole="admin" />}
               />
-              
+
               {/* Redirects */}
               <Route path="/login" element={<Navigate to={getDefaultRoute()} replace />} />
               <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
@@ -101,7 +102,9 @@ const App = () => {
   return (
     <Router>
       <AppProvider>
-        <AppContent />
+        <LanguageProvider> {/* <--- Wrap here */}
+          <AppContent />
+        </LanguageProvider>
       </AppProvider>
     </Router>
   );

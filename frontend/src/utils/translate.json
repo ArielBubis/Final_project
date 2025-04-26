@@ -1,0 +1,56 @@
+{
+  "categories": {
+    "general": {
+      "welcome": "ברוך הבא",
+      "logout": "התנתקות",
+      "login": "התחברות",
+      "submit": "שליחה",
+      "cancel": "ביטול"
+    },
+    "menu": {
+    "dashboard": "סקירה כללית",
+    "report": "דוחות",
+    "anomaly": "חריגות",
+    "courses": "קורסים",
+    "students": "תלמידים",
+    "performance": "ביצועים",
+    "admin dashboard": "לוח מנהל",
+    "teacher management": "ניהול מורים",
+    "system reports": "דוחות מערכת",
+    "settings": "הגדרות"
+    },
+    "user_management": {
+      "add_user": "הוספת משתמש",
+      "edit_user": "עריכת משתמש",
+      "delete_user": "מחיקת משתמש",
+      "user_list": "רשימת משתמשים"
+    },
+    "courses": {
+      "add_course": "הוספת קורס",
+      "edit_course": "עריכת קורס",
+      "delete_course": "מחיקת קורס",
+      "course_list": "רשימת קורסים"
+    },
+    "students": {
+      "add_student": "הוספת תלמיד",
+      "edit_student": "עריכת תלמיד",
+      "delete_student": "מחיקת תלמיד",
+      "student_list": "רשימת תלמידים"
+    },
+    "teachers": {
+      "add_teacher": "הוספת מורה",
+      "edit_teacher": "עריכת מורה",
+      "delete_teacher": "מחיקת מורה",
+      "teacher_list": "רשימת מורים"
+    },
+    "errors": {
+      "not_found": "לא נמצא",
+      "server_error": "שגיאת שרת",
+      "unauthorized": "לא מורשה",
+      "forbidden": "אסור"
+    } 
+  },
+  "language": {
+    "options": ["EN", "HE"]
+  }
+}

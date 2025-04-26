@@ -23,6 +23,15 @@
   margin-bottom: 20px;
 }
 
+/* When language is HE, set direction to RTL */
+.sidebar.rtl {
+  direction: rtl;
+}
+
+.sidebar.ltr {
+  direction: ltr;
+}
+
 .nav ul {
   list-style: none;
   padding: 0;
@@ -38,6 +47,9 @@
   display: block;
   padding: 10px;
   border-radius: 5px;
+  white-space: nowrap; /* Prevents the word from breaking */
+  overflow: hidden;    /* Hides the overflow text if it's too long */
+  text-overflow: ellipsis; /* Optionally add ellipsis (...) for overflow text */
 }
 
 .navLink:hover {
@@ -85,6 +97,28 @@
   border: none;
   color: rgb(0, 0, 0);
   font-size: 24px;
+  cursor: pointer;
+}
+
+.languageButtonContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.languageButton {
+  position: static;
+  margin: auto;
+  background-color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
   cursor: pointer;
 }
 
