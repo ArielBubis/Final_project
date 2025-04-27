@@ -39,7 +39,7 @@ const Sidebar = React.memo(({ userRole }) => {
     const { isSidebarOpen, toggleSidebar } = useUI();
     const [teacherName, setTeacherName] = useState("");
     // const [language, setLanguage] = useState(translate.language.options[0]);
-    const { language, toggleLanguage, t} = useLanguage();
+    const { language, toggleLanguage, t } = useLanguage();
 
     // Memoize toggle function to prevent recreation on each render
     const handleToggleSidebar = useCallback((state) => {
@@ -178,7 +178,7 @@ const Sidebar = React.memo(({ userRole }) => {
 
                 {/* Welcome message with teacher's name from Firestore */}
                 <div className={styles.welcomeMessage}>
-                    Welcome, {teacherName || 'Teacher'}
+                    {teacherName || t("teacher")}
                 </div>
 
                 <nav className={styles.nav}>
@@ -190,7 +190,7 @@ const Sidebar = React.memo(({ userRole }) => {
                                     className={styles.navLink}
                                     onClick={handleLinkClick}
                                 >
-                                    {t("menu", item.nameKey.toLowerCase()   )}
+                                    {t("menu", item.nameKey.toLowerCase())}
                                 </Link>
                             </li>
                         ))}

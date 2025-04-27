@@ -27,10 +27,11 @@ const resources = {
             "welcome": "ברוך הבא",
             "logout": "התנתקות",
             "teacher": "מורה",
-            "Dashboard": "סקירה כללית",
+            "dashboard": "סקירה כללית",
             "settings": "הגדרות",
             "name": "שם",
             "menu": {
+                "Welcome": "ברוך הבא",
                 "courses": "קורסים",
                 "Report": "דוח",
                 "anomaly": "חריגות",
