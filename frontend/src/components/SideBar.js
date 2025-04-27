@@ -3,28 +3,30 @@ import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
 import { useUI } from "../contexts/UIContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import styles from "../styles/modules/Sidebar.module.css";
 import classNames from "classnames";
-import { useLanguage } from "../contexts/LanguageContext";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import Button from "../components/Button";
-import translate from "../utils/translate.json";
+// import translate from "../utils/translate.json";
 
 export const menuItems = {
     teacher: [
-        { nameKey: "dashboard", path: "/dashboard" },
-        { nameKey: "report", path: "/report" },
-        { nameKey: "anomaly", path: "/anomaly" },
-        { nameKey: "courses", path: "/courses" },
-        { nameKey: "students", path: "/students" },
-        { nameKey: "performance", path: "/performance" }
+        { nameKey: "Dashboard", path: "/dashboard" },
+        { nameKey: "Report", path: "/report" },
+        { nameKey: "Anomaly", path: "/anomaly" },
+        { nameKey: "Courses", path: "/courses" },
+        { nameKey: "Students", path: "/students" },
+        { nameKey: "Performance", path: "/performance" }
     ],
     admin: [
-        { nameKey: "admin dashboard", path: "/admin" },
-        { nameKey: "teacher management", path: "/admin/teachers" },
-        { nameKey: "system reports", path: "/admin/reports" },
-        { nameKey: "settings", path: "/admin/settings" }
+        // { name: "Dashboard", path: "/dashboard" },
+        { nameKey: "Admin Dashboard", path: "/admin" },
+        { nameKey: "Teacher Management", path: "/admin/teachers" },
+        { nameKey: "System Reports", path: "/admin/reports" },
+        { nameKey: "Settings", path: "/admin/settings" }
     ]
 };
 
@@ -36,7 +38,8 @@ const Sidebar = React.memo(({ userRole }) => {
     const { logout, currentUser } = useAuth();
     const { isSidebarOpen, toggleSidebar } = useUI();
     const [teacherName, setTeacherName] = useState("");
-    const { language, toggleLanguage, t } = useLanguage();
+    // const [language, setLanguage] = useState(translate.language.options[0]);
+    const { language, toggleLanguage, t} = useLanguage();
 
     // Memoize toggle function to prevent recreation on each render
     const handleToggleSidebar = useCallback((state) => {
@@ -124,33 +127,23 @@ const Sidebar = React.memo(({ userRole }) => {
         );
     }, [isSidebarOpen]);
 
+    // Memoize the menu items based on user role
     const roleBasedMenu = useMemo(() => {
-        const originalMenu = menuItems[userRole] || menuItems.teacher;
-    
-        if (language === "HE") {
-            // If Hebrew is selected, translate the names
-            return originalMenu.map(item => ({
-                ...item,
-                translatedName: t("menu", item.nameKey)
-            }));
-        }
-    
-        // If English, no translation needed
-        return originalMenu.map(item => ({
-            ...item,
-            translatedName: item.nameKey
-        }));
-    }, [userRole, language, t]);
-    
+        return menuItems[userRole] || menuItems.teacher;
+    }, [userRole]);
 
     // Memoize the link click handler
     const handleLinkClick = useCallback(() => {
         handleToggleSidebar(false);
     }, [handleToggleSidebar]);
 
-    const handleLanguageToggle = () => {
-        toggleLanguage();
-    };
+    // const toggleLanguage = () => {
+    //     setLanguage((prev) =>
+    //         prev === translate.language.options[0]
+    //             ? translate.language.options[1]
+    //             : translate.language.options[0]
+    //     );
+    // };
 
     return (
         <>
@@ -165,8 +158,10 @@ const Sidebar = React.memo(({ userRole }) => {
 
             <div className={sidebarClasses}>
                 <Button
-                    label={language === "EN" ? "EN" : "עב"}
-                    onClick={handleLanguageToggle}
+                    // label={language}
+                    // onClick={toggleLanguage}
+                    label={language === 'EN' ? 'EN' : 'HE'}
+                    onClick={toggleLanguage} // Use context function here
                     variant="default"
                     size="small"
                     className={styles.languageButton}
@@ -183,7 +178,9 @@ const Sidebar = React.memo(({ userRole }) => {
 
                 {/* Welcome message with teacher's name from Firestore */}
                 <div className={styles.welcomeMessage}>
-                    {t("general", "welcome")}, {teacherName || 'Teacher'}                </div>
+                    Welcome, {teacherName || 'Teacher'}
+                </div>
+
                 <nav className={styles.nav}>
                     <ul>
                         {roleBasedMenu.map((item) => (
@@ -193,15 +190,14 @@ const Sidebar = React.memo(({ userRole }) => {
                                     className={styles.navLink}
                                     onClick={handleLinkClick}
                                 >
-                                    {t("menu", item.nameKey)}  
+                                    {t("menu", item.nameKey.toLowerCase()   )}
                                 </Link>
                             </li>
                         ))}
                     </ul>
                 </nav>
-                <button className={styles.logoutButton} onClick={handleLogout}>
-                    {t("general", "logout")}
-                </button>            </div>
+                <button className={styles.logoutButton} onClick={handleLogout}>Logout</button>
+            </div>
         </>
     );
 });

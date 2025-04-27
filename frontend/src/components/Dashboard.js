@@ -3,10 +3,12 @@ import { useData } from "../contexts/DataContext";
 import Carousel from "./Carousel"; 
 import Card from "./Card"; 
 import styles from "../styles/modules/Dashboard.module.css";
+import { useLanguage } from "../contexts/LanguageContext"; 
 
 const Dashboard = () => {
   const profilePicUrl = "https://cdn-icons-png.flaticon.com/512/8847/8847419.png";
   const { students, courseData, loading, error } = useData();
+  const { t } = useLanguage(); 
 
   const coursesCarousel = useMemo(() => 
     loading ? [] : courseData.map((course, idx) => (
@@ -37,12 +39,12 @@ const Dashboard = () => {
 
   return (
     <div className={styles.dashboardContainer}>
-      <h1 className={styles.title}>Welcome to the ClassInsight</h1>
+      <h1 className={styles.title}>{t("general", "welcome")}</h1>
 
-      <h2 className={styles.sectionTitle}>Courses</h2>
+      <h2 className={styles.sectionTitle}>{t("menu", "courses")}</h2>
       <Carousel items={coursesCarousel} />
 
-      <h2 className={styles.sectionTitle}>Students</h2>
+      <h2 className={styles.sectionTitle}>{t("menu", "students")}</h2>
       <Carousel items={studentsCarousel} />
     </div>
   );
