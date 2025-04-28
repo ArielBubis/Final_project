@@ -636,7 +636,7 @@ const TeacherOverview = ({ isAdminView = false }) => {
           </Row>
           
           {/* Assignment Completion Heatmap */}
-          <AntCard title="Assignment Completion Rates by Course/Module" className={styles.chartCard}>
+          {/* <AntCard title="Assignment Completion Rates by Course/Module" className={styles.chartCard}>
             {overviewData.assignmentCompletionData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart
@@ -659,7 +659,7 @@ const TeacherOverview = ({ isAdminView = false }) => {
             ) : (
               <Empty description="No assignment completion data available" />
             )}
-          </AntCard>
+          </AntCard> */}
         </>
       ),
     },
