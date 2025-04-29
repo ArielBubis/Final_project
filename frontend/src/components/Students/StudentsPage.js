@@ -84,6 +84,12 @@ const StudentsPage = () => {
     setSearchTerm('');
   };
 
+  const handleViewStudent = (student) => {
+    // Temporarily save student details in session storage
+    sessionStorage.setItem('selectedStudent', JSON.stringify(student));
+    navigate(`/students/${student.id || student.studentId}`); // Ensure correct navigation to Student.js
+  };
+
   if (loading) {
     return <Spin size="large" tip="Loading student data..." />;
   }
@@ -140,7 +146,7 @@ const StudentsPage = () => {
               ))}
           </Select>
         </Col>
-        <Col xs={24} md={8} style={{ dis play: 'flex', alignItems: 'center', marginBottom: 16 }}>
+        <Col xs={24} md={8} style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
           <Button onClick={handleReset} className={styles.resetButton}>
             Reset
           </Button>
@@ -166,7 +172,7 @@ const StudentsPage = () => {
                     type="primary"
                     size="small"
                     className={styles.studentViewButton}
-                    onClick={() => navigate(`/students/${student.id || student.studentId}`)}
+                    onClick={() => handleViewStudent(student)}
                   >
                     View
                   </Button>
