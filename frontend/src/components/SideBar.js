@@ -10,7 +10,7 @@ import classNames from "classnames";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import Button from "../components/Button";
-// import translate from "../utils/translate.json";
+import StudentsPage from "./Students/StudentsPage";
 
 export const menuItems = {
     teacher: [
@@ -22,7 +22,6 @@ export const menuItems = {
         { nameKey: "Performance", path: "/performance" }
     ],
     admin: [
-        // { name: "Dashboard", path: "/dashboard" },
         { nameKey: "Admin Dashboard", path: "/admin" },
         { nameKey: "Teacher Management", path: "/admin/teachers" },
         { nameKey: "System Reports", path: "/admin/reports" },
@@ -38,7 +37,6 @@ const Sidebar = React.memo(({ userRole }) => {
     const { logout, currentUser } = useAuth();
     const { isSidebarOpen, toggleSidebar } = useUI();
     const [teacherName, setTeacherName] = useState("");
-    // const [language, setLanguage] = useState(translate.language.options[0]);
     const { language, toggleLanguage, t } = useLanguage();
 
     // Memoize toggle function to prevent recreation on each render
@@ -137,14 +135,6 @@ const Sidebar = React.memo(({ userRole }) => {
         handleToggleSidebar(false);
     }, [handleToggleSidebar]);
 
-    // const toggleLanguage = () => {
-    //     setLanguage((prev) =>
-    //         prev === translate.language.options[0]
-    //             ? translate.language.options[1]
-    //             : translate.language.options[0]
-    //     );
-    // };
-
     return (
         <>
             {!isSidebarOpen && (
@@ -158,8 +148,6 @@ const Sidebar = React.memo(({ userRole }) => {
 
             <div className={sidebarClasses}>
                 <Button
-                    // label={language}
-                    // onClick={toggleLanguage}
                     label={language === 'EN' ? 'EN' : 'HE'}
                     onClick={toggleLanguage} // Use context function here
                     variant="default"
