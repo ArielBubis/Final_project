@@ -21,7 +21,6 @@ import {
 } from '@ant-design/icons';
 import { fetchAllTeachers, updateTeacher } from '../../services/adminService';
 import TeacherForm from './TeacherForm';
-import TeacherCourses from './TeacherCourses';
 import styles from '../../styles/modules/AdminDashboard.module.css';
 
 const { Search } = Input;
@@ -249,7 +248,6 @@ const TeacherManagement = () => {
         ]}
         width={800}
       >
-        <TeacherCourses teacher={currentTeacher} />
       </Modal>
     </div>
   );
