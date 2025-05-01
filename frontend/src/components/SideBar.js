@@ -26,7 +26,8 @@ export const menuItems = {
         { nameKey: "Teacher Management", path: "/admin/teachers" },
         { nameKey: "System Reports", path: "/admin/reports" },
         { nameKey: "Settings", path: "/admin/settings" }
-    ]
+    ],
+    // student: []
 };
 
 // Cache to avoid redundant teacher name fetches
@@ -191,7 +192,7 @@ const Sidebar = React.memo(({ userRole }) => {
 });
 
 Sidebar.propTypes = {
-    userRole: PropTypes.oneOf(["teacher", "admin"]).isRequired
+    userRole: PropTypes.oneOf(["student", "teacher", "admin"]).isRequired
 };
 
 export default Sidebar;
