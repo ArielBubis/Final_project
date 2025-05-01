@@ -1,8 +1,8 @@
 import React from 'react';
 import { Table, Tag, Card, Row, Col, Statistic, Empty } from 'antd';
 import { BookOutlined, TeamOutlined, CalendarOutlined } from '@ant-design/icons';
-import styles from '../../styles/modules/AdminDashboard.module.css';
-import { formatFirebaseTimestamp, formatTimestampForDisplay } from '../../utils/firebaseUtils';
+import { formatFirebaseTimestamp, formatTimestampForDisplay } from '../utils/firebaseUtils';
+import styles from '../styles/modules/Courses.module.css'; // Adjust the path as necessary
 
 const TeacherCourses = ({ teacher }) => {
   if (!teacher || !teacher.courses || teacher.courses.length === 0) {
