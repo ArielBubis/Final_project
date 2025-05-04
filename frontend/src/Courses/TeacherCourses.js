@@ -1,138 +1,65 @@
-import React from 'react';
-import { Table, Tag, Card, Row, Col, Statistic, Empty } from 'antd';
-import { BookOutlined, TeamOutlined, CalendarOutlined } from '@ant-design/icons';
-import { formatFirebaseTimestamp, formatTimestampForDisplay } from '../utils/firebaseUtils';
-import styles from '../styles/modules/Courses.module.css'; // Adjust the path as necessary
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card as AntCard, Row, Col, Button, Empty, Spin } from 'antd';
+import { useData } from '../contexts/DataContext';
+import { useNavigate } from 'react-router-dom';
+import styles from '../styles/modules/Courses.module.css';
 
-const TeacherCourses = ({ teacher }) => {
-  if (!teacher || !teacher.courses || teacher.courses.length === 0) {
-    return (
-      <Empty 
-        description={`No courses assigned to ${teacher?.firstName || 'this teacher'} yet.`}
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
-    );
+const TeacherCourses = () => {
+  const { fetchTeacherCourses, loading, error, currentUser } = useData();
+  const [courses, setCourses] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (currentUser?.email) {
+        const coursesData = await fetchTeacherCourses(currentUser.email);
+        setCourses(coursesData);
+      }
+    };
+
+    fetchCourses();
+  }, [fetchTeacherCourses, currentUser]);
+
+  const handleViewCourse = (course) => {
+    navigate(`/courses/${course.courseId}`);
+  };
+
+  const coursesCards = useMemo(() => {
+    console.log("Courses for rendering:", courses); // Debugging log
+    return loading
+      ? []
+      : courses.map((course, idx) => (
+          <Col key={idx} xs={24} sm={12} md={8} lg={6}>
+            <AntCard className={styles.courseCard} title={course.courseName}>
+              <p><strong>Subject Area:</strong> {course.subjectArea || 'N/A'}</p>
+              <p><strong>Duration:</strong> {course.startDate} - {course.endDate}</p>
+              <p><strong>Enrollments:</strong> {course.studentCount || 0}</p>
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => handleViewCourse(course)}
+              >
+                View
+              </Button>
+            </AntCard>
+          </Col>
+        ));
+  }, [courses, loading]);
+
+  if (loading) {
+    return <Spin size="large" tip="Loading courses..." />;
   }
 
-  // Summary statistics for this teacher
-  const totalStudents = teacher.courses.reduce((sum, course) => sum + (course.studentCount || 0), 0);
-  const totalAssignments = teacher.courses.reduce((sum, course) => sum + (course.assignmentCount || 0), 0);
-
-  // Table columns for courses
-  const columns = [
-    {
-      title: 'Course Name',
-      dataIndex: 'courseName',
-      key: 'courseName',
-      render: (text, record) => (
-        <div>
-          <BookOutlined style={{ marginRight: 8 }} />
-          <span style={{ fontWeight: 500 }}>{text || 'Unnamed Course'}</span>
-        </div>
-      ),
-    },
-    {
-      title: 'Subject Area',
-      dataIndex: 'subjectArea',
-      key: 'subjectArea',
-      render: (text) => text || 'N/A',
-    },
-    {
-      title: 'Students',
-      dataIndex: 'studentCount',
-      key: 'studentCount',
-      render: (count) => count || 0,
-      sorter: (a, b) => (a.studentCount || 0) - (b.studentCount || 0),
-    },
-    {
-      title: 'Start Date',
-      dataIndex: 'startDate',
-      key: 'startDate',
-      render: (date) => formatTimestampForDisplay(date),
-      sorter: (a, b) => {
-        // Convert both timestamps to Date objects for comparison
-        const dateA = formatFirebaseTimestamp(a.startDate);
-        const dateB = formatFirebaseTimestamp(b.startDate);
-        // Compare milliseconds for stable sorting
-        return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
-      },
-    },
-    {
-      title: 'End Date',
-      dataIndex: 'endDate',
-      key: 'endDate',
-      render: (date) => formatTimestampForDisplay(date),
-    },
-    {
-      title: 'Status',
-      key: 'status',
-      render: (_, record) => {
-        let color = 'default';
-        let text = 'Unknown';
-        
-        const now = new Date();
-        const startDate = formatFirebaseTimestamp(record.startDate);
-        const endDate = formatFirebaseTimestamp(record.endDate);
-        
-        if (startDate && endDate) {
-          if (now < startDate) {
-            color = 'gold';
-            text = 'Upcoming';
-          } else if (now > endDate) {
-            color = 'default';
-            text = 'Completed';
-          } else {
-            color = 'green';
-            text = 'Active';
-          }
-        }
-        
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-  ];
+  if (error) {
+    return <Empty description="Error loading courses" />;
+  }
 
   return (
-    <div className={styles.teacherCourses}>
-      {/* Summary statistics */}
-      <Row gutter={16} className={styles.summaryStats}>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic 
-              title="Courses" 
-              value={teacher.courses.length} 
-              prefix={<BookOutlined />} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic 
-              title="Total Students" 
-              value={totalStudents} 
-              prefix={<TeamOutlined />} 
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic 
-              title="Total Assignments" 
-              value={totalAssignments} 
-              prefix={<CalendarOutlined />} 
-            />
-          </Card>
-        </Col>
+    <div className={styles.coursesPageContainer}>
+      <h1 className={styles.title}>Courses</h1>
+      <Row gutter={[16, 16]} className={styles.coursesList}>
+        {courses.length > 0 ? coursesCards : <Empty description="No courses found" />}
       </Row>
-
-      {/* Courses table */}
-      <Table
-        columns={columns}
-        dataSource={teacher.courses}
-        rowKey="id"
-        pagination={false}
-        className={styles.coursesTable}
-      />
     </div>
   );
 };

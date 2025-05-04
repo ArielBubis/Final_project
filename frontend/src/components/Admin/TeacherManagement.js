@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons';
 import { fetchAllTeachers, updateTeacher } from '../../services/adminService';
 import TeacherForm from './TeacherForm';
-import TeacherCourses from '../Courses/TeacherCourses';
+import TeacherCourses from '../../Courses/TeacherCourses';
 import styles from '../../styles/modules/AdminDashboard.module.css';
 
 const { Search } = Input;

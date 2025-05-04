@@ -51,65 +51,67 @@ export const AuthProvider = ({ children }) => {
   // Effect to monitor auth state
   useEffect(() => {
     let isMounted = true;
-    
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // Only update state if the component is still mounted
-      if (!isMounted) return;
-      
-      if (user) {
-        setCurrentUser(user);
-        // Fetch user role from Firestore
-        try {
-          let role = "user"; // Default role
-          
-          // Check if user exists in Firestore
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log("User data:", userData);
-            if (userData.roles) {
-              if (userData.roles.admin) {
-                console.log("User is an admin");
-                role = "admin";
-              } else if (userData.roles.teacher) {
-                console.log("User is a teacher");
-                role = "teacher";
-              } else if (userData.roles.student) {
-                console.log("User is a student");
-                role = "student";
-              }
-            }
-          }
-          
-          if (isMounted) {
-            setUserRole(role);
-          }
-        } catch (err) {
-          console.error("Error fetching user role:", err);
-          // Default to teacher role for backward compatibility
-          if (isMounted) {
-            setUserRole("teacher");
-          }
-        }
-      } else {
-        if (isMounted) {
-          setCurrentUser(null);
-          setUserRole(null);
-        }
-      }
-      
-      if (isMounted) {
-        setLoading(false);
-      }
-    });
 
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, []);
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (!isMounted) return;
+
+    if (user) {
+      setCurrentUser(user);
+
+      try {
+        let role = "user"; // Default role
+
+        // Fetch user document from Firestore
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log("User data:", userData);
+
+          // Check roles field
+          const roles = userData.roles || {};
+          if (roles.admin) {
+            console.log("User is an admin");
+            role = "admin";
+          } else if (roles.teacher) {
+            console.log("User is a teacher");
+            role = "teacher";
+          } else if (roles.student) {
+            console.log("User is a student");
+            role = "student";
+          } else {
+            console.warn("No specific role found, defaulting to 'user'");
+          }
+        } else {
+          console.warn("User document does not exist in Firestore");
+        }
+
+        if (isMounted) {
+          setUserRole(role);
+        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        if (isMounted) {
+          setUserRole("teacher"); // Default to teacher for backward compatibility
+        }
+      }
+    } else {
+      if (isMounted) {
+        setCurrentUser(null);
+        setUserRole(null);
+      }
+    }
+
+    if (isMounted) {
+      setLoading(false);
+    }
+  });
+
+  return () => {
+    isMounted = false;
+    unsubscribe();
+  };
+}, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
