@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
 import { useUI } from "../contexts/UIContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import { useTranslation } from "react-i18next";
 import styles from "../styles/modules/Sidebar.module.css";
 import classNames from "classnames";
 import { doc, getDoc } from "firebase/firestore";

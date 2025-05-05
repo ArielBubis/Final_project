@@ -48,6 +48,33 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Get user role from Firestore document
+  const getUserRole = useCallback(async (user) => {
+    if (!user) return null;
+    
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        console.log("User data:", userData);
+        // Check roles and return the appropriate one
+        if (userData.roles) {
+          if (userData.roles.admin) return "admin";
+          if (userData.roles.teacher) return "teacher";
+          if (userData.roles.student) return "student";
+        }
+      }
+      
+      // Default to student instead of user if no specific role is found
+      // This ensures we only provide valid roles for the Sidebar component
+      return "student";
+    } catch (error) {
+      console.error("Error getting user role:", error);
+      return "student"; // Default fallback role
+    }
+  }, []);
+
   // Effect to monitor auth state
   useEffect(() => {
     let isMounted = true;
@@ -60,28 +87,7 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(user);
         // Fetch user role from Firestore
         try {
-          let role = "user"; // Default role
-          
-          // Check if user exists in Firestore
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log("User data:", userData);
-            if (userData.roles) {
-              if (userData.roles.admin) {
-                console.log("User is an admin");
-                role = "admin";
-              } else if (userData.roles.teacher) {
-                console.log("User is a teacher");
-                role = "teacher";
-              } else if (userData.roles.student) {
-                console.log("User is a student");
-                role = "student";
-              }
-            }
-          }
-          
+          const role = await getUserRole(user);
           if (isMounted) {
             setUserRole(role);
           }
@@ -109,7 +115,7 @@ export const AuthProvider = ({ children }) => {
       isMounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [getUserRole]);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({

@@ -21,10 +21,10 @@ async function importCsvToFirebase(csvFolder) {
       teachers: false,
       students: false,
       courses: false,
-      modules: true, 
-      assignments: true,
+      modules: false, //
+      assignments: false,//
       enrollments: false,
-      studentProgress: false // Set to false if already imported
+      studentProgress: true // Set to false if already imported
     };
     
     // Load all CSV data first
@@ -79,21 +79,100 @@ async function importCsvToFirebase(csvFolder) {
       
       // Process teachers as users
       if (csvData['teachers.csv']) {
-        csvData['teachers.csv'].forEach(teacher => {
-          users.push({
-            userId: teacher.id,
-            firstName: extractFirstName(teacher.name),
-            lastName: extractLastName(teacher.name),
-            email: teacher.email,
-            gender: teacher.gender || '',
-            roles: {
-              student: false,
-              teacher: true,
-              admin: false
-            },
-            createdAt: formatDate(teacher.createdAt)
-          });
+        // Create an active user in the firebase auth system for each teacher
+        // Note: In a production environment, you should:
+        // 1. Use a more secure password
+        // 2. Implement a password reset flow for first login
+        // 3. Consider using email verification
+        const createTeacherPromises = csvData['teachers.csv'].map(async (teacher) => {
+          try {
+            // Create the user in Firebase Authentication
+            const userRecord = await admin.auth().createUser({
+              email: teacher.email,
+              password: "123456", // This should be changed in production
+              displayName: teacher.name,
+              disabled: false
+            });
+            
+            console.log(`Created new user: ${userRecord.uid} for teacher: ${teacher.name}`);
+            
+            // Push the teacher to users array with the UID from Firebase Auth
+            users.push({
+              UID: userRecord.uid, // Store the Firebase Auth UID
+              userId: teacher.id,
+              firstName: extractFirstName(teacher.name),
+              lastName: extractLastName(teacher.name),
+              email: teacher.email,
+              gender: teacher.gender || '',
+              roles: {
+                student: false,
+                teacher: true,
+                admin: false
+              },
+              createdAt: formatDate(teacher.createdAt)
+            });
+          } catch (error) {
+            // Handle errors like email already exists
+            console.error(`Error creating user for teacher ${teacher.name} (${teacher.email}): `, error);
+            
+            // If the user already exists, try to get their UID
+            if (error.code === 'auth/email-already-exists') {
+              try {
+                const existingUser = await admin.auth().getUserByEmail(teacher.email);
+                console.log(`User already exists for ${teacher.email}, using existing UID: ${existingUser.uid}`);
+                
+                users.push({
+                  UID: existingUser.uid,
+                  userId: teacher.id,
+                  firstName: extractFirstName(teacher.name),
+                  lastName: extractLastName(teacher.name),
+                  email: teacher.email,
+                  gender: teacher.gender || '',
+                  roles: {
+                    student: false,
+                    teacher: true,
+                    admin: false
+                  },
+                  createdAt: formatDate(teacher.createdAt)
+                });
+              } catch (getUserError) {
+                console.error(`Failed to get existing user for ${teacher.email}:`, getUserError);
+                // Add the user without a UID as a fallback
+                users.push({
+                  userId: teacher.id,
+                  firstName: extractFirstName(teacher.name),
+                  lastName: extractLastName(teacher.name),
+                  email: teacher.email,
+                  gender: teacher.gender || '',
+                  roles: {
+                    student: false,
+                    teacher: true,
+                    admin: false
+                  },
+                  createdAt: formatDate(teacher.createdAt)
+                });
+              }
+            } else {
+              // For other errors, add the user without a UID
+              users.push({
+                userId: teacher.id,
+                firstName: extractFirstName(teacher.name),
+                lastName: extractLastName(teacher.name),
+                email: teacher.email,
+                gender: teacher.gender || '',
+                roles: {
+                  student: false,
+                  teacher: true,
+                  admin: false
+                },
+                createdAt: formatDate(teacher.createdAt)
+              });
+            }
+          }
         });
+        
+        // Wait for all teacher user creation to complete
+        await Promise.all(createTeacherPromises);
       }
       
       // Import users
@@ -498,8 +577,9 @@ async function importCollection(records, collectionName, formatFunction) {
     const existChecks = await Promise.all(
       currentBatch.map(async (record) => {
         const formattedRecord = formatFunction(record);
-        const docId = formattedRecord.userId || formattedRecord.schoolId || 
-                    formattedRecord.studentId || formattedRecord.teacherId || 
+        const docId = 
+        // formattedRecord.userId || formattedRecord.schoolId || 
+        //             formattedRecord.studentId || formattedRecord.teacherId || 
                     formattedRecord.courseId || formattedRecord.assignmentId || 
                     formattedRecord.enrollmentId || record.id;
         

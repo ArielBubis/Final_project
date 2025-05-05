@@ -33,3 +33,4 @@ DataBaseSchema2.txt
 serviceAccountKey.json
 *.pyc
 .vscode/mcp.json
+accountkey_Temp.txt

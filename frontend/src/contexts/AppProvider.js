@@ -2,6 +2,7 @@ import React from "react";
 import { AuthProvider } from "./AuthContext";
 import { DataProvider } from "./DataContext";
 import { UIProvider } from "./UIContext";
+import { PerformanceProvider } from "./PerformanceContext";
 
 // Helper component to compose multiple providers
 const ComposeProviders = ({ providers = [], children }) => {
@@ -17,6 +18,7 @@ export const AppProvider = ({ children }) => {
       providers={[
         AuthProvider,
         DataProvider,
+        PerformanceProvider, // Add our new performance context provider
         UIProvider,
         // Add new providers here easily
       ]}
@@ -25,3 +27,5 @@ export const AppProvider = ({ children }) => {
     </ComposeProviders>
   );
 };
+
+export default AppProvider;

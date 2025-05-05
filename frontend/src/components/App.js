@@ -106,7 +106,7 @@ const App = () => {
   return (
     <Router>
       <AppProvider>
-        <LanguageProvider> {/* <--- Wrap here */}
+        <LanguageProvider>
           <AppContent />
         </LanguageProvider>
       </AppProvider>

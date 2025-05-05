@@ -6,7 +6,7 @@ import asyncio
 from datetime import datetime
 
 # Initialize Firebase Admin SDK
-cred_path = os.environ.get('FIREBASE_CREDENTIALS', 'serviceAccountKey.json')
+cred_path = os.environ.get('FIREBASE_CREDENTIALS', '../serviceAccountKey.json')
 if not firebase_admin._apps:
     cred = credentials.Certificate(cred_path)
     firebase_admin.initialize_app(cred)

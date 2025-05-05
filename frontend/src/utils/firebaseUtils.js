@@ -2,6 +2,9 @@
  * Utility functions for working with Firebase/Firestore data
  */
 
+import { db } from '../firebaseConfig';
+import { collection, getDocs, query, where, limit, orderBy, doc, getDoc } from 'firebase/firestore';
+
 /**
  * Formats a Firestore timestamp or timestamp-like object to a JavaScript Date
  * Handles different possible formats of Firestore timestamps
@@ -112,9 +115,170 @@ export const processFirestoreData = (data) => {
         result[key] = processFirestoreData(data[key]);
       }
     }
-    return result;
+    return result; // Return the processed object
   }
   
   // Return primitive values and Date objects as is
   return data;
+};
+
+/**
+ * Fetches documents from Firestore with optional filtering and ordering
+ * 
+ * @param {string} collectionPath - Path to the collection
+ * @param {Object} [options] - Query options
+ * @param {Array<Object>} [options.filters] - Array of filter objects {field, operator, value}
+ * @param {Array<Object>} [options.orderByFields] - Array of orderBy objects {field, direction}
+ * @param {number} [options.limitCount] - Maximum number of documents to return
+ * @returns {Promise<Array>} - Array of document data with IDs
+ */
+export const fetchDocuments = async (collectionPath, options = {}) => {
+  try {
+    let queryRef = collection(db, collectionPath);
+    
+    // Apply filters if provided
+    if (options.filters && Array.isArray(options.filters)) {
+      let queryConstraints = [];
+      
+      options.filters.forEach(filter => {
+        if (filter.field && filter.operator && filter.value !== undefined) {
+          queryConstraints.push(where(filter.field, filter.operator, filter.value));
+        }
+      });
+      
+      if (queryConstraints.length > 0) {
+        queryRef = query(queryRef, ...queryConstraints);
+      }
+    }
+    
+    // Apply ordering if provided
+    if (options.orderByFields && Array.isArray(options.orderByFields)) {
+      let orderByConstraints = [];
+      
+      options.orderByFields.forEach(orderByField => {
+        if (orderByField.field) {
+          orderByConstraints.push(orderBy(
+            orderByField.field, 
+            orderByField.direction || 'asc'
+          ));
+        }
+      });
+      
+      if (orderByConstraints.length > 0) {
+        queryRef = query(queryRef, ...orderByConstraints);
+      }
+    }
+    
+    // Apply limit if provided
+    if (options.limitCount && typeof options.limitCount === 'number') {
+      queryRef = query(queryRef, limit(options.limitCount));
+    }
+    
+    // Execute query and map results
+    const querySnapshot = await getDocs(queryRef);
+    const documents = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...processFirestoreData(doc.data())
+    }));
+    
+    return documents;
+  } catch (error) {
+    console.error(`Error fetching documents from ${collectionPath}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches a single document by ID
+ * 
+ * @param {string} collectionPath - Path to the collection
+ * @param {string} documentId - ID of the document to fetch
+ * @returns {Promise<Object|null>} - Document data with ID or null if not found
+ */
+export const fetchDocumentById = async (collectionPath, documentId) => {
+  try {
+    const docRef = doc(db, collectionPath, documentId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...processFirestoreData(docSnap.data())
+      };
+    }
+    
+    console.log(`Document not found: ${collectionPath}/${documentId}`);
+    return null;
+  } catch (error) {
+    console.error(`Error fetching document ${documentId} from ${collectionPath}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches documents from a subcollection
+ * 
+ * @param {string} collectionPath - Path to the parent collection
+ * @param {string} documentId - ID of the parent document
+ * @param {string} subcollectionPath - Path to the subcollection
+ * @param {Object} [options] - Query options (same as fetchDocuments)
+ * @returns {Promise<Array>} - Array of document data with IDs
+ */
+export const fetchSubcollection = async (collectionPath, documentId, subcollectionPath, options = {}) => {
+  try {
+    const fullPath = `${collectionPath}/${documentId}/${subcollectionPath}`;
+    const subcollectionRef = collection(db, collectionPath, documentId, subcollectionPath);
+    
+    let queryRef = subcollectionRef;
+    
+    // Apply filters if provided
+    if (options.filters && Array.isArray(options.filters)) {
+      let queryConstraints = [];
+      
+      options.filters.forEach(filter => {
+        if (filter.field && filter.operator && filter.value !== undefined) {
+          queryConstraints.push(where(filter.field, filter.operator, filter.value));
+        }
+      });
+      
+      if (queryConstraints.length > 0) {
+        queryRef = query(queryRef, ...queryConstraints);
+      }
+    }
+    
+    // Apply ordering if provided
+    if (options.orderByFields && Array.isArray(options.orderByFields)) {
+      let orderByConstraints = [];
+      
+      options.orderByFields.forEach(orderByField => {
+        if (orderByField.field) {
+          orderByConstraints.push(orderBy(
+            orderByField.field, 
+            orderByField.direction || 'asc'
+          ));
+        }
+      });
+      
+      if (orderByConstraints.length > 0) {
+        queryRef = query(queryRef, ...orderByConstraints);
+      }
+    }
+    
+    // Apply limit if provided
+    if (options.limitCount && typeof options.limitCount === 'number') {
+      queryRef = query(queryRef, limit(options.limitCount));
+    }
+    
+    // Execute query and map results
+    const querySnapshot = await getDocs(queryRef);
+    const documents = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...processFirestoreData(doc.data())
+    }));
+    
+    return documents;
+  } catch (error) {
+    console.error(`Error fetching subcollection ${subcollectionPath} from ${collectionPath}/${documentId}:`, error);
+    throw error;
+  }
 };
