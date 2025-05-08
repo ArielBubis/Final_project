@@ -1,0 +1,24 @@
+.courseListContainer {
+    width: 100%;
+}
+
+.title {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.courseGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 10px 0;
+}
+
+@media (max-width: 768px) {
+    .courseGrid {
+        grid-template-columns: 1fr;
+    }
+} 

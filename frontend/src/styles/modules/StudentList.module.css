@@ -1,0 +1,57 @@
+.studentListContainer {
+    width: 100%;
+    height: 100%;
+}
+
+.title {
+    color: #333;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #eee;
+    flex-shrink: 0;
+}
+
+.studentGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    flex: 1;
+    max-height: calc(3 * (100px + 1rem)); /* Height for 3 cards + gaps */
+}
+
+.studentGrid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.studentGrid::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.studentGrid::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.studentGrid::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+@media (max-width: 768px) {
+    .studentListContainer {
+        padding: 0.5rem;
+    }
+    
+    .title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .studentGrid {
+        grid-template-columns: 1fr;
+        max-height: calc(3 * (250px + 1rem)); /* Slightly smaller height for mobile */
+    }
+} 

@@ -1,20 +1,19 @@
 .appContainer {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
   overflow: hidden;
 }
 
 .mainContent {
-  display: flex;
-  flex-direction: column;
   flex-grow: 1;
   background-color: #ecf0f1;
-  height: 100vh;
+  min-height: 100vh;
   overflow-y: auto;
-  transition: margin-left 0.3s ease;
+  margin-left: 250px; /* Match sidebar width */
   box-sizing: border-box;
+  padding: 20px;
 }
 
 .loading {
@@ -29,15 +28,11 @@
 @media (max-width: 768px) {
   .appContainer {
     flex-direction: column;
-    height: auto;
-    overflow: visible;
   }
 
   .mainContent {
-    margin-top: 60px;
-    height: auto;
-    min-height: auto;
-    overflow: visible;
-    flex-grow: 1;
+    margin-left: 0;
+    margin-top: 0;
+    min-height: calc(100vh - 60px);
   }
 }

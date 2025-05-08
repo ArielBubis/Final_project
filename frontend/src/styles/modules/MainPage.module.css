@@ -1,0 +1,56 @@
+.mainPage {
+    padding: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.welcomeSection {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.welcomeSection h1 {
+    font-size: 2.5rem;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.welcomeSection p {
+    font-size: 1.1rem;
+    color: #7f8c8d;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+}
+
+.section {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    font-size: 1.2rem;
+    color: #7f8c8d;
+}
+
+.error {
+    color: #e74c3c;
+    text-align: center;
+    padding: 20px;
+    font-size: 1.2rem;
+}
+
+@media (min-width: 768px) {
+    .content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+} 

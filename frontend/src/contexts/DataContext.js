@@ -262,7 +262,7 @@ export const DataProvider = ({ children }) => {
         });
         
         if (usersWithEmail && usersWithEmail.length > 0) {
-          const userId = usersWithEmail[0].userId || usersWithEmail[0].id;
+          const userId = usersWithEmail[0].id; // Use the document ID as userId
           
           // Now find the teacher record with this userId
           const teachersWithUserId = await fetchDocuments('teachers', {
@@ -272,8 +272,14 @@ export const DataProvider = ({ children }) => {
           });
           
           if (teachersWithUserId && teachersWithUserId.length > 0) {
-            teacherId = teachersWithUserId[0].teacherId || teachersWithUserId[0].id;
+            teacherId = teachersWithUserId[0].id; // Use the document ID as teacherId
+          } else {
+            console.error(`No teacher record found for user ${userId}`);
+            return [];
           }
+        } else {
+          console.error(`No user found with email ${teacherIdOrEmail}`);
+          return [];
         }
       }
       
@@ -283,6 +289,10 @@ export const DataProvider = ({ children }) => {
           { field: 'teacherId', operator: '==', value: teacherId }
         ]
       });
+      
+      if (!coursesQuery || coursesQuery.length === 0) {
+        console.log(`No courses found for teacher ${teacherId}`);
+      }
       
       // Cache the result
       updateQueryCache('teacherCourses', cacheKey, coursesQuery);
@@ -313,20 +323,13 @@ export const DataProvider = ({ children }) => {
         return [];
       }
       
-      // Get course IDs
-      const courseIds = teacherCourses.map(course => course.courseId || course.id);
-      
-      // Get all enrollments for these courses
-      const enrollments = [];
-      for (const courseId of courseIds) {
-        const courseEnrollments = await fetchDocuments('enrollments', {
-          filters: [{ field: 'courseId', operator: '==', value: courseId }]
-        });
-        enrollments.push(...courseEnrollments);
-      }
-      
-      // Extract student IDs from enrollments
-      const studentIds = [...new Set(enrollments.map(enrollment => enrollment.studentId))];
+      // Get all unique student IDs from all courses
+      const studentIds = new Set();
+      teacherCourses.forEach(course => {
+        if (course.students && Array.isArray(course.students)) {
+          course.students.forEach(studentId => studentIds.add(studentId));
+        }
+      });
       
       // Fetch student details and corresponding user info
       const students = [];
@@ -347,21 +350,24 @@ export const DataProvider = ({ children }) => {
           let lastAccessed = null;
           
           // Get student progress for relevant courses
-          for (const courseId of courseIds) {
+          for (const course of teacherCourses) {
             try {
-              // Try to get course progress summary
-              const progressPath = `studentProgress/${studentId}/courses/${courseId}`;
-              const courseSummary = await fetchDocumentById(progressPath, 'summary');
+              // Get course progress summary using the correct path structure
+              const courseProgress = await fetchDocumentById(
+                `studentProgress/${studentId}/courses`,
+                course.courseId
+              );
               
-              if (courseSummary) {
-                if (courseSummary.overallScore !== undefined) {
-                  totalScore += courseSummary.overallScore;
+              if (courseProgress && courseProgress.summary) {
+                const summary = courseProgress.summary;
+                if (summary.overallScore !== undefined) {
+                  totalScore += summary.overallScore;
                 }
-                if (courseSummary.overallCompletion !== undefined) {
-                  totalCompletion += courseSummary.overallCompletion;
+                if (summary.overallCompletion !== undefined) {
+                  totalCompletion += summary.overallCompletion;
                 }
-                if (courseSummary.lastAccessed) {
-                  const accessDate = formatFirebaseTimestamp(courseSummary.lastAccessed);
+                if (summary.lastAccessed) {
+                  const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
                   if (!lastAccessed || accessDate > lastAccessed) {
                     lastAccessed = accessDate;
                   }
@@ -369,7 +375,7 @@ export const DataProvider = ({ children }) => {
                 courseCount++;
               }
             } catch (err) {
-              console.error(`Error getting progress for student ${studentId} in course ${courseId}:`, err);
+              console.error(`Error getting progress for student ${studentId} in course ${course.courseId}:`, err);
             }
           }
           

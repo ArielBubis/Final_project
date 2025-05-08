@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Card as AntCard, Row, Col, Table, Spin, Empty, Alert, Select, Statistic, Avatar, Button, Input } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+import { Card as AntCard, Row, Col, Spin, Empty, Alert, Select, Button, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
+import StudentCard from './StudentCard';
 
 const { Option } = Select;
 
@@ -23,24 +23,39 @@ const IndividualStudentReport = ({ selectedStudent }) => {
   );
 };
 
-const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-
 const StudentsPage = () => {
   const { students, loading, error, fetchStudentsByTeacher } = useData();
   const { currentUser } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [studentDisplayCount, setStudentDisplayCount] = useState(10);
   const [teacherStudents, setTeacherStudents] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+
+  // Helper function to calculate grade based on score
+  const calculateGrade = (score) => {
+    if (score >= 90) return 'A';
+    if (score >= 80) return 'B';
+    if (score >= 70) return 'C';
+    if (score >= 60) return 'D';
+    return 'F';
+  };
 
   // Fetch students dynamically based on the logged-in teacher's email
   useEffect(() => {
     const fetchStudents = async () => {
       if (currentUser?.email) {
         const studentsData = await fetchStudentsByTeacher(currentUser.email);
-        setTeacherStudents(studentsData);
+        // Transform student data to match the required format
+        const formattedStudents = studentsData.map(student => ({
+          id: student.id || student.studentId,
+          name: `${student.firstName} ${student.lastName}`,
+          grade: calculateGrade(student.scores?.average || 0),
+          attendance: Math.round(student.attendance || 95), // Default to 95 if not available
+          lastActive: student.lastAccessed ? new Date(student.lastAccessed).toISOString() : new Date().toISOString(),
+          performance: Math.round(student.scores?.average || 0)
+        }));
+        setTeacherStudents(formattedStudents);
       }
     };
 
@@ -63,9 +78,8 @@ const StudentsPage = () => {
   // Filter students by search and course
   const filteredStudents = useMemo(() => {
     return teacherStudents.filter(student => {
-      const name = `${student.firstName} ${student.lastName}`.toLowerCase();
+      const name = student.name.toLowerCase();
       const matchesName = name.includes(searchTerm.toLowerCase());
-      // Only show students who are enrolled in the selected course (if not 'all')
       const matchesCourse = selectedCourse === 'all' || (student.courses || []).some(c => c.courseId === selectedCourse);
       return matchesName && matchesCourse;
     });
@@ -85,9 +99,8 @@ const StudentsPage = () => {
   };
 
   const handleViewStudent = (student) => {
-    // Temporarily save student details in session storage
     sessionStorage.setItem('selectedStudent', JSON.stringify(student));
-    navigate(`/students/${student.id || student.studentId}`); // Ensure correct navigation to Student.js
+    navigate(`/students/${student.id}`);
   };
 
   if (loading) {
@@ -112,7 +125,7 @@ const StudentsPage = () => {
             filterOption={(input, option) => {
               const student = teacherStudents.find(s => s.id === option.value);
               if (!student) return false;
-              const name = `${student.firstName} ${student.lastName}`.toLowerCase();
+              const name = student.name.toLowerCase();
               return name.includes(input.toLowerCase());
             }}
             optionFilterProp="children"
@@ -122,10 +135,10 @@ const StudentsPage = () => {
           >
             {teacherStudents
               .slice()
-              .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`))
+              .sort((a, b) => a.name.localeCompare(b.name))
               .map((student) => (
                 <Option key={student.id} value={student.id}>
-                  {`${student.firstName} ${student.lastName}`}
+                  {student.name}
                 </Option>
               ))}
           </Select>
@@ -152,38 +165,21 @@ const StudentsPage = () => {
           </Button>
         </Col>
       </Row>
-      <Row gutter={[16, 16]} className={styles.studentsList}>
+
+      <div className={styles.studentsList}>
         {filteredStudents.length > 0 ? (
-          filteredStudents.map((student) => (
-            <Col key={student.id || student.studentId} xs={24} sm={12} md={8} lg={6}>
-              <AntCard className={styles.studentCard}>
-                <div className={styles.studentCardContent}>
-                  <Avatar
-                    size={64}
-                    src={student.avatarUrl || student.profileImage || DEFAULT_AVATAR}
-                    icon={<UserOutlined />}
-                    style={{ marginBottom: 12 }}
-                  />
-                  <div className={styles.studentName}>{student.firstName} {student.lastName}</div>
-                  <div className={styles.studentEmail}>{student.email}</div>
-                  <div>Courses: {student.courseCount || (student.courses ? student.courses.length : 0)}</div>
-                  <div>Avg. Score: {student.averageScore ? Math.round(student.averageScore) : 'N/A'}%</div>
-                  <Button
-                    type="primary"
-                    size="small"
-                    className={styles.studentViewButton}
-                    onClick={() => handleViewStudent(student)}
-                  >
-                    View
-                  </Button>
-                </div>
-              </AntCard>
-            </Col>
-          ))
+          <div className={styles.studentGrid}>
+            {filteredStudents.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={student}
+              />
+            ))}
+          </div>
         ) : (
           <Empty description="No students found" />
         )}
-      </Row>
+      </div>
 
       <IndividualStudentReport selectedStudent={selectedStudent} />
     </div>

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./SideBar";
-import Dashboard from "./Dashboard";
+import Mainpage from "./Mainpage";
 import Login from "./login";
 import Reports from "./Reports/Reports";
 import AdminDashboard from "./Admin/AdminDashboard";
@@ -20,7 +20,7 @@ const RoleBasedRoute = ({ element, requiredRole }) => {
 
   // If user role doesn't match required role, redirect to dashboard
   if (requiredRole && userRole !== requiredRole) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/mainpage" replace />;
   }
 
   return element;
@@ -48,7 +48,7 @@ const AppContent = () => {
   const getDefaultRoute = () => {
     if (!currentUser) return "/login";
     if (userRole === "admin") return "/admin";
-    return "/dashboard";
+    return "/mainpage";
   };
 
   return (
@@ -62,7 +62,7 @@ const AppContent = () => {
           {currentUser ? (
             <>
               {/* Common routes */}
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/mainpage" element={<Mainpage />} />
               <Route path="/report" element={<Reports />} />
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
