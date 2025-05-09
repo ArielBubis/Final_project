@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./SideBar";
-import Dashboard from "./Dashboard";
+import Mainpage from "./Mainpage";
 import Login from "./login";
-import Reports from "./Reports/Reports";
+// import Reports from "./Reports/Reports"; // Removed Reports import
 import AdminDashboard from "./Admin/AdminDashboard";
 import TeacherManagement from "./Admin/TeacherManagement";
+import StudentsPage from "./Students/StudentsPage";
+import Student from "./Students/Student";
 import { LanguageProvider } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
@@ -18,7 +20,7 @@ const RoleBasedRoute = ({ element, requiredRole }) => {
 
   // If user role doesn't match required role, redirect to dashboard
   if (requiredRole && userRole !== requiredRole) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/mainpage" replace />;
   }
 
   return element;
@@ -46,7 +48,7 @@ const AppContent = () => {
   const getDefaultRoute = () => {
     if (!currentUser) return "/login";
     if (userRole === "admin") return "/admin";
-    return "/dashboard";
+    return "/mainpage";
   };
 
   return (
@@ -60,8 +62,10 @@ const AppContent = () => {
           {currentUser ? (
             <>
               {/* Common routes */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/report" element={<Reports />} />
+              <Route path="/mainpage" element={<Mainpage />} />
+              {/* Removed Reports route */}
+              <Route path="/students" element={<StudentsPage />} />
+              <Route path="/students/:id" element={<Student />} />
 
               {/* Admin-specific routes */}
               <Route
@@ -83,6 +87,8 @@ const AppContent = () => {
 
               {/* Redirects */}
               <Route path="/login" element={<Navigate to={getDefaultRoute()} replace />} />
+              {/* Redirect /report to mainpage */}
+              <Route path="/report" element={<Navigate to="/mainpage" replace />} />
               <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
               <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
             </>
@@ -102,7 +108,7 @@ const App = () => {
   return (
     <Router>
       <AppProvider>
-        <LanguageProvider> {/* <--- Wrap here */}
+        <LanguageProvider>
           <AppContent />
         </LanguageProvider>
       </AppProvider>

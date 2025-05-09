@@ -1,0 +1,123 @@
+/* Students.module.css */
+
+.studentsPageContainer {
+  padding: 20px;
+  background-color: #f9f9f9;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.filterControls {
+  margin-bottom: 20px;
+}
+
+.controlCard {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.studentsList {
+  flex: 1;
+  overflow: hidden;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.studentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: calc(3 * (300px + 1rem));
+  padding-right: 0.5rem;
+}
+
+.studentGrid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.studentGrid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.studentGrid::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.studentGrid::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.detailCard {
+  margin-top: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.resetButton {
+  width: 20%;
+  background-color: #a3a3a3;
+  border: none;
+  border-radius: 4px;
+  transition: transform 0.2s;
+}
+
+.resetButton:hover, .resetButton:focus {
+  background-color: #8d8d8d;
+  color: #fff;
+}
+
+.selectControl {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.studentCardContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.studentName {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.studentEmail {
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.studentViewButton {
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .studentsPageContainer {
+    padding: 10px;
+  }
+
+  .studentGrid {
+    grid-template-columns: 1fr;
+    max-height: calc(3 * (250px + 1rem));
+  }
+
+  .resetButton {
+    width: 100%;
+  }
+}

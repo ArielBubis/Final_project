@@ -19,6 +19,7 @@
         "react-router-dom": "^6.20.0",
         "react-scripts": "^5.0.1",
         "react-slick": "^0.29.0",
+        "react-window": "^1.8.11",
         "recharts": "^2.15.3",
         "slick-carousel": "^1.8.1",
         "svgo": "^2.8.0",

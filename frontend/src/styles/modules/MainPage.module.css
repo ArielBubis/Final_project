@@ -1,0 +1,197 @@
+.mainPage {
+    padding: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+    background-color: #f5f7fa;
+    min-height: calc(100vh - 64px); /* Adjust based on your header height */
+}
+
+.dashboardHeader {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.welcomeSection {
+    margin-bottom: 20px;
+}
+
+.welcomeSection h1 {
+    font-size: 2rem;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.lastUpdated {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    display: flex;
+    align-items: center;
+}
+
+.refreshButton {
+    margin-left: 10px;
+}
+
+.metricsContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.metricCard {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.metricCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dashboardContent {
+    margin-top: 24px;
+}
+
+.dashboardTabs {
+    background-color: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tabContent {
+    padding: 16px 0;
+}
+
+.mainSections {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+.section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.activityCard, .riskCard {
+    margin-bottom: 24px;
+}
+
+.activityTitle {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.activityTime {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+.riskCardTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e74c3c;
+}
+
+.riskStudentList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.riskStudentCard {
+    margin-bottom: 16px;
+}
+
+.riskStudentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.riskStudentHeader h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.riskScore {
+    font-size: 0.9rem;
+}
+
+.highRisk {
+    color: #e74c3c;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.mediumRisk {
+    color: #f39c12;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.lowRisk {
+    color: #27ae60;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.riskStudentStats {
+    margin-bottom: 16px;
+}
+
+.riskStat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.riskStat span:first-child {
+    font-weight: 500;
+    margin-right: 8px;
+    min-width: 100px;
+}
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+}
+
+.loadingContainer p {
+    margin-top: 16px;
+    color: #7f8c8d;
+}
+
+.errorContainer {
+    padding: 40px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .mainSections {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .welcomeSection h1 {
+        font-size: 2.5rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .metricsContainer {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}

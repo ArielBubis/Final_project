@@ -65,13 +65,6 @@ You are assisting with a React+JS project that uses Firestore as its database. Y
 - Use batch writes for related operations that should succeed or fail together
 - Structure queries to minimize reads and optimize performance
 
-### User Identification and Data Retrieval
-- User collections are stored by government ID, not by Firebase authentication UID
-- When a new auth user is created, find the original user from collections by their email address
-- Always use email as the lookup key for user data instead of auth UID when retrieving user information
-- Implement helper functions to abstract this lookup process for consistency across the application
-- Cache user reference data where appropriate to minimize redundant database calls
-
 ### Security
 - Never store sensitive information in client-side code
 - Implement proper Firestore security rules on the backend

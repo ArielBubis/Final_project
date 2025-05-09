@@ -1,0 +1,126 @@
+.studentCard {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.studentCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.studentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.studentName {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.grade {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    background: #f7f9fa;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: auto;
+    margin-bottom: 1rem;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.statLabel {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-bottom: 0.25rem;
+}
+
+.statValue {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.high {
+    color: #27ae60;
+}
+
+.medium {
+    color: #f39c12;
+}
+
+.low {
+    color: #e74c3c;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.lastActive {
+    font-size: 0.85rem;
+    color: #95a5a6;
+}
+
+.viewButton {
+    background-color: #1890ff;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.viewButton:hover {
+    background-color: #40a9ff;
+}
+
+@media (max-width: 768px) {
+    .studentCard {
+        padding: 0.75rem;
+    }
+
+    .studentName {
+        font-size: 1rem;
+    }
+
+    .statValue {
+        font-size: 1.1rem;
+    }
+
+    .footer {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
+    .viewButton {
+        width: 100%;
+    }
+} 
