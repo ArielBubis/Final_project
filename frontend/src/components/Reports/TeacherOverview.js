@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import { usePerformance } from '../../contexts/PerformanceContext';
 import { Card as AntCard, Row, Col, Table, Spin, Progress, Empty, Alert, Select, Tag, Badge, Tooltip as AntTooltip, Tabs, Statistic } from 'antd';
 import { 
   BarChart, 
@@ -35,10 +36,18 @@ const TeacherOverview = ({ isAdminView = false }) => {
   const { 
     fetchTeacherCourses, 
     fetchStudentsByTeacher, 
-    fetchCourseStats, 
+    fetchCourseStats,
+    fetchStudentAssignments,
+    fetchModuleProgress,
     loading: dataLoading, 
     error: dataError 
   } = useData();
+  const {
+    getTeacherAnalytics,
+    getStudentCoursePerformance,
+    loading: performanceLoading,
+    error: performanceError
+  } = usePerformance();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -52,14 +61,12 @@ const TeacherOverview = ({ isAdminView = false }) => {
   const [overviewData, setOverviewData] = useState({
     totalCourses: 0,
     totalStudents: 0,
-    activeStudents: 0,
     averageCompletion: 0,
     coursesData: [],
     recentActivity: [],
     studentPerformance: [],
     gradeDistribution: [],
     assignmentCompletionData: [],
-    studentEngagementData: [],
     courseComparisonData: [],
     timeSeriesData: [],
     atRiskStudents: [],
@@ -100,9 +107,8 @@ const TeacherOverview = ({ isAdminView = false }) => {
     };
   }, [COLORS]);
   
-  // Main effect to load dashboard data - updated to use DataContext
+  // Main effect to load dashboard data
   useEffect(() => {
-    // Only run this effect if we have a current user
     if (!currentUser?.email) return;
     
     let isMounted = true;
@@ -115,21 +121,17 @@ const TeacherOverview = ({ isAdminView = false }) => {
         let teacherId;
         
         if (isAdminView) {
-          // Admin view: fetch all data or data filtered by selected teacher
           if (selectedTeacher) {
             teacherId = selectedTeacher.id;
           } else {
-            // If no specific teacher is selected in admin view,
-            // we'll return early and just show basic admin stats
             setLoading(false);
             return;
           }
         } else {
-          // Teacher view: use current user's email
           teacherId = currentUser.email;
         }
-        
-        // Use DataContext to fetch teacher courses
+
+        // Fetch teacher courses
         const teacherCourses = await fetchTeacherCourses(teacherId);
         if (!teacherCourses || teacherCourses.length === 0) {
           if (isMounted) {
@@ -138,141 +140,135 @@ const TeacherOverview = ({ isAdminView = false }) => {
           }
           return;
         }
-        
-        // Use DataContext to fetch students by teacher
+
+        // Fetch students by teacher
         const studentsData = await fetchStudentsByTeacher(teacherId);
         
         // Fetch course statistics for each course
         const courseStatsPromises = teacherCourses.map(course => 
           fetchCourseStats(course.id || course.courseId));
         const coursesStats = await Promise.all(courseStatsPromises);
-        
-        // Create combined teacher analytics object from various data sources
-        const teacherAnalytics = {
-          totalCourses: teacherCourses.length,
-          totalStudents: studentsData.length,
-          activeStudents: studentsData.filter(student => student.lastAccessed).length,
-          averageCompletion: calculateAverage(studentsData.map(student => student.completion || 0)),
-          studentIds: studentsData.map(student => student.id),
-          coursesData: coursesStats.filter(Boolean) // Remove any null results
-        };
-        
+
+        // Get teacher analytics
+        const teacherAnalytics = await getTeacherAnalytics(teacherId);
+
         if (!isMounted) return;
-        
-        // Process students data with more details from what we fetched
-        const enhancedStudentsData = studentsData.map((student, index) => ({
-          ...student,
-          student: `${student.firstName} ${student.lastName}`,
-          score: student.scores?.average || Math.floor(Math.random() * 40) + 60,
-          engagement: Math.floor(Math.random() * 100) + 1,
-          submissionRate: Math.floor(Math.random() * 100) + 1,
-          expertiseRate: Math.floor(Math.random() * 100) + 1,
-          timeSpent: Math.floor(Math.random() * 500) + 50,
-          missingAssignments: Math.floor(Math.random() * 10),
-          daysSinceLastAccess: student.lastAccessed ? 
-            Math.floor((new Date() - new Date(student.lastAccessed)) / (1000 * 60 * 60 * 24)) : 
-            Math.floor(Math.random() * 30),
-          trend: Math.random() > 0.7 ? -1 : (Math.random() > 0.3 ? 0 : 1)
+
+        // Process students data with real data
+        const enhancedStudentsData = await Promise.all(studentsData.map(async (student) => {
+          // Get student's assignments across all courses
+          const assignments = await fetchStudentAssignments(student.id);
+          
+          // Calculate student metrics
+          const totalScore = assignments.reduce((sum, assignment) => 
+            sum + (assignment.score || 0), 0);
+          const avgScore = assignments.length > 0 ? totalScore / assignments.length : 0;
+          
+          const submittedAssignments = assignments.filter(a => a.submitted);
+          const submissionRate = assignments.length > 0 ? 
+            (submittedAssignments.length / assignments.length) * 100 : 0;
+          
+          const lateSubmissions = submittedAssignments.filter(a => {
+            if (!a.submissionDate || !a.dueDate) return false;
+            return new Date(a.submissionDate) > new Date(a.dueDate);
+          });
+          
+          const lastAccessed = student.lastAccessed || null;
+          const daysSinceLastAccess = lastAccessed ? 
+            Math.floor((new Date() - new Date(lastAccessed)) / (1000 * 60 * 60 * 24)) : 
+            null;
+
+          return {
+            ...student,
+            student: `${student.firstName} ${student.lastName}`,
+            score: avgScore,
+            submissionRate,
+            lateSubmissions: lateSubmissions.length,
+            timeSpent: assignments.reduce((sum, a) => sum + (a.totalTime || 0), 0),
+            missingAssignments: assignments.filter(a => !a.submitted).length,
+            daysSinceLastAccess,
+            trend: calculateTrend(assignments)
+          };
         }));
-        
+
         // Calculate risk status
         enhancedStudentsData.forEach(student => {
-          student.risk = student.missingAssignments > 3 || student.daysSinceLastAccess > 14 || student.trend < 0;
+          student.risk = student.missingAssignments > 3 || 
+                        (student.daysSinceLastAccess && student.daysSinceLastAccess > 14) || 
+                        student.trend < 0;
         });
-        
-        if (!isMounted) return;
-        
+
         // Format courses data for visualization
-        const coursesData = teacherAnalytics.coursesData.map(course => ({
+        const coursesData = coursesStats.map(course => ({
           name: course.courseName || 'Unnamed Course',
           courseId: course.courseId,
           students: course.studentCount || 0,
           completion: course.averageCompletion || 0,
           averageScore: course.averageScore || 0,
-          engagement: course.activeRatio7Days ? course.activeRatio7Days * 100 : 0,
           submissionRate: course.activeRatio30Days ? course.activeRatio30Days * 100 : 0
         }));
-        
+
         // Get at-risk students
-        const atRiskStudents = enhancedStudentsData.filter(s => s.risk)
+        const atRiskStudents = enhancedStudentsData
+          .filter(s => s.risk)
           .sort((a, b) => b.missingAssignments - a.missingAssignments);
-        
+
         // Generate grade distribution
         const gradeDistribution = generateGradeDistribution(enhancedStudentsData);
-        
-        // Generate time series data (mock data for demonstration)
-        const today = new Date();
-        const timeSeriesData = [];
-        
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(today);
-          date.setDate(today.getDate() - i * 7); // Weekly data points
-          
-          timeSeriesData.push({
-            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            averageScore: 65 + Math.floor(Math.random() * 20),
-            engagementLevel: 55 + Math.floor(Math.random() * 30)
-          });
-        }
-        
-        // Generate student engagement data
-        const studentEngagementData = [
-          { name: 'On Time', value: Math.floor(Math.random() * 60) + 40 },
-          { name: 'Late', value: Math.floor(Math.random() * 20) + 10 },
-          { name: 'Missing', value: Math.floor(Math.random() * 20) + 5 }
-        ];
-        
-        // Generate radar chart data for each student using our utility function
-        const individualStudentData = enhancedStudentsData.map(student => {
-          // Calculate class averages for comparison
-          const classAvgCompletion = calculateAverage(enhancedStudentsData.map(s => s.completion));
-          const classAvgScore = calculateAverage(enhancedStudentsData.map(s => s.score));
-          const classAvgSubmissionRate = calculateAverage(enhancedStudentsData.map(s => s.submissionRate));
-          const classAvgExpertiseRate = calculateAverage(enhancedStudentsData.map(s => s.expertiseRate));
-          const classAvgTimeSpent = calculateAverage(enhancedStudentsData.map(s => s.timeSpent));
-          
+
+        // Generate time series data from real data
+        const timeSeriesData = await generateTimeSeriesData(teacherCourses, enhancedStudentsData);
+
+        // Generate radar chart data for each student
+        const individualStudentData = await Promise.all(enhancedStudentsData.map(async student => {
+          const studentCourses = await Promise.all(
+            teacherCourses.map(async course => {
+              const coursePerformance = await getStudentCoursePerformance(student.id, course.id);
+              return {
+                courseId: course.id,
+                courseName: course.courseName,
+                performance: coursePerformance
+              };
+            })
+          );
+
           const radarData = generateRadarChartData(student, {
-            completion: classAvgCompletion,
-            score: classAvgScore,
-            submissionRate: classAvgSubmissionRate,
-            expertiseRate: classAvgExpertiseRate,
-            timeSpent: classAvgTimeSpent
+            completion: calculateAverage(studentCourses.map(c => c.performance?.completion || 0)),
+            score: calculateAverage(studentCourses.map(c => c.performance?.score || 0)),
+            submissionRate: calculateAverage(studentCourses.map(c => c.performance?.submissionRate || 0)),
+            expertiseRate: calculateAverage(studentCourses.map(c => c.performance?.expertiseRate || 0)),
+            timeSpent: calculateAverage(studentCourses.map(c => c.performance?.timeSpent || 0))
           });
-          
+
           return {
             id: student.id,
             studentId: student.studentId,
             name: student.student,
             radarData
           };
-        });
-        
-        // Generate mock student activity data (if needed)
-        const studentActivityData = generateStudentActivityData(enhancedStudentsData);
-        
-        // Set overview data with processed information
+        }));
+
+        // Generate student activity data
+        const studentActivityData = await generateStudentActivityData(enhancedStudentsData, teacherCourses);
+
         if (isMounted) {
           setAllStudents(enhancedStudentsData);
-          
           setOverviewData({
-            totalCourses: teacherAnalytics.totalCourses || 0,
-            totalStudents: teacherAnalytics.totalStudents || 0,
-            activeStudents: teacherAnalytics.activeStudents || 0,
-            averageCompletion: teacherAnalytics.averageCompletion || 0,
+            totalCourses: teacherCourses.length,
+            totalStudents: studentsData.length,
+            averageCompletion: calculateAverage(studentsData.map(s => s.completion || 0)),
             coursesData,
             recentActivity: [], // This would need real data
             studentPerformance: enhancedStudentsData.slice(0, studentDisplayCount),
             gradeDistribution,
             assignmentCompletionData: [], // This would need real data
-            studentEngagementData,
             courseComparisonData: coursesData,
             timeSeriesData,
             atRiskStudents,
             individualStudentData,
             studentActivityData
           });
-          
-          // Set the first student as selected by default if we have students
+
           if (enhancedStudentsData.length > 0 && !selectedStudent) {
             setSelectedStudent(enhancedStudentsData[0]);
           }
@@ -288,10 +284,9 @@ const TeacherOverview = ({ isAdminView = false }) => {
         }
       }
     };
-    
+
     loadDashboardData();
-    
-    // Cleanup function to prevent state updates after unmount
+
     return () => {
       isMounted = false;
     };
@@ -302,42 +297,134 @@ const TeacherOverview = ({ isAdminView = false }) => {
     fetchTeacherCourses,
     fetchStudentsByTeacher,
     fetchCourseStats,
+    fetchStudentAssignments,
+    getTeacherAnalytics,
+    getStudentCoursePerformance,
     studentDisplayCount,
     selectedStudent
   ]);
-  
-  // Helper function to generate mock student activity data
-  const generateStudentActivityData = useCallback((students) => {
+
+  // Helper function to calculate trend
+  const calculateTrend = (assignments) => {
+    if (!assignments.length) return 0;
+    
+    const sortedAssignments = [...assignments]
+      .filter(a => a.submitted && a.score !== null)
+      .sort((a, b) => new Date(a.submissionDate) - new Date(b.submissionDate));
+    
+    if (sortedAssignments.length < 2) return 0;
+    
+    const recentAssignments = sortedAssignments.slice(-3);
+    const scores = recentAssignments.map(a => a.score);
+    
+    // Calculate if scores are improving (1), declining (-1), or stable (0)
+    const trend = scores.reduce((acc, score, i) => {
+      if (i === 0) return acc;
+      return acc + (score > scores[i - 1] ? 1 : score < scores[i - 1] ? -1 : 0);
+    }, 0);
+    
+    return trend > 0 ? 1 : trend < 0 ? -1 : 0;
+  };
+
+  // Helper function to generate time series data
+  const generateTimeSeriesData = async (courses, students) => {
+    const timeSeriesData = [];
+    const today = new Date();
+    
+    // Get data for the last 7 weeks
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i * 7);
+      
+      // Calculate average score for this week
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - 7);
+      
+      const weekScores = students.flatMap(student => 
+        student.assignments?.filter(a => {
+          const submissionDate = new Date(a.submissionDate);
+          return submissionDate >= weekStart && submissionDate <= date;
+        }).map(a => a.score) || []
+      );
+      
+      const averageScore = weekScores.length > 0 ?
+        weekScores.reduce((sum, score) => sum + score, 0) / weekScores.length :
+        0;
+      
+      timeSeriesData.push({
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        averageScore: Math.round(averageScore)
+      });
+    }
+    
+    return timeSeriesData;
+  };
+
+  // Helper function to generate student activity data
+  const generateStudentActivityData = async (students, courses) => {
+    console.log('Generating student activity data for:', {
+      studentCount: students.length,
+      courseCount: courses.length
+    });
+
     const activityData = {};
     
-    students.forEach(student => {
+    await Promise.all(students.map(async student => {
+      console.log(`Processing student: ${student.id} (${student.firstName} ${student.lastName})`);
       const activities = [];
-      // Generate random access events
-      for (let i = 0; i < 20; i++) {
-        const randomDate = new Date();
-        randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 30));
-        randomDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+      
+      // Get assignments for each course
+      for (const course of courses) {
+        console.log(`Fetching assignments for course: ${course.courseName} (${course.id})`);
+        const assignments = await fetchStudentAssignments(student.id);
+        console.log(`Found ${assignments.length} total assignments for student`);
         
-        activities.push({
-          id: `activity-${i}-${student.id}`,
-          type: Math.random() > 0.5 ? 'access' : 'submission',
-          timestamp: randomDate,
-          duration: Math.floor(Math.random() * 60) + 5, // Minutes
-          intensity: Math.floor(Math.random() * 10) + 1, // 1-10 scale
-          course: `Course ${Math.floor(Math.random() * 5) + 1}`,
-          module: `Module ${Math.floor(Math.random() * 5) + 1}`
+        const courseAssignments = assignments.filter(a => a.courseId === course.id);
+        console.log(`Found ${courseAssignments.length} assignments for course ${course.courseName}`);
+        
+        // Add submission events with scores
+        courseAssignments.forEach(assignment => {
+          console.log('Processing assignment:', {
+            id: assignment.id,
+            title: assignment.title,
+            submitted: assignment.submitted,
+            score: assignment.score,
+            maxScore: assignment.maxScore,
+            submissionDate: assignment.submissionDate,
+            dueDate: assignment.dueDate
+          });
+
+          if (assignment.submitted) {
+            activities.push({
+              id: `submission-${assignment.id}`,
+              type: 'submission',
+              timestamp: new Date(assignment.submissionDate),
+              course: course.courseName,
+              module: assignment.moduleId,
+              title: assignment.title,
+              score: assignment.score,
+              maxScore: assignment.maxScore,
+              isScored: assignment.score !== null,
+              isLate: new Date(assignment.submissionDate) > new Date(assignment.dueDate)
+            });
+          }
         });
       }
       
       // Sort activities by timestamp
       activities.sort((a, b) => a.timestamp - b.timestamp);
+      console.log(`Total activities found for student ${student.id}: ${activities.length}`);
       
-      // Store in the map
       activityData[student.id] = activities;
+    }));
+    
+    console.log('Final activity data summary:', {
+      studentIds: Object.keys(activityData),
+      totalActivities: Object.values(activityData).reduce((sum, activities) => sum + activities.length, 0)
     });
     
     return activityData;
-  }, []);
+  };
   
   // Update student performance data when display count changes
   useEffect(() => {
@@ -438,32 +525,22 @@ const TeacherOverview = ({ isAdminView = false }) => {
           
           {/* Overview Section */}
           <Row gutter={[16, 16]} className={styles.overviewMetrics}>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <AntCard title="Active Courses" className={styles.metricCard}>
                 <h2>{overviewData.totalCourses}</h2>
               </AntCard>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <AntCard title="Total Students" className={styles.metricCard}>
                 <h2>{overviewData.totalStudents}</h2>
               </AntCard>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <AntCard title="Course Completion Rate" className={styles.metricCard}>
                 <Progress 
                   type="circle" 
                   percent={Math.round(overviewData.averageCompletion)} 
                   width={80}
-                />
-              </AntCard>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <AntCard title="Student Engagement" className={styles.metricCard}>
-                <Progress 
-                  type="circle" 
-                  percent={Math.round(overviewData.activeStudents / (overviewData.totalStudents || 1) * 100)} 
-                  width={80}
-                  strokeColor="#1890ff"
                 />
               </AntCard>
             </Col>
@@ -508,12 +585,6 @@ const TeacherOverview = ({ isAdminView = false }) => {
                         stroke="#8884d8" 
                         activeDot={{ r: 8 }}
                         name="Average Score"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="engagementLevel" 
-                        stroke="#82ca9d" 
-                        name="Engagement Level" 
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -644,7 +715,10 @@ const TeacherOverview = ({ isAdminView = false }) => {
                             display: 'flex',
                             margin: '10px 0',
                             borderLeft: '3px solid',
-                            borderLeftColor: activity.type === 'access' ? '#1890ff' : '#52c41a',
+                            borderLeftColor: activity.isScored ? 
+                              (activity.score >= 70 ? '#52c41a' : 
+                               activity.score >= 50 ? '#faad14' : '#ff4d4f') : 
+                              '#1890ff',
                             paddingLeft: '15px',
                             position: 'relative'
                           }}
@@ -655,7 +729,10 @@ const TeacherOverview = ({ isAdminView = false }) => {
                               width: '12px',
                               height: '12px',
                               borderRadius: '50%',
-                              background: activity.type === 'access' ? '#1890ff' : '#52c41a',
+                              background: activity.isScored ? 
+                                (activity.score >= 70 ? '#52c41a' : 
+                                 activity.score >= 50 ? '#faad14' : '#ff4d4f') : 
+                                '#1890ff',
                               position: 'absolute',
                               left: '-7px',
                               top: '5px'
@@ -664,51 +741,54 @@ const TeacherOverview = ({ isAdminView = false }) => {
                           <div className={styles.timelineContent} style={{ width: '100%' }}>
                             <div className={styles.timelineHeader} style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <strong>
-                                {activity.type === 'access' ? 'Accessed' : 'Submitted'}: {activity.module}
+                                {activity.title}
                               </strong>
                               <span>{activity.timestamp.toLocaleDateString()} {activity.timestamp.toLocaleTimeString()}</span>
                             </div>
                             <div className={styles.timelineDetails}>
                               <p>Course: {activity.course}</p>
-                              <p>Duration: {activity.duration} minutes</p>
-                              <div 
-                                className={styles.intensityBar}
-                                style={{
-                                  width: '100%',
-                                  height: '10px',
-                                  background: '#f0f2f5',
-                                  marginTop: '5px'
-                                }}
-                              >
-                                <div 
-                                  className={styles.intensityFill}
-                                  style={{
-                                    width: `${activity.intensity * 10}%`,
-                                    height: '100%',
-                                    background: `rgba(${activity.type === 'access' ? '24, 144, 255' : '82, 196, 26'}, ${activity.intensity / 10})`,
-                                  }}
-                                />
-                              </div>
-                              <div className={styles.intensityLabel} style={{ fontSize: '12px', marginTop: '2px' }}>
-                                Engagement Intensity: {activity.intensity}/10
-                              </div>
+                              <p>Module: {activity.module}</p>
+                              {activity.isScored ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span>Score: </span>
+                                  <Tag color={
+                                    activity.score >= 70 ? 'success' : 
+                                    activity.score >= 50 ? 'warning' : 'error'
+                                  }>
+                                    {activity.score}/{activity.maxScore}
+                                  </Tag>
+                                </div>
+                              ) : (
+                                <Tag color="processing">Pending Review</Tag>
+                              )}
+                              {activity.isLate && (
+                                <Tag color="error" style={{ marginLeft: '8px' }}>Late Submission</Tag>
+                              )}
                             </div>
                           </div>
                         </div>
                       ))}
                   </div>
                 ) : (
-                  <Empty description="No activity timeline data available" />
+                  <Empty description="No submission data available" />
                 )}
                 <div className={styles.timelineControls} style={{ marginTop: '16px' }}>
                   <div className={styles.timelineLegend} style={{ display: 'flex', gap: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1890ff' }}></div>
-                      <span>Access Events</span>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#52c41a' }}></div>
+                      <span>High Score (≥70%)</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#52c41a' }}></div>
-                      <span>Submission Events</span>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#faad14' }}></div>
+                      <span>Medium Score (50-69%)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff4d4f' }}></div>
+                      <span>Low Score (&lt;50%)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1890ff' }}></div>
+                      <span>Pending Review</span>
                     </div>
                   </div>
                 </div>
@@ -776,7 +856,6 @@ const TeacherOverview = ({ isAdminView = false }) => {
               <PolarRadiusAxis angle={30} domain={[0, 100]} />
               <Radar name="Average Score" dataKey="averageScore" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
               <Radar name="Completion Rate" dataKey="completion" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
-              <Radar name="Student Engagement" dataKey="engagement" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
               <Radar name="Submission Rate" dataKey="submissionRate" stroke="#ff7300" fill="#ff7300" fillOpacity={0.6} />
               <Legend />
               <Tooltip />
@@ -787,25 +866,19 @@ const TeacherOverview = ({ isAdminView = false }) => {
             <h3>Comparison Metrics</h3>
             <p className={styles.chartDescription}>This radar chart compares key performance indicators across all courses. Higher values indicate better performance in each category.</p>
             <Row gutter={[16, 16]}>
-              <Col xs={24} md={6}>
+              <Col xs={24} md={8}>
                 <div className={styles.legendItem}>
                   <div className={styles.legendColor} style={{ backgroundColor: '#8884d8' }}></div>
                   <span>Average Scores</span>
                 </div>
               </Col>
-              <Col xs={24} md={6}>
+              <Col xs={24} md={8}>
                 <div className={styles.legendItem}>
                   <div className={styles.legendColor} style={{ backgroundColor: '#82ca9d' }}></div>
                   <span>Completion Rates</span>
                 </div>
               </Col>
-              <Col xs={24} md={6}>
-                <div className={styles.legendItem}>
-                  <div className={styles.legendColor} style={{ backgroundColor: '#ffc658' }}></div>
-                  <span>Engagement Levels</span>
-                </div>
-              </Col>
-              <Col xs={24} md={6}>
+              <Col xs={24} md={8}>
                 <div className={styles.legendItem}>
                   <div className={styles.legendColor} style={{ backgroundColor: '#ff7300' }}></div>
                   <span>Submission Rates</span>

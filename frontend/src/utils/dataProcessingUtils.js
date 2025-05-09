@@ -1,6 +1,7 @@
 /**
  * Utility functions for processing and transforming data for visualization and analysis
  */
+import { calculateRiskAssessment } from './scoreCalculations';
 
 /**
  * Calculates the average value from an array of numbers
@@ -118,102 +119,6 @@ export const generateGradeDistribution = (studentsData) => {
 };
 
 /**
- * Calculates risk score for a student based on various factors
- * @param {Object} studentData - The student performance data
- * @returns {Object} - Risk assessment with score and factors
- */
-export const calculateRiskScore = (studentData) => {
-  if (!studentData) return { score: 0, factors: [] };
-  
-  let riskScore = 0;
-  const riskFactors = [];
-  
-  // Check average score
-  if (studentData.averageScore < 60) {
-    riskScore += 30;
-    riskFactors.push("Failing average score");
-  } else if (studentData.averageScore < 70) {
-    riskScore += 20;
-    riskFactors.push("Low average score");
-  }
-  
-  // Check completion rate
-  if (studentData.overallCompletion < 40) {
-    riskScore += 30;
-    riskFactors.push("Very low course completion");
-  } else if (studentData.overallCompletion < 60) {
-    riskScore += 15;
-    riskFactors.push("Below average course completion");
-  }
-  
-  // Check missing assignments
-  if (studentData.missingAssignments > 5) {
-    riskScore += 25;
-    riskFactors.push("Multiple missing assignments");
-  } else if (studentData.missingAssignments > 2) {
-    riskScore += 10;
-    riskFactors.push("Several missing assignments");
-  }
-  
-  // Check days since last access
-  const daysSinceLastAccess = studentData.daysSinceLastAccess || 0;
-  if (daysSinceLastAccess > 21) {
-    riskScore += 25;
-    riskFactors.push("No course access in over 3 weeks");
-  } else if (daysSinceLastAccess > 14) {
-    riskScore += 15;
-    riskFactors.push("No course access in over 2 weeks");
-  } else if (daysSinceLastAccess > 7) {
-    riskScore += 5;
-    riskFactors.push("No course access in over a week");
-  }
-  
-  // Check submission rate
-  if (studentData.submissionRate < 50) {
-    riskScore += 15;
-    riskFactors.push("Low assignment submission rate");
-  }
-  
-  // Generate risk level
-  let riskLevel = "Low";
-  if (riskScore >= 50) {
-    riskLevel = "High";
-  } else if (riskScore >= 25) {
-    riskLevel = "Medium";
-  }
-  
-  return {
-    score: riskScore,
-    level: riskLevel,
-    factors: riskFactors
-  };
-};
-
-/**
- * Creates a performance summary object for a student
- * @param {Object} studentData - The student performance data
- * @returns {Object} - Performance summary with key metrics
- */
-export const createPerformanceSummary = (studentData) => {
-  if (!studentData) return null;
-  
-  const risk = calculateRiskScore(studentData);
-  
-  return {
-    id: studentData.id || studentData.studentId,
-    name: `${studentData.firstName} ${studentData.lastName}`,
-    averageScore: studentData.averageScore || 0,
-    completionRate: studentData.overallCompletion || 0,
-    submissionRate: studentData.submissionRate || 0,
-    missingAssignments: studentData.missingAssignments || 0,
-    riskScore: risk.score,
-    riskLevel: risk.level,
-    riskFactors: risk.factors,
-    lastAccessed: studentData.lastAccessed
-  };
-};
-
-/**
  * Processes raw time series data for visualization
  * @param {Array} timeSeriesData - Raw time series data
  * @param {string} metricKey - The metric key to extract
@@ -234,4 +139,28 @@ export const processTimeSeriesData = (timeSeriesData, metricKey, timeKey = 'date
     date: item[timeKey],
     value: item[metricKey] || 0
   }));
+};
+
+/**
+ * Creates a performance summary object for a student
+ * @param {Object} studentData - The student performance data
+ * @returns {Object} - Performance summary with key metrics
+ */
+export const createPerformanceSummary = (studentData) => {
+  if (!studentData) return null;
+  
+  const risk = calculateRiskAssessment(studentData, true);
+  
+  return {
+    id: studentData.id || studentData.studentId,
+    name: `${studentData.firstName} ${studentData.lastName}`,
+    averageScore: studentData.averageScore || 0,
+    completionRate: studentData.overallCompletion || 0,
+    submissionRate: studentData.submissionRate || 0,
+    missingAssignments: studentData.missingAssignments || 0,
+    riskScore: risk.score,
+    riskLevel: risk.level,
+    riskFactors: risk.factors,
+    lastAccessed: studentData.lastAccessed
+  };
 };

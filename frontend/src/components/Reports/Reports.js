@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs } from 'antd';
 import TeacherOverview from './TeacherOverview';
+import AssignmentAnalytics from './AssignmentAnalytics';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from '../../styles/modules/Reports.module.css';
 
@@ -15,6 +16,11 @@ const Reports = () => {
       label: 'Overview',
       children: <TeacherOverview isAdminView={isAdmin} />
     },
+    {
+      key: 'assignments',
+      label: 'Assignment Analytics',
+      children: <AssignmentAnalytics />
+    }
   ];
 
   const handleTabChange = (key) => {

@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import styles from "../styles/modules/Sidebar.module.css";
-import classNames from "classnames";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import Button from "../components/Button";
@@ -12,11 +11,9 @@ import Button from "../components/Button";
 export const menuItems = {
     teacher: [
         { nameKey: "Main page", path: "/mainpage" },
-        { nameKey: "Report", path: "/report" },
-        { nameKey: "Anomaly", path: "/anomaly" },
+        // Report path removed
         { nameKey: "Courses", path: "/courses" },
-        { nameKey: "Students", path: "/students" },
-        { nameKey: "Performance", path: "/performance" }
+        { nameKey: "Students", path: "/students" }
     ],
     admin: [
         { nameKey: "Admin Dashboard", path: "/admin" },
@@ -35,7 +32,6 @@ const Sidebar = React.memo(({ userRole }) => {
     const [teacherName, setTeacherName] = useState("");
     const { language, toggleLanguage, t } = useLanguage();
 
-    // Effect to fetch teacher data with proper cleanup and caching
     useEffect(() => {
         if (!currentUser?.uid) return;
 
@@ -49,7 +45,6 @@ const Sidebar = React.memo(({ userRole }) => {
 
         const fetchTeacherData = async () => {
             try {
-                // Batch fetch user and teacher data in parallel for efficiency
                 const [userDoc, teacherDoc] = await Promise.all([
                     getDoc(doc(db, "users", currentUser.uid)),
                     getDoc(doc(db, "teachers", currentUser.uid))
@@ -57,28 +52,18 @@ const Sidebar = React.memo(({ userRole }) => {
 
                 if (!isMounted) return;
 
-                // First try to get name from user document
-                if (userDoc.exists() && userDoc.data().firstName && userDoc.data().lastName) {
-                    const userData = userDoc.data();
-                    const name = `${userData.firstName} ${userData.lastName}`;
-                    setTeacherName(name);
-                    teacherNameCache.set(currentUser.uid, name);
-                    return;
-                }
+                // Try to get name from user document first, then teacher document
+                const userData = userDoc.exists() ? userDoc.data() : null;
+                const teacherData = teacherDoc.exists() ? teacherDoc.data() : null;
 
-                // Then try teacher document
-                if (teacherDoc.exists() && teacherDoc.data().firstName && teacherDoc.data().lastName) {
-                    const teacherData = teacherDoc.data();
-                    const name = `${teacherData.firstName} ${teacherData.lastName}`;
-                    setTeacherName(name);
-                    teacherNameCache.set(currentUser.uid, name);
-                    return;
-                }
+                const name = userData?.firstName && userData?.lastName
+                    ? `${userData.firstName} ${userData.lastName}`
+                    : teacherData?.firstName && teacherData?.lastName
+                        ? `${teacherData.firstName} ${teacherData.lastName}`
+                        : currentUser.displayName || currentUser.email?.split('@')[0] || 'Teacher';
 
-                // Fallback
-                const fallbackName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Teacher';
-                setTeacherName(fallbackName);
-                teacherNameCache.set(currentUser.uid, fallbackName);
+                setTeacherName(name);
+                teacherNameCache.set(currentUser.uid, name);
             } catch (error) {
                 console.error("Error fetching teacher data:", error);
                 if (isMounted) {
@@ -90,14 +75,9 @@ const Sidebar = React.memo(({ userRole }) => {
         };
 
         fetchTeacherData();
-
-        // Cleanup function
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
     }, [currentUser]);
 
-    // Memoize logout handler
     const handleLogout = async () => {
         try {
             await logout();
@@ -107,10 +87,7 @@ const Sidebar = React.memo(({ userRole }) => {
         }
     };
 
-    // Memoize the menu items based on user role
-    const roleBasedMenu = useMemo(() => {
-        return menuItems[userRole] || menuItems.teacher;
-    }, [userRole]);
+    const roleBasedMenu = useMemo(() => menuItems[userRole] || menuItems.teacher, [userRole]);
 
     return (
         <div className={styles.sidebar}>
@@ -122,7 +99,6 @@ const Sidebar = React.memo(({ userRole }) => {
                 className={styles.languageButton}
             />
 
-            {/* Welcome message with teacher's name from Firestore */}
             <div className={styles.welcomeMessage}>
                 {teacherName || t("teacher")}
             </div>
@@ -131,10 +107,7 @@ const Sidebar = React.memo(({ userRole }) => {
                 <ul>
                     {roleBasedMenu.map((item) => (
                         <li key={item.path}>
-                            <Link
-                                to={item.path}
-                                className={styles.navLink}
-                            >
+                            <Link to={item.path} className={styles.navLink}>
                                 {t("menu", item.nameKey.toLowerCase())}
                             </Link>
                         </li>

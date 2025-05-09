@@ -10,7 +10,6 @@ const StudentCard = ({ student }) => {
         id,
         name,
         grade,
-        attendance,
         lastActive,
         performance
     } = student;
@@ -42,12 +41,6 @@ const StudentCard = ({ student }) => {
             </div>
             <div className={styles.stats}>
                 <div className={styles.stat}>
-                    <span className={styles.statLabel}>Attendance</span>
-                    <span className={`${styles.statValue} ${getPerformanceColor(attendance)}`}>
-                        {Math.round(attendance)}%
-                    </span>
-                </div>
-                <div className={styles.stat}>
                     <span className={styles.statLabel}>Performance</span>
                     <span className={`${styles.statValue} ${getPerformanceColor(performance)}`}>
                         {Math.round(performance)}%
@@ -76,7 +69,6 @@ StudentCard.propTypes = {
         id: PropTypes.string.isRequired,
         name: PropTypes.string.isRequired,
         grade: PropTypes.string.isRequired,
-        attendance: PropTypes.number.isRequired,
         lastActive: PropTypes.string.isRequired,
         performance: PropTypes.number.isRequired
     }).isRequired

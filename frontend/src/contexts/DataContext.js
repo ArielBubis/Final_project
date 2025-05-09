@@ -570,17 +570,43 @@ export const DataProvider = ({ children }) => {
             const assignmentId = assignment.id || assignment.assignmentId;
             const progress = progressMap.get(assignmentId);
             
+            // Determine assignment status
+            let status = 'pending';
+            const now = new Date();
+            const dueDate = formatFirebaseTimestamp(assignment.dueDate);
+            const assignDate = formatFirebaseTimestamp(assignment.assignDate);
+            
+            if (progress?.submittedAt) {
+              status = 'completed';
+            } else if (dueDate && dueDate < now) {
+              status = 'overdue';
+            } else if (assignDate && assignDate > now) {
+              status = 'future';
+            }
+            
+            // Check if submission was late
+            const isLate = progress?.submittedAt && dueDate &&
+              formatFirebaseTimestamp(progress.submittedAt) > dueDate;
+            
             assignments.push({
               id: assignmentId,
               title: assignment.title,
+              description: assignment.description || '',
               courseId: courseId,
               courseName: course?.courseName || 'Unknown Course',
               dueDate: assignment.dueDate,
+              assignDate: assignment.assignDate,
+              assignmentType: assignment.assignmentType || 'Assignment',
+              status: progress?.status || status,
               submitted: progress?.submittedAt ? true : false,
               submissionDate: progress?.submittedAt || null,
               score: progress?.totalScore || null,
               maxScore: assignment.maxScore || 100,
-              moduleId: assignment.moduleId || null
+              weight: assignment.weight || 1,
+              isLate: progress?.isLate || isLate || false,
+              timeSpent: progress?.totalTime || 0,
+              moduleId: assignment.moduleId || null,
+              notes: progress?.notes || ''
             });
           }
         }

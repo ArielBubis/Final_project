@@ -408,7 +408,7 @@ async function importCsvToFirebase(csvFolder) {
             overallScore: parseFloat(enrollment.finalScore) || 0,
             lastAccessed: formatDate(enrollment.updatedAt),
             totalTimeSpentMinutes: parseInt(enrollment.totalTimeSpentMinutes) || 0,
-            trend: enrollment.trend || '',
+            // trend: enrollment.trend || '',
             progressMetrics: progressMetrics
           },
           modules: {},

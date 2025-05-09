@@ -51,7 +51,6 @@ const StudentsPage = () => {
           id: student.id || student.studentId,
           name: `${student.firstName} ${student.lastName}`,
           grade: calculateGrade(student.scores?.average || 0),
-          attendance: Math.round(student.attendance || 95), // Default to 95 if not available
           lastActive: student.lastAccessed ? new Date(student.lastAccessed).toISOString() : new Date().toISOString(),
           performance: Math.round(student.scores?.average || 0)
         }));

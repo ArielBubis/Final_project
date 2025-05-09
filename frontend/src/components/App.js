@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "r
 import Sidebar from "./SideBar";
 import Mainpage from "./Mainpage";
 import Login from "./login";
-import Reports from "./Reports/Reports";
+// import Reports from "./Reports/Reports"; // Removed Reports import
 import AdminDashboard from "./Admin/AdminDashboard";
 import TeacherManagement from "./Admin/TeacherManagement";
 import StudentsPage from "./Students/StudentsPage";
@@ -63,7 +63,7 @@ const AppContent = () => {
             <>
               {/* Common routes */}
               <Route path="/mainpage" element={<Mainpage />} />
-              <Route path="/report" element={<Reports />} />
+              {/* Removed Reports route */}
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
 
@@ -87,6 +87,8 @@ const AppContent = () => {
 
               {/* Redirects */}
               <Route path="/login" element={<Navigate to={getDefaultRoute()} replace />} />
+              {/* Redirect /report to mainpage */}
+              <Route path="/report" element={<Navigate to="/mainpage" replace />} />
               <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
               <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
             </>

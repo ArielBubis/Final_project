@@ -22,7 +22,6 @@ StudentList.propTypes = {
             id: PropTypes.string.isRequired,
             name: PropTypes.string.isRequired,
             grade: PropTypes.string.isRequired,
-            attendance: PropTypes.number.isRequired,
             lastActive: PropTypes.string.isRequired,
             performance: PropTypes.number.isRequired
         })

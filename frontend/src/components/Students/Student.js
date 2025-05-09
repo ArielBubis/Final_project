@@ -71,13 +71,6 @@ const Student = () => {
         console.log("Enrollments data:", enrollments);
         setDebugInfo(prev => ({ ...prev, enrollments }));
 
-        // Get student progress data
-        console.log("Fetching student progress data...");
-        const studentProgressDoc = await getDoc(doc(db, 'studentProgress', id));
-        const progressData = studentProgressDoc.exists() ? studentProgressDoc.data() : {};
-        console.log("Student progress data:", progressData);
-        setDebugInfo(prev => ({ ...prev, progressData }));
-
         // Get detailed course data for each enrollment
         console.log("Fetching detailed course data...");
         const coursesData = await Promise.all(
@@ -86,41 +79,60 @@ const Student = () => {
             const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
             const courseData = courseDoc.exists() ? courseDoc.data() : {};
             console.log(`Course data for ${enrollment.courseId}:`, courseData);
-            
-            // Get course progress
-            const courseProgress = progressData.courses?.[enrollment.courseId] || {};
+
+            // Get course progress from the correct path
+            const courseProgressPath = `studentProgress/${id}/courses/${enrollment.courseId}`;
+            console.log(`Fetching course progress from: ${courseProgressPath}`);
+            const courseProgressDoc = await getDoc(doc(db, courseProgressPath));
+            const courseProgress = courseProgressDoc.exists() ? courseProgressDoc.data() : {};
             const courseSummary = courseProgress.summary || {};
             console.log(`Course progress for ${enrollment.courseId}:`, courseProgress);
-            
-            // Get module progress
-            const modulesProgress = courseProgress.modules || {};
+
+            // Get modules for this course
             console.log(`Fetching modules for course ${enrollment.courseId}...`);
+            const modulesRef = collection(db, `courses/${enrollment.courseId}/modules`);
+            const modulesSnapshot = await getDocs(modulesRef);
+            const modules = modulesSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+
+            // Get module progress for each module
             const modulesData = await Promise.all(
-              Object.entries(modulesProgress).map(async ([moduleId, moduleProgress]) => {
-                console.log(`Fetching module ${moduleId} data...`);
-                const moduleDoc = await getDoc(doc(db, 'courses', enrollment.courseId, 'modules', moduleId));
-                const moduleData = moduleDoc.exists() ? moduleDoc.data() : {};
-                console.log(`Module ${moduleId} data:`, moduleData);
+              modules.map(async (module) => {
+                const moduleProgressPath = `studentProgress/${id}/courses/${enrollment.courseId}/modules/${module.id}`;
+                console.log(`Fetching module progress from: ${moduleProgressPath}`);
+                const moduleProgressDoc = await getDoc(doc(db, moduleProgressPath));
+                const moduleProgress = moduleProgressDoc.exists() ? moduleProgressDoc.data() : {};
+                console.log(`Module progress for ${module.id}:`, moduleProgress);
+
                 return {
-                  id: moduleId,
-                  ...moduleData,
+                  ...module,
                   progress: moduleProgress
                 };
               })
             );
 
-            // Get assignment progress
-            const assignmentsProgress = courseProgress.assignments || {};
+            // Get assignments for this course
             console.log(`Fetching assignments for course ${enrollment.courseId}...`);
+            const assignmentsRef = collection(db, `courses/${enrollment.courseId}/assignments`);
+            const assignmentsSnapshot = await getDocs(assignmentsRef);
+            const assignments = assignmentsSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+
+            // Get assignment progress for each assignment
             const assignmentsData = await Promise.all(
-              Object.entries(assignmentsProgress).map(async ([assignmentId, assignmentProgress]) => {
-                console.log(`Fetching assignment ${assignmentId} data...`);
-                const assignmentDoc = await getDoc(doc(db, 'courses', enrollment.courseId, 'assignments', assignmentId));
-                const assignmentData = assignmentDoc.exists() ? assignmentDoc.data() : {};
-                console.log(`Assignment ${assignmentId} data:`, assignmentData);
+              assignments.map(async (assignment) => {
+                const assignmentProgressPath = `studentProgress/${id}/courses/${enrollment.courseId}/assignments/${assignment.id}`;
+                console.log(`Fetching assignment progress from: ${assignmentProgressPath}`);
+                const assignmentProgressDoc = await getDoc(doc(db, assignmentProgressPath));
+                const assignmentProgress = assignmentProgressDoc.exists() ? assignmentProgressDoc.data() : {};
+                console.log(`Assignment progress for ${assignment.id}:`, assignmentProgress);
+
                 return {
-                  id: assignmentId,
-                  ...assignmentData,
+                  ...assignment,
                   progress: assignmentProgress
                 };
               })
@@ -191,7 +203,6 @@ const Student = () => {
         };
 
         console.log("Final enriched student data:", enrichedStudentData);
-        console.log("Student Data:", studentData);
         setStudent(enrichedStudentData);
       } catch (err) {
         console.error("Error in loadStudentData:", err);
