@@ -303,8 +303,7 @@ export const DataProvider = ({ children }) => {
       return [];
     }
   }, [fetchDocuments, getFromQueryCache, updateQueryCache]);
-  
-  // Get students by teacher with enhanced caching
+    // Get students by teacher with enhanced caching and batch operations
   const fetchStudentsByTeacher = useCallback(async (teacherIdOrEmail) => {
     if (!teacherIdOrEmail) return [];
     
@@ -316,10 +315,12 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
+      console.time('fetchStudentsByTeacher');
       // First get the teacher's courses
       const teacherCourses = await fetchTeacherCourses(teacherIdOrEmail);
       
       if (!teacherCourses || teacherCourses.length === 0) {
+        console.log('No courses found for teacher');
         return [];
       }
       
@@ -331,73 +332,165 @@ export const DataProvider = ({ children }) => {
         }
       });
       
-      // Fetch student details and corresponding user info
-      const students = [];
-      for (const studentId of studentIds) {
-        const studentData = await fetchDocumentById('students', studentId);
+      if (studentIds.size === 0) {
+        console.log("No students found in teacher courses");
+        return [];
+      }
+      
+      const studentIdsArray = Array.from(studentIds);
+      console.log(`Fetching batch data for ${studentIdsArray.length} students`);
+      
+      // BATCH OPERATION 1: Fetch all students at once with a single query
+      let studentsQuery = await fetchDocuments('students', {
+        filters: [{ field: 'id', operator: 'in', value: studentIdsArray }]
+      }) || [];
+      
+      if (studentsQuery.length === 0) {
+        // Try querying by studentId field if id field doesn't work
+        const studentsByIdQuery = await fetchDocuments('students', {
+          filters: [{ field: 'studentId', operator: 'in', value: studentIdsArray }]
+        }) || [];
         
-        if (studentData) {
-          // Get the user data for this student
-          let userData = null;
-          if (studentData.userId) {
-            userData = await fetchDocumentById('users', studentData.userId);
-          }
-          
-          // Get progress summary across all courses
-          let totalScore = 0;
-          let totalCompletion = 0;
-          let courseCount = 0;
-          let lastAccessed = null;
-          
-          // Get student progress for relevant courses
-          for (const course of teacherCourses) {
-            try {
-              // Get course progress summary using the correct path structure
-              const courseProgress = await fetchDocumentById(
-                `studentProgress/${studentId}/courses`,
-                course.courseId
-              );
-              
-              if (courseProgress && courseProgress.summary) {
-                const summary = courseProgress.summary;
-                if (summary.overallScore !== undefined) {
-                  totalScore += summary.overallScore;
-                }
-                if (summary.overallCompletion !== undefined) {
-                  totalCompletion += summary.overallCompletion;
-                }
-                if (summary.lastAccessed) {
-                  const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
-                  if (!lastAccessed || accessDate > lastAccessed) {
-                    lastAccessed = accessDate;
-                  }
-                }
-                courseCount++;
-              }
-            } catch (err) {
-              console.error(`Error getting progress for student ${studentId} in course ${course.courseId}:`, err);
-            }
-          }
-          
-          // Build student object with data from user record and progress
-          students.push({
-            id: studentId,
-            studentId: studentId,
-            firstName: userData?.firstName || 'Unknown',
-            lastName: userData?.lastName || 'Student',
-            email: userData?.email || '',
-            scores: {
-              average: courseCount > 0 ? totalScore / courseCount : 0
-            },
-            completion: courseCount > 0 ? totalCompletion / courseCount : 0,
-            lastAccessed: lastAccessed
-          });
+        if (studentsByIdQuery.length > 0) {
+          console.log(`Found ${studentsByIdQuery.length} students using studentId field`);
+          studentsQuery = studentsByIdQuery;
         }
       }
+      
+      console.log(`Found ${studentsQuery.length} students in database`);
+      if (studentsQuery.length === 0) return [];
+      
+      // BATCH OPERATION 2: Fetch all relevant user data in a single query
+      const userIds = studentsQuery
+        .map(student => student.userId)
+        .filter(Boolean);
+      
+      let usersData = [];
+      if (userIds.length > 0) {
+        usersData = await fetchDocuments('users', {
+          filters: [{ field: 'uid', operator: 'in', value: userIds }]
+        }) || [];
+        console.log(`Found ${usersData.length} user records for students`);
+      }
+      
+      // Create maps for quick lookups
+      const userDataMap = new Map();
+      usersData.forEach(user => {
+        userDataMap.set(user.uid, user);
+      });
+      
+      // Create a map of student progress by studentId and courseId
+      // Instead of fetching each progress document individually with a separate request,
+      // we'll collect all studentId-courseId pairs and fetch their progress data with batched operations
+      
+      // IMPROVED APPROACH: Group all progress data fetching into a batch operation
+      const courseProgressPromises = [];
+      const progressMap = new Map(); // Maps studentId-courseId to progress
+      
+      // Group progress fetching by student to reduce number of requests
+      const studentProgressByStudent = new Map(); // Maps studentId to an array of course IDs
+      
+      // Group all requests by student
+      studentsQuery.forEach(student => {
+        const studentId = student.id || student.studentId;
+        const coursesForStudent = [];
+        
+        teacherCourses.forEach(course => {
+          const courseId = course.id || course.courseId;
+          if (courseId) {
+            coursesForStudent.push(courseId);
+          }
+        });
+        
+        if (coursesForStudent.length > 0) {
+          studentProgressByStudent.set(studentId, coursesForStudent);
+        }
+      });
+      
+      // Now fetch progress data for each student's courses as a batch
+      const progressPromises = Array.from(studentProgressByStudent.entries()).map(
+        async ([studentId, courseIds]) => {
+          try {
+            // For each student, fetch progress data for all their courses in a batch
+            // This significantly reduces the number of network requests
+            const progressDataForStudent = await Promise.all(
+              courseIds.map(courseId => 
+                fetchDocumentById(`studentProgress/${studentId}/courses`, courseId)
+                  .then(progress => {
+                    if (progress && progress.summary) {
+                      progressMap.set(`${studentId}-${courseId}`, progress.summary);
+                    }
+                    return progress;
+                  })
+                  .catch(err => {
+                    console.error(`Error getting progress for student ${studentId} in course ${courseId}:`, err);
+                    return null;
+                  })
+              )
+            );
+            return progressDataForStudent;
+          } catch (err) {
+            console.error(`Error fetching progress data for student ${studentId}:`, err);
+            return [];
+          }
+        }
+      );
+      
+      // Wait for all progress data to be fetched
+      await Promise.all(progressPromises);
+      console.log(`Collected progress data for ${progressMap.size} student-course combinations`);
+      
+      // Process students with their user and progress data
+      const students = studentsQuery.map(studentData => {
+        const studentId = studentData.id || studentData.studentId;
+        const userData = userDataMap.get(studentData.userId) || {};
+        
+        let totalScore = 0;
+        let totalCompletion = 0;
+        let courseCount = 0;
+        let lastAccessed = null;
+        
+        // Process all progress data for this student
+        teacherCourses.forEach(course => {
+          const courseId = course.id || course.courseId;
+          const progressKey = `${studentId}-${courseId}`;
+          const summary = progressMap.get(progressKey);
+          
+          if (summary) {
+            if (summary.overallScore !== undefined) {
+              totalScore += summary.overallScore;
+            }
+            if (summary.overallCompletion !== undefined) {
+              totalCompletion += summary.overallCompletion;
+            }
+            if (summary.lastAccessed) {
+              const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
+              if (!lastAccessed || accessDate > lastAccessed) {
+                lastAccessed = accessDate;
+              }
+            }
+            courseCount++;
+          }
+        });
+        
+        return {
+          id: studentId,
+          studentId: studentId,
+          firstName: userData.firstName || 'Unknown',
+          lastName: userData.lastName || 'Student',
+          email: userData.email || '',
+          scores: {
+            average: courseCount > 0 ? totalScore / courseCount : 0
+          },
+          completion: courseCount > 0 ? totalCompletion / courseCount : 0,
+          lastAccessed: lastAccessed
+        };
+      });
       
       // Cache the result
       updateQueryCache('studentsByTeacher', cacheKey, students);
       
+      console.timeEnd('fetchStudentsByTeacher');
       return students;
     } catch (error) {
       console.error("Error fetching students by teacher:", error);

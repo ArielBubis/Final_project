@@ -35,10 +35,71 @@ export const normalizeValue = (value, min, max) => {
 export const generateRadarChartData = (studentData, classAverage = null) => {
   if (!studentData) return [];
   
+  // Log safely with defensive checks - no need to use logDebug to avoid circular imports
+  console.log('generateRadarChartData received:', 
+    studentData ? {
+      id: studentData.id,
+      hasData: true,
+      hasCourses: Array.isArray(studentData.courses) && studentData.courses.length > 0
+    } : 'No student data');
+  
+  // Calculate submission rate from courses if not directly available
+  let submissionRate = studentData.submissionRate;
+  if (submissionRate === undefined && Array.isArray(studentData.courses)) {
+    let totalAssignments = 0;
+    let submittedAssignments = 0;
+    
+    studentData.courses.forEach(course => {
+      if (Array.isArray(course?.assignments)) {
+        totalAssignments += course.assignments.length;
+        submittedAssignments += course.assignments.filter(a => 
+          a?.progress?.submittedAt).length;
+      }
+    });
+    
+    submissionRate = totalAssignments > 0 ? 
+      (submittedAssignments / totalAssignments) * 100 : 0;
+  }
+  
+  // Calculate expertise rate if not directly available
+  let expertiseRate = studentData.expertiseRate;
+  if (expertiseRate === undefined && Array.isArray(studentData.courses)) {
+    let totalModules = 0;
+    let expertiseSum = 0;
+    
+    studentData.courses.forEach(course => {
+      if (Array.isArray(course?.modules)) {
+        totalModules += course.modules.length;
+        course.modules.forEach(module => {
+          expertiseSum += (module?.progress?.totalExpertiseRate || 0);
+        });
+      }
+    });
+    
+    expertiseRate = totalModules > 0 ? 
+      expertiseSum / totalModules : 0;
+  }
+  
+  // Calculate average time spent across courses
+  let timeSpent = studentData.timeSpent;
+  if (timeSpent === undefined && Array.isArray(studentData.courses)) {
+    let totalTime = 0;
+    
+    studentData.courses.forEach(course => {
+      if (Array.isArray(course?.assignments)) {
+        course.assignments.forEach(assignment => {
+          totalTime += (assignment?.progress?.totalTime || 0);
+        });
+      }
+    });
+    
+    timeSpent = totalTime;
+  }
+  
   const metrics = [
     {
       metric: 'Completion Rate',
-      value: studentData.completion || studentData.overallCompletion || 0,
+      value: studentData.completion || studentData.completionRate || studentData.overallCompletion || 0,
       classAverage: classAverage?.completion || 0
     },
     {
@@ -48,17 +109,17 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
     },
     {
       metric: 'Submission Rate',
-      value: studentData.submissionRate || 0,
+      value: submissionRate || 0,
       classAverage: classAverage?.submissionRate || 0
     },
     {
       metric: 'Expertise Rate',
-      value: studentData.expertiseRate || 0,
+      value: expertiseRate || 0,
       classAverage: classAverage?.expertiseRate || 0
     },
     {
       metric: 'Time Spent',
-      value: normalizeTimeSpent(studentData.timeSpent || 0),
+      value: normalizeTimeSpent(timeSpent || 0),
       classAverage: normalizeTimeSpent(classAverage?.timeSpent || 0)
     }
   ];

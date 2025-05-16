@@ -142,7 +142,15 @@ export const fetchDocuments = async (collectionPath, options = {}) => {
       
       options.filters.forEach(filter => {
         if (filter.field && filter.operator && filter.value !== undefined) {
-          queryConstraints.push(where(filter.field, filter.operator, filter.value));
+          // Special handling for 'in' operator which requires an array of values
+          if (filter.operator === 'in' && Array.isArray(filter.value)) {
+            // Skip empty arrays to avoid Firestore errors
+            if (filter.value.length > 0) {
+              queryConstraints.push(where(filter.field, filter.operator, filter.value));
+            }
+          } else {
+            queryConstraints.push(where(filter.field, filter.operator, filter.value));
+          }
         }
       });
       
@@ -230,14 +238,21 @@ export const fetchSubcollection = async (collectionPath, documentId, subcollecti
     const subcollectionRef = collection(db, collectionPath, documentId, subcollectionPath);
     
     let queryRef = subcollectionRef;
-    
-    // Apply filters if provided
+      // Apply filters if provided
     if (options.filters && Array.isArray(options.filters)) {
       let queryConstraints = [];
       
       options.filters.forEach(filter => {
         if (filter.field && filter.operator && filter.value !== undefined) {
-          queryConstraints.push(where(filter.field, filter.operator, filter.value));
+          // Special handling for 'in' operator which requires an array of values
+          if (filter.operator === 'in' && Array.isArray(filter.value)) {
+            // Skip empty arrays to avoid Firestore errors
+            if (filter.value.length > 0) {
+              queryConstraints.push(where(filter.field, filter.operator, filter.value));
+            }
+          } else {
+            queryConstraints.push(where(filter.field, filter.operator, filter.value));
+          }
         }
       });
       
