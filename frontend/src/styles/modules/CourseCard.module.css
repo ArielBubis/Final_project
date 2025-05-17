@@ -64,10 +64,52 @@
 }
 
 .footer {
-    font-size: 0.85rem;
-    color: #95a5a6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
 }
 
 .lastUpdated {
     font-style: italic;
+    font-size: 0.85rem;
+    color: #95a5a6;
+} 
+
+.viewButton {
+    background-color: #1890ff;
+    color: white;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.viewButton:hover {
+    background-color: #40a9ff;
+}
+
+@media (max-width: 768px) {
+    .studentCard {
+        padding: 0.75rem;
+    }
+
+    .studentName {
+        font-size: 1rem;
+    }
+
+    .statValue {
+        font-size: 1.1rem;
+    }
+
+    .footer {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
+    .viewButton {
+        width: 100%;
+    }
 } 

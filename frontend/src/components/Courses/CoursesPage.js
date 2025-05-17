@@ -16,7 +16,15 @@ const CoursesPage = () => {
             try {
                 setLoading(true);
                 const teacherCourses = await fetchTeacherCourses(currentUser?.email);
-                setCourses(teacherCourses);
+                const formattedCourses = teacherCourses.map(course => ({
+                    id: course.id || course.courseId,
+                    name: course.courseName || course.name,
+                    description: course.description || 'No description available',
+                    studentCount: course.studentCount || 0,
+                    progress: Math.round(course.averageCompletion || 0),
+                    lastUpdated: course.lastUpdated || new Date().toISOString(),
+                }));
+                setCourses(formattedCourses);
             } catch (err) {
                 setError('Failed to load courses.');
                 console.error(err);

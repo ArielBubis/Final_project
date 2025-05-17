@@ -14,12 +14,6 @@ const CourseList = ({ courses, title }) => {
                 {courses.map((course) => (
                     <div key={course.id}>
                         <CourseCard course={course} />
-                        <button
-                            className={styles.viewButton}
-                            onClick={() => navigate(`/courses/${course.id}`)}
-                        >
-                            View
-                        </button>
                     </div>
                 ))}
             </div>
