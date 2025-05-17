@@ -87,6 +87,7 @@ const Sidebar = React.memo(({ userRole }) => {
         }
     };
 
+    console.log("Sidebar rendered with userRole:", userRole);
     const roleBasedMenu = useMemo(() => menuItems[userRole] || menuItems.teacher, [userRole]);
 
     return (

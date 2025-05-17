@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { auth, db } from "../firebaseConfig";
-import { 
+import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged
@@ -41,6 +41,9 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
+      // Clear currentUser and userRole explicitly on logout
+      setCurrentUser(null);
+      setUserRole(null);
       return true;
     } catch (err) {
       setError("Failed to log out");
@@ -51,10 +54,10 @@ export const AuthProvider = ({ children }) => {
   // Get user role from Firestore document
   const getUserRole = useCallback(async (user) => {
     if (!user) return null;
-    
+
     try {
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         console.log("User data:", userData);
@@ -65,7 +68,7 @@ export const AuthProvider = ({ children }) => {
           if (userData.roles.student) return "student";
         }
       }
-      
+
       // Default to student instead of user if no specific role is found
       // This ensures we only provide valid roles for the Sidebar component
       return "student";
@@ -78,11 +81,11 @@ export const AuthProvider = ({ children }) => {
   // Effect to monitor auth state
   useEffect(() => {
     let isMounted = true;
-    
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       // Only update state if the component is still mounted
       if (!isMounted) return;
-      
+
       if (user) {
         setCurrentUser(user);
         // Fetch user role from Firestore
@@ -104,7 +107,7 @@ export const AuthProvider = ({ children }) => {
           setUserRole(null);
         }
       }
-      
+
       if (isMounted) {
         setLoading(false);
       }

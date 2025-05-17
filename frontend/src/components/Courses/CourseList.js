@@ -1,15 +1,26 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 import CourseCard from './CourseCard';
 import styles from '../../styles/modules/CourseList.module.css';
 
 const CourseList = ({ courses, title }) => {
+    const navigate = useNavigate();
+
     return (
         <div className={styles.courseListContainer}>
             <h2 className={styles.title}>{title}</h2>
             <div className={styles.courseGrid}>
                 {courses.map((course) => (
-                    <CourseCard key={course.id} course={course} />
+                    <div key={course.id}>
+                        <CourseCard course={course} />
+                        <button
+                            className={styles.viewButton}
+                            onClick={() => navigate(`/courses/${course.id}`)}
+                        >
+                            View
+                        </button>
+                    </div>
                 ))}
             </div>
         </div>
@@ -30,4 +41,4 @@ CourseList.propTypes = {
     title: PropTypes.string.isRequired
 };
 
-export default CourseList; 
+export default CourseList;

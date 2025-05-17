@@ -8,6 +8,7 @@ import AdminDashboard from "./Admin/AdminDashboard";
 import TeacherManagement from "./Admin/TeacherManagement";
 import StudentsPage from "./Students/StudentsPage";
 import Student from "./Students/Student";
+import CoursesPage from "./Courses/CoursesPage";
 import { LanguageProvider } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
@@ -66,6 +67,7 @@ const AppContent = () => {
               {/* Removed Reports route */}
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
+              <Route path="/courses" element={<CoursesPage />} />
 
               {/* Admin-specific routes */}
               <Route

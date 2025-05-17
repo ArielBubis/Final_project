@@ -1,0 +1,26 @@
+.coursesPageContainer {
+    padding: 20px;
+    background-color: #f9f9f9;
+    min-height: 100vh;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.loading {
+    font-size: 1.5rem;
+    color: #666;
+    text-align: center;
+    margin-top: 50px;
+}
+
+.error {
+    font-size: 1.5rem;
+    color: red;
+    text-align: center;
+    margin-top: 50px;
+}
