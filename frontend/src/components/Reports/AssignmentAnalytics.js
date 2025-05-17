@@ -54,10 +54,25 @@ const AssignmentAnalytics = ({ studentId, courseId }) => {
           return;
         }
         
-        const userProfile = usersWithEmail[0];
-        
-        // Step 2: Verify the user has teacher role permissions
-        if (!userProfile.roles?.teacher) {
+        const userProfile = usersWithEmail[0];        // Step 2: Verify the user has teacher role permissions
+        // Check role field (new schema)
+        if (userProfile.role) {
+          if (userProfile.role !== 'teacher' && userProfile.role !== 'admin') {
+            setError('User does not have teacher permissions');
+            setLoading(false);
+            return;
+          }
+        }
+        // Legacy support for roles field (plural)
+        else if (typeof userProfile.roles === 'string') {
+          if (userProfile.roles !== 'teacher' && userProfile.roles !== 'admin') {
+            setError('User does not have teacher permissions');
+            setLoading(false);
+            return;
+          }
+        }
+        // Legacy support for object format
+        else if (!userProfile.roles?.teacher && !userProfile.roles?.admin) {
           setError('User does not have teacher permissions');
           setLoading(false);
           return;

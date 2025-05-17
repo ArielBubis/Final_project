@@ -39,7 +39,6 @@
         "endDate": "Date",
         "subjectArea": "String",
         "published": "Boolean",
-        "studentCount": "Number",      // Counter for quick access to enrollment numbers
         
         // Subcollections
         "students": {
@@ -84,18 +83,7 @@
         }
       }
     },
-    
-    "enrollments": {
-      "enrollmentId": {
-        "studentId": "String",        // Reference to student user
-        "courseId": "String",         // Reference to course
-        "classLevel": "String",
-        "finalScore": "Number",
-        "enrollmentDate": "Timestamp",
-        "status": "String"            // "active", "completed", "dropped"
-      }
-    },
-    
+        
     "studentProgress": {
       "studentId": {
         // Subcollections

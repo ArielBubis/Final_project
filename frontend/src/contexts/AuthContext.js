@@ -56,13 +56,23 @@ export const AuthProvider = ({ children }) => {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       
       if (userDoc.exists()) {
-        const userData = userDoc.data();
-        console.log("User data:", userData);
-        // Check roles and return the appropriate one
-        if (userData.roles) {
-          if (userData.roles.admin) return "admin";
-          if (userData.roles.teacher) return "teacher";
-          if (userData.roles.student) return "student";
+        const userData = userDoc.data();        console.log("User data:", userData);        
+        // Check for role field in the user document (new schema)
+        if (userData.role) {
+          return userData.role;
+        }
+        // Legacy support for roles (plural) field
+        else if (userData.roles) {
+          // If the roles field is a string, return it directly
+          if (typeof userData.roles === 'string') {
+            return userData.roles;
+          } 
+          // Legacy support for object format
+          else if (typeof userData.roles === 'object') {
+            if (userData.roles.admin) return "admin";
+            if (userData.roles.teacher) return "teacher";
+            if (userData.roles.student) return "student";
+          }
         }
       }
       

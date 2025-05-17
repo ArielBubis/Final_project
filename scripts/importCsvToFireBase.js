@@ -16,7 +16,7 @@ async function importCsvToFirebase(csvFolder) {
   try {
     // Configure which parts of the import to run
     const importOptions = {
-      users: false,
+      users: true,
       schools: false,
       teachers: false,
       students: false,
@@ -24,7 +24,7 @@ async function importCsvToFirebase(csvFolder) {
       modules: false, //
       assignments: false,//
       enrollments: false,
-      studentProgress: true // Set to false if already imported
+      studentProgress: false // Set to false if already imported
     };
     
     // Load all CSV data first
@@ -67,12 +67,10 @@ async function importCsvToFirebase(csvFolder) {
             lastName: extractLastName(student.name),
             email: student.email,
             gender: student.gender || '',
-            roles: {
-              student: true,
-              teacher: false,
-              admin: false
-            },
-            createdAt: formatDate(student.createdAt)
+            role: "student", // Changed from roles (plural) to role (singular)
+            createdAt: formatDate(student.createdAt),
+            schoolId: student.schoolId || '',
+            registrationDate: formatDate(student.createdAt) // For students as per schema
           });
         });
       }
@@ -80,10 +78,6 @@ async function importCsvToFirebase(csvFolder) {
       // Process teachers as users
       if (csvData['teachers.csv']) {
         // Create an active user in the firebase auth system for each teacher
-        // Note: In a production environment, you should:
-        // 1. Use a more secure password
-        // 2. Implement a password reset flow for first login
-        // 3. Consider using email verification
         const createTeacherPromises = csvData['teachers.csv'].map(async (teacher) => {
           try {
             // Create the user in Firebase Authentication
@@ -98,18 +92,15 @@ async function importCsvToFirebase(csvFolder) {
             
             // Push the teacher to users array with the UID from Firebase Auth
             users.push({
-              UID: userRecord.uid, // Store the Firebase Auth UID
+              uid: userRecord.uid, // Changed from UID to lowercase uid as per schema
               userId: teacher.id,
               firstName: extractFirstName(teacher.name),
               lastName: extractLastName(teacher.name),
               email: teacher.email,
               gender: teacher.gender || '',
-              roles: {
-                student: false,
-                teacher: true,
-                admin: false
-              },
-              createdAt: formatDate(teacher.createdAt)
+              role: "teacher", // Changed from roles (plural) to role (singular)
+              createdAt: formatDate(teacher.createdAt),
+              schoolId: teacher.schoolId || ''
             });
           } catch (error) {
             // Handle errors like email already exists
@@ -122,18 +113,15 @@ async function importCsvToFirebase(csvFolder) {
                 console.log(`User already exists for ${teacher.email}, using existing UID: ${existingUser.uid}`);
                 
                 users.push({
-                  UID: existingUser.uid,
+                  uid: existingUser.uid, // Changed from UID to lowercase uid as per schema
                   userId: teacher.id,
                   firstName: extractFirstName(teacher.name),
                   lastName: extractLastName(teacher.name),
                   email: teacher.email,
                   gender: teacher.gender || '',
-                  roles: {
-                    student: false,
-                    teacher: true,
-                    admin: false
-                  },
-                  createdAt: formatDate(teacher.createdAt)
+                  role: "teacher", // Changed from roles (plural) to role (singular)
+                  createdAt: formatDate(teacher.createdAt),
+                  schoolId: teacher.schoolId || ''
                 });
               } catch (getUserError) {
                 console.error(`Failed to get existing user for ${teacher.email}:`, getUserError);
@@ -144,12 +132,9 @@ async function importCsvToFirebase(csvFolder) {
                   lastName: extractLastName(teacher.name),
                   email: teacher.email,
                   gender: teacher.gender || '',
-                  roles: {
-                    student: false,
-                    teacher: true,
-                    admin: false
-                  },
-                  createdAt: formatDate(teacher.createdAt)
+                  role: "teacher", // Changed from roles (plural) to role (singular)
+                  createdAt: formatDate(teacher.createdAt),
+                  schoolId: teacher.schoolId || ''
                 });
               }
             } else {
@@ -160,12 +145,9 @@ async function importCsvToFirebase(csvFolder) {
                 lastName: extractLastName(teacher.name),
                 email: teacher.email,
                 gender: teacher.gender || '',
-                roles: {
-                  student: false,
-                  teacher: true,
-                  admin: false
-                },
-                createdAt: formatDate(teacher.createdAt)
+                role: "teacher", // Changed from roles (plural) to role (singular)
+                createdAt: formatDate(teacher.createdAt),
+                schoolId: teacher.schoolId || ''
               });
             }
           }
@@ -575,13 +557,36 @@ async function importCollection(records, collectionName, formatFunction) {
     
     // Check which documents already exist
     const existChecks = await Promise.all(
-      currentBatch.map(async (record) => {
-        const formattedRecord = formatFunction(record);
-        const docId = 
-        // formattedRecord.userId || formattedRecord.schoolId || 
-        //             formattedRecord.studentId || formattedRecord.teacherId || 
-                    formattedRecord.courseId || formattedRecord.assignmentId || 
-                    formattedRecord.enrollmentId || record.id;
+      currentBatch.map(async (record) => {        const formattedRecord = formatFunction(record);        // Ensure we have a valid document ID according to the schema
+        // For most collections, use the appropriate ID field as defined in the schema
+        let docId;
+        
+        if (collectionName === 'users') {
+          // For users collection, use userId as the document ID
+          docId = formattedRecord.userId;
+        } else if (collectionName === 'schools') {
+          docId = formattedRecord.schoolId;
+        } else if (collectionName === 'courses') {
+          docId = formattedRecord.courseId;
+        } else if (collectionName === 'enrollments') {
+          docId = formattedRecord.enrollmentId;
+        } else {
+          // Fallback to any available ID
+          docId = formattedRecord.userId || 
+                 formattedRecord.schoolId || 
+                 formattedRecord.studentId || 
+                 formattedRecord.teacherId || 
+                 formattedRecord.courseId || 
+                 formattedRecord.assignmentId || 
+                 formattedRecord.enrollmentId || 
+                 record.id;
+        }
+        
+        // Ensure docId is not undefined, null, or empty string
+        if (!docId) {
+          console.error('Error: Missing document ID for record:', formattedRecord);
+          throw new Error(`Missing document ID for record in collection ${collectionName}`);
+        }
         
         const docRef = db.collection(collectionName).doc(docId);
         const doc = await docRef.get();

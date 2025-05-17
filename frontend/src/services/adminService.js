@@ -91,16 +91,12 @@ export const createTeacher = async (teacherData) => {
     
     // Create user record in Firestore
     await setDoc(doc(db, "users", userId), {
-      userId: userId,
-      firstName: teacherData.firstName,
+      userId: userId,      firstName: teacherData.firstName,
       lastName: teacherData.lastName,
       email: teacherData.email,
       gender: teacherData.gender || "",
-      roles: {
-        student: false,
-        teacher: true,
-        admin: false
-      },
+      role: "teacher", // Changed from roles to role as per schema
+      schoolId: teacherData.schoolId || "",
       createdAt: serverTimestamp()
     });
     
