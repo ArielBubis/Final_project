@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { useAuth } from './AuthContext';
 import { fetchDocuments, fetchDocumentById, formatFirebaseTimestamp, fetchSubcollection } from '../utils/firebaseUtils';
 import { calculateAverage } from '../utils/dataProcessingUtils';
+import localforage from 'localforage';
 
 // Create the context
 const DataContext = createContext(null);
@@ -790,68 +791,85 @@ export const DataProvider = ({ children }) => {
     }
   }, [fetchSubcollection, getFromQueryCache, updateQueryCache]);
   
-  // Fetch list of all students with caching
+  // LocalForage initialization
+  useEffect(() => {
+    localforage.config({
+      name: 'eduPlatform',
+      version: 1.0,
+      storeName: 'cache',
+      description: 'Local cache for education platform'
+    });
+  }, []);
+  
+  // Helper to load from LocalForage or Firebase (for main collections)
+  const loadOrFetchCollection = useCallback(async (collectionName, setState, updateCacheTimestamp) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Try to load from local DB first
+      const localData = await localforage.getItem(collectionName);
+      if (Array.isArray(localData) && localData.length > 0) {
+        setState(localData);
+        setLoading(false);
+        return localData;
+      }
+      // If not found or empty, fetch from Firestore
+      const data = await fetchDocuments(collectionName);
+      if (Array.isArray(data) && data.length > 0) {
+        setState(data);
+        updateCacheTimestamp(collectionName);
+        await localforage.setItem(collectionName, data);
+        setLoading(false);
+        return data;
+      }
+      setLoading(false);
+      return [];
+    } catch (error) {
+      setError(`Failed to fetch ${collectionName} data`);
+      setLoading(false);
+      return [];
+    }
+  }, [setLoading, setError, fetchDocuments]);
+  
+  // Fetch list of all students with persistent local DB
   const fetchAllStudents = useCallback(async () => {
-    if (students.length > 0 && !isCacheExpired('students')) {
+    if (students.length > 0) {
       return students;
     }
-    
-    try {
-      setLoading(true);
-      const studentsData = await fetchDocuments('students');
-      setStudents(studentsData || []);
-      updateCacheTimestamp('students');
-      setLoading(false);
-      return studentsData || [];
-    } catch (error) {
-      console.error("Error fetching all students:", error);
-      setError("Failed to fetch students data");
-      setLoading(false);
-      return [];
-    }
-  }, [students, isCacheExpired, updateCacheTimestamp]);
+    return await loadOrFetchCollection('students', setStudents, updateCacheTimestamp);
+  }, [students, loadOrFetchCollection, setStudents, updateCacheTimestamp]);
   
-  // Fetch list of all assignments with caching
+  // Fetch list of all teachers with persistent local DB
+  const fetchAllTeachers = useCallback(async () => {
+    if (teachers.length > 0) {
+      return teachers;
+    }
+    return await loadOrFetchCollection('teachers', setTeachers, updateCacheTimestamp);
+  }, [teachers, loadOrFetchCollection, setTeachers, updateCacheTimestamp]);
+  
+  // Fetch list of all courses with persistent local DB
+  const fetchAllCourses = useCallback(async () => {
+    if (courses.length > 0) {
+      return courses;
+    }
+    return await loadOrFetchCollection('courses', setCourses, updateCacheTimestamp);
+  }, [courses, loadOrFetchCollection, setCourses, updateCacheTimestamp]);
+  
+  // Fetch list of all assignments with persistent local DB
   const fetchAllAssignments = useCallback(async () => {
-    if (assignments.length > 0 && !isCacheExpired('assignments')) {
+    if (assignments.length > 0) {
       return assignments;
     }
-    
-    try {
-      setLoading(true);
-      const assignmentsData = await fetchDocuments('assignments');
-      setAssignments(assignmentsData || []);
-      updateCacheTimestamp('assignments');
-      setLoading(false);
-      return assignmentsData || [];
-    } catch (error) {
-      console.error("Error fetching all assignments:", error);
-      setError("Failed to fetch assignments data");
-      setLoading(false);
-      return [];
-    }
-  }, [assignments, isCacheExpired, updateCacheTimestamp]);
+    return await loadOrFetchCollection('assignments', setAssignments, updateCacheTimestamp);
+  }, [assignments, loadOrFetchCollection, setAssignments, updateCacheTimestamp]);
   
-  // Fetch list of all modules with caching
+  // Fetch list of all modules with persistent local DB
   const fetchAllModules = useCallback(async () => {
-    if (modules.length > 0 && !isCacheExpired('modules')) {
+    if (modules.length > 0) {
       return modules;
     }
-    
-    try {
-      setLoading(true);
-      const modulesData = await fetchDocuments('modules');
-      setModules(modulesData || []);
-      updateCacheTimestamp('modules');
-      setLoading(false);
-      return modulesData || [];
-    } catch (error) {
-      console.error("Error fetching all modules:", error);
-      setError("Failed to fetch modules data");
-      setLoading(false);
-      return [];
-    }
-  }, [modules, isCacheExpired, updateCacheTimestamp]);
+    return await loadOrFetchCollection('modules', setModules, updateCacheTimestamp);
+  }, [modules, loadOrFetchCollection, setModules, updateCacheTimestamp]);
   
   // Pre-emptively fetch data when user role changes
   useEffect(() => {
