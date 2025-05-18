@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/modules/CourseCard.module.css';
+// import buttonStyles from '../../styles/modules/Button.module.css';
+import cardStyles from '../../styles/modules/CourseCard.module.css';
 
 const CourseCard = ({ course }) => {
     const navigate = useNavigate();
@@ -16,27 +18,27 @@ const CourseCard = ({ course }) => {
     } = course;
 
     return (
-        <div className={styles.courseCard}>
-            <div className={styles.courseHeader}>
-                <h3 className={styles.courseName}>{name}</h3>
-                <span className={styles.studentCount}>{studentCount} Students</span>
+        <div className={cardStyles.courseCard}>
+            <div className={cardStyles.courseHeader}>
+                <h3 className={cardStyles.courseName}>{name}</h3>
+                <span className={cardStyles.studentCount}>{studentCount} Students</span>
             </div>
-            <p className={styles.description}>{description}</p>
-            <div className={styles.progressContainer}>
-                <div className={styles.progressBar}>
+            <p className={cardStyles.description}>{description}</p>
+            <div className={cardStyles.progressContainer}>
+                <div className={cardStyles.progressBar}>
                     <div
-                        className={styles.progressFill}
+                        className={cardStyles.progressFill}
                         style={{ width: `${progress}%` }}
                     />
                 </div>
-                <span className={styles.progressText}>{progress}% Complete</span>
+                <span className={cardStyles.progressText}>{progress}% Complete</span>
             </div>
-            <div className={styles.footer}>
-                <span className={styles.lastUpdated}>
+            <div className={cardStyles.footer}>
+                <span className={cardStyles.lastUpdated}>
                     Last updated: {new Date(lastUpdated).toLocaleDateString()}
                 </span>
                 <button
-                    className={styles.viewButton}
+                    className={`${cardStyles.viewButton}`}
                     onClick={() => navigate(`/courses/${id}`)}
                 >
                     View Details
@@ -48,7 +50,6 @@ const CourseCard = ({ course }) => {
 
 CourseCard.propTypes = {
     course: PropTypes.shape({
-        id: PropTypes.string.isRequired,
         name: PropTypes.string.isRequired,
         description: PropTypes.string.isRequired,
         studentCount: PropTypes.number.isRequired,
@@ -57,4 +58,4 @@ CourseCard.propTypes = {
     }).isRequired
 };
 
-export default CourseCard;
+export default CourseCard; 

@@ -1,14 +1,21 @@
 import os
+from backend.services.sqlite import courses as local_database
 import firebase_admin
 from firebase_admin import credentials, firestore
 from typing import Dict, Any, List, Optional
 import asyncio
 from datetime import datetime
+from pathlib import Path
+from google.protobuf.timestamp_pb2 import Timestamp
+
+#Purpose: Interface for Firestore CRUD and formatting.
 
 # Initialize Firebase Admin SDK
-cred_path = os.environ.get('FIREBASE_CREDENTIALS', '../serviceAccountKey.json')
+# cred_path = os.environ.get('FIREBASE_CREDENTIALS', '../serviceAccountKey.json')
+cred_path = Path(__file__).resolve().parent.parent / "serviceAccountKey.json"
+
 if not firebase_admin._apps:
-    cred = credentials.Certificate(cred_path)
+    cred = credentials.Certificate(str(cred_path))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -49,7 +56,10 @@ def process_timestamp_fields(data: Dict[str, Any]) -> Dict[str, Any]:
     processed = {}
     for key, value in data.items():
         if isinstance(value, datetime):
-            processed[key] = firestore.Timestamp.from_datetime(value)
+            # processed[key] = firestore.Timestamp.from_datetime(value)
+             ts = Timestamp()
+             ts.FromDatetime(value)
+             processed[key] = ts
         elif isinstance(value, dict):
             processed[key] = process_timestamp_fields(value)
         elif isinstance(value, list):
@@ -96,9 +106,11 @@ def format_document_data(data: Dict[str, Any], doc_id: str) -> Dict[str, Any]:
     result = {"id": doc_id} if doc_id else {}
     
     for key, value in data.items():
-        if isinstance(value, firestore.Timestamp):
+        if isinstance(value, Timestamp):
             # Convert Firestore timestamp to ISO format string
-            result[key] = value.todate().isoformat()
+            result[key] = value.ToDatetime().isoformat()
+        elif isinstance(value, datetime):
+            result[key] = value.isoformat()
         elif isinstance(value, dict):
             # Process nested dictionaries
             result[key] = format_document_data(value, "")
@@ -106,12 +118,16 @@ def format_document_data(data: Dict[str, Any], doc_id: str) -> Dict[str, Any]:
             # Process lists
             result[key] = [
                 format_document_data(item, "") if isinstance(item, dict) else 
-                item.todate().isoformat() if isinstance(item, firestore.Timestamp) else item
+                item.ToDatetime().isoformat() if isinstance(item, Timestamp) else item
                 for item in value
             ]
         else:
             result[key] = value
-            
+    
+    # Force courseId from doc_id
+    if "courseId" not in result:
+        result["courseId"] = doc_id
+        
     return result
 
 async def query_collection(
