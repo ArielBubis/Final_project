@@ -39,8 +39,6 @@ def cache_course(course):
     ))
 
 def cache_all_courses(courses):
-    print("Inside cache_all_courses")
-    print(f"Caching {len(courses)} courses into SQLite...")
     query = """
     INSERT OR REPLACE INTO courses(courseId, courseName, createdAt, description, subjectArea, teacherId)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -50,7 +48,6 @@ def cache_all_courses(courses):
         for c in courses
     ]
     execute_query(query, data, many=True)
-    print("Inserted data:", data)
 
 def get_courses_by_teacher(teacher_id):
     query = "SELECT * FROM courses WHERE teacherId = ?"

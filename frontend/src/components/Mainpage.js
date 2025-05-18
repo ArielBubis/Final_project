@@ -5,10 +5,10 @@ import { useData } from '../contexts/DataContext';
 import { usePerformance } from '../contexts/PerformanceContext';
 import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Empty } from 'antd';
 import {
-  UserOutlined,
-  BookOutlined,
-  ClockCircleOutlined,
-  WarningOutlined,
+    UserOutlined,
+    BookOutlined,
+    ClockCircleOutlined,
+    WarningOutlined,
 } from '@ant-design/icons';
 import CourseList from './Courses/CourseList';
 import StudentList from './Students/StudentList';
@@ -27,7 +27,7 @@ const MainPage = () => {
         clearCache
     } = useData();
     const { getTeacherAnalytics } = usePerformance();
-    
+
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
     const [analytics, setAnalytics] = useState(null);
@@ -40,24 +40,24 @@ const MainPage = () => {
     // Dashboard metrics derived from fetched data
     const dashboardMetrics = useMemo(() => {
         if (!courses.length || !students.length) return null;
-        
+
         // Calculate average course completion
         const avgCompletion = courses.reduce((sum, course) => sum + course.progress, 0) / courses.length;
-        
+
         // Calculate average student performance
         const avgPerformance = students.reduce((sum, student) => sum + student.performance, 0) / students.length;
-        
+
         // Count active students in the last 7 days
         const now = new Date();
         const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7));
         const activeStudents = students.filter(student =>
             new Date(student.lastActive) >= sevenDaysAgo
         ).length;
-        
+
         // Count assignments due in the next week
         const upcomingAssignments = courses.reduce((count, course) =>
             count + (course.upcomingAssignments || 0), 0);
-            
+
         return {
             totalCourses: courses.length,
             totalStudents: students.length,
@@ -83,10 +83,14 @@ const MainPage = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                
+
                 // Fetch teacher's courses
-                const teacherCourses = await fetchTeacherCourses(currentUser?.email);
-                
+                const result = await fetchTeacherCourses(currentUser?.email);
+                const teacherCourses = result || [];
+                console.log('Teacher Courses:', teacherCourses);
+
+                // const teacherCourses = await fetchTeacherCourses(currentUser?.email);
+
                 // Fetch course stats for each course
                 const coursesWithStats = await Promise.all(
                     teacherCourses.map(async (course) => {
@@ -105,10 +109,10 @@ const MainPage = () => {
                         };
                     })
                 );
-                
+
                 // Fetch students for the teacher
                 const teacherStudents = await fetchStudentsByTeacher(currentUser?.email);
-                
+
                 // Transform student data to match the required format
                 const formattedStudents = teacherStudents.map(student => ({
                     id: student.id || student.studentId,
@@ -170,22 +174,22 @@ const MainPage = () => {
     // Helper function to calculate risk score
     const calculateRiskScore = (student) => {
         let score = 0;
-        
+
         // Low performance increases risk
         if (student.scores?.average < 60) score += 40;
         else if (student.scores?.average < 70) score += 25;
-        
+
         // Low completion increases risk
         if (student.completion < 40) score += 30;
         else if (student.completion < 60) score += 15;
-        
+
         // Recent inactivity increases risk
         const lastAccess = new Date(student.lastAccessed || new Date());
         const daysSinceLastAccess = Math.floor((new Date() - lastAccess) / (1000 * 60 * 60 * 24));
-        
+
         if (daysSinceLastAccess > 14) score += 30;
         else if (daysSinceLastAccess > 7) score += 15;
-        
+
         return score;
     };
 
@@ -296,7 +300,7 @@ const MainPage = () => {
 
             {/* Main Dashboard Content */}
             <div className={styles.dashboardContent}>
-                <Tabs 
+                <Tabs
                     defaultActiveKey="overview"
                     activeKey={selectedTab}
                     onChange={handleTabChange}
@@ -323,7 +327,7 @@ const MainPage = () => {
                             </div>
                         </div>
                     </Tabs.TabPane>
-                    
+
                     <Tabs.TabPane tab="At-Risk Students" key="risk">
                         <div className={styles.tabContent}>
                             <Card
@@ -344,8 +348,8 @@ const MainPage = () => {
                                                         Risk Score:
                                                         <span className={
                                                             student.riskScore >= 80 ? styles.highRisk :
-                                                            student.riskScore >= 60 ? styles.mediumRisk :
-                                                            styles.lowRisk
+                                                                student.riskScore >= 60 ? styles.mediumRisk :
+                                                                    styles.lowRisk
                                                         }>
                                                             {student.riskScore}
                                                         </span>

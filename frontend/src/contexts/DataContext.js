@@ -196,7 +196,8 @@ export const DataProvider = ({ children }) => {
         if (courses.length === 0 || isCacheExpired('courses')) {
           // const coursesData = await fetchDocuments('courses');
           const coursesData = await api.queryCollection('courses');
-          setCourses(coursesData || []);
+          // setCourses(coursesData || []);
+          setCourses(coursesData?.data || []);
           updateCacheTimestamp('courses');
         }
 
@@ -287,14 +288,14 @@ export const DataProvider = ({ children }) => {
       }
 
       // Now get courses for this teacherId
-      // const coursesQuery = await fetchDocuments('courses', {
-      //   filters: [
-      //     { field: 'teacherId', operator: '==', value: teacherId }
-      //   ]
-      // });
-      const coursesQuery = await api.queryCollection('courses', [
+      // const coursesQuery = await api.queryCollection('courses', [
+      //   { field: 'teacherId', op: '==', value: teacherId }
+      // ]);
+
+      const result = await api.queryCollection('courses', [
         { field: 'teacherId', op: '==', value: teacherId }
       ]);
+      const coursesQuery = result?.data || [];  // ✅ unwrap `.data
 
       if (!coursesQuery || coursesQuery.length === 0) {
         console.log(`No courses found for teacher ${teacherId}`);

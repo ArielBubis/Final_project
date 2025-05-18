@@ -15,9 +15,7 @@ from backend.firebase.firestore_admin_services import (
     format_document_data
 )
 
-# Purpose: FastAPI entry point +
-# Initializes SQLite +
-# Preloads Firestore data into local cache on startup.
+# Purpose: FastAPI entry point + Initializes SQLite + Preloads Firestore data into local cache on startup.
 
 
 async def preload_courses():
@@ -72,6 +70,7 @@ class QueryFilter(BaseModel):
 
 class CollectionQuery(BaseModel):
     filters: Optional[List[QueryFilter]] = None
+    
 
 # Routes
 
@@ -99,6 +98,7 @@ async def get_document(collection_name: str, document_id: str):
     try:
         # ✅ Use cache if collection is 'students'
         if collection_name == "courses":
+            print(f"📦 Querying SQLite courses with filters: {query.filters}")
             cached = sqlite_courses.get_course_by_id(document_id)
             if cached:
                 return {
@@ -132,7 +132,26 @@ async def query_documents(collection_name: str, query: CollectionQuery):
             if len(filters) == 1 and filters[0].field == "teacherId" and filters[0].op == "==":
                 teacher_id = filters[0].value
                 teacher_courses = sqlite_courses.get_courses_by_teacher(teacher_id)
-                return [
+                return {
+                    "data": [
+                        {
+                            "courseId": c[0],
+                            "courseName": c[1],
+                            "createdAt": c[2],
+                            "description": c[3],
+                            "subjectArea": c[4],
+                            "teacherId": c[5]
+                        } for c in teacher_courses
+                    ]
+                }
+            
+            if filters:
+                raise HTTPException(status_code=400, detail="Only filter by teacherId is supported")
+
+            # default: return all cached
+            cached_courses = sqlite_courses.get_all_courses()
+            return {
+                "data": [
                     {
                         "courseId": c[0],
                         "courseName": c[1],
@@ -140,24 +159,9 @@ async def query_documents(collection_name: str, query: CollectionQuery):
                         "description": c[3],
                         "subjectArea": c[4],
                         "teacherId": c[5]
-                    } for c in teacher_courses
+                    } for c in cached_courses
                 ]
-            
-            if filters:
-                raise HTTPException(status_code=400, detail="Only filter by teacherId is supported")
-
-            # default: return all cached
-            cached_courses = sqlite_courses.get_all_courses()
-            return [
-                {
-                    "courseId": c[0],
-                    "courseName": c[1],
-                    "createdAt": c[2],
-                    "description": c[3],
-                    "subjectArea": c[4],
-                    "teacherId": c[5]
-                } for c in cached_courses
-            ]
+            }
             
         # filters = query.filters or []
 
