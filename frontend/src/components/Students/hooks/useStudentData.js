@@ -270,8 +270,51 @@ export const useStudentData = (studentId) => {
           }
           
           return processedCourse;
+        });        // Import the enhanced risk assessment
+        const { getEnhancedRiskAssessment } = await import('../../../services/riskPredictionService');
+        
+        // Calculate missing assignments
+        let missingAssignments = 0;
+        let submittedAssignments = 0;
+        
+        processedCoursesData.forEach(course => {
+          course.assignments?.forEach(assignment => {
+            if (!assignment.progress?.submittedAt) {
+              missingAssignments++;
+            } else {
+              submittedAssignments++;
+            }
+          });
         });
-
+        
+        // Calculate days since last access
+        let daysSinceLastAccess = 0;
+        if (lastAccessed) {
+          const lastAccessDate = typeof lastAccessed === 'string' ? new Date(lastAccessed) : 
+                              typeof lastAccessed.toDate === 'function' ? lastAccessed.toDate() : lastAccessed;
+          daysSinceLastAccess = Math.floor((new Date() - lastAccessDate) / (1000 * 60 * 60 * 24));
+        }
+        
+        // Calculate submission rate
+        const totalAssignments = missingAssignments + submittedAssignments;
+        const submissionRate = totalAssignments > 0 ? (submittedAssignments / totalAssignments) * 100 : 0;
+        
+        // Data for risk assessment
+        const studentDataForRisk = {
+          averageScore,
+          completionRate,
+          submissionRate,
+          missingAssignments,
+          daysSinceLastAccess,
+          courses: processedCoursesData,
+          lastAccessed: lastAccessed ? 
+            (typeof lastAccessed.toISOString === 'function' ? lastAccessed.toISOString() : lastAccessed) : 
+            new Date().toISOString()
+        };
+        
+        // Get risk assessment from ML model with fallback to rule-based
+        const riskAssessment = await getEnhancedRiskAssessment(studentDataForRisk, true);
+        
         // Final student object
         const enrichedStudentData = {
           id: studentId,
@@ -283,20 +326,17 @@ export const useStudentData = (studentId) => {
           courses: processedCoursesData,
           averageScore,
           completionRate,
+          submissionRate,
+          missingAssignments,
+          daysSinceLastAccess,
           lastAccessed: lastAccessed ? 
             (typeof lastAccessed.toISOString === 'function' ? lastAccessed.toISOString() : lastAccessed) : 
             new Date().toISOString(),
           courseCount: processedCoursesData.length,
-          isAtRisk: averageScore < 60 || completionRate < 50,
-          riskReasons: [
-            averageScore < 60 && "Low average score",
-            completionRate < 50 && "Low completion rate",
-            processedCoursesData.some(course => 
-              course.assignments && course.assignments.some(assignment => 
-                assignment.progress && !assignment.progress.submittedAt
-              )
-            ) && "Missing assignments"
-          ].filter(Boolean)
+          isAtRisk: riskAssessment.isAtRisk,
+          riskScore: riskAssessment.score,
+          riskLevel: riskAssessment.level,
+          riskReasons: riskAssessment.factors
         };
 
         setDebugInfo(prev => ({ ...prev, finalStudentObject: enrichedStudentData }));

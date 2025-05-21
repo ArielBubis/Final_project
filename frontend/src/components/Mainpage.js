@@ -3,17 +3,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useData } from '../contexts/DataContext';
 import { usePerformance } from '../contexts/PerformanceContext';
-import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Empty } from 'antd';
+import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Empty, Tag } from 'antd';
 import {
   UserOutlined,
   BookOutlined,
   ClockCircleOutlined,
   WarningOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import CourseList from './Courses/CourseList';
 import StudentList from './Students/StudentList';
+import MLRiskStudentList from './Students/components/MLRiskStudentList';
 import { formatTimestampForDisplay } from '../utils/firebaseUtils';
 import styles from '../styles/modules/MainPage.module.css';
+import { getEnhancedRiskAssessment } from '../services/riskPredictionService';
 
 const MainPage = () => {
     const { currentUser, userRole } = useAuth();
@@ -27,11 +30,13 @@ const MainPage = () => {
         clearCache
     } = useData();
     const { getTeacherAnalytics } = usePerformance();
-    
-    const [courses, setCourses] = useState([]);
+      const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
     const [analytics, setAnalytics] = useState(null);
     const [atRiskStudents, setAtRiskStudents] = useState([]);
+    const [mlRiskStudents, setMlRiskStudents] = useState([]);
+    const [mlLoading, setMlLoading] = useState(false);
+    const [mlError, setMlError] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -77,6 +82,64 @@ const MainPage = () => {
         clearCache('courseStats');
         // Trigger re-fetch by updating the key
         setRefreshKey(prev => prev + 1);
+    };    // Function to get ML risk predictions for students
+    const getMlRiskPredictions = async (studentList) => {
+        setMlLoading(true);
+        setMlError(null);
+        try {
+            console.log('Getting ML risk predictions for', studentList.length, 'students');
+            
+            // Process students with ML predictions
+            const studentsWithPredictions = await Promise.all(
+                studentList.map(async (student) => {
+                    try {
+                        // Get enhanced risk assessment that includes ML predictions
+                        // Transform student data to match the format expected by the ML model
+                        const studentData = {
+                            ...student,
+                            courses: student.courses || [],
+                            averageScore: student.performance || student.averageScore || 0,
+                            completionRate: student.completion || student.completionRate || 0,
+                            lastAccessed: student.lastActive || student.lastAccessed || new Date().toISOString(),
+                            // Add data needed for proper ML prediction
+                            assignments: (student.courses || []).flatMap(course => course.assignments || [])
+                        };
+                        
+                        const riskAssessment = await getEnhancedRiskAssessment(studentData, true);
+                        
+                        return {
+                            ...student,
+                            mlRiskScore: riskAssessment.score,
+                            mlRiskLevel: riskAssessment.level,
+                            mlRiskFactors: riskAssessment.factors || [],
+                            mlIsAtRisk: riskAssessment.isAtRisk
+                        };
+                    } catch (err) {
+                        console.error(`Failed to get ML prediction for student ${student.id}:`, err);
+                        // Return student with original risk assessment if ML prediction fails
+                        return student;
+                    }
+                })
+            );
+            
+            // Filter students with ML predictions who are at medium or high risk (not low)
+            const riskStudents = studentsWithPredictions
+                .filter(student => student.mlRiskLevel && student.mlRiskLevel !== 'low')
+                .sort((a, b) => b.mlRiskScore - a.mlRiskScore);
+                
+            console.log('Found', riskStudents.length, 'students at risk according to ML model');
+            setMlRiskStudents(riskStudents);
+            
+            // If no at-risk students were found but we have predictions
+            if (riskStudents.length === 0 && studentsWithPredictions.length > 0) {
+                setMlError('No students identified as at-risk by the ML model');
+            }
+        } catch (err) {
+            console.error('Error processing ML risk predictions:', err);
+            setMlError('Failed to process ML risk predictions: ' + err.message);
+        } finally {
+            setMlLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -138,13 +201,20 @@ const MainPage = () => {
                 // Identify at-risk students
                 const riskStudents = formattedStudents
                     .filter(student => student.riskScore >= 70)
-                    .sort((a, b) => b.riskScore - a.riskScore);
-
-                setCourses(coursesWithStats);
+                    .sort((a, b) => b.riskScore - a.riskScore);                setCourses(coursesWithStats);
                 setStudents(formattedStudents);
                 setAnalytics(teacherAnalytics);
                 setAtRiskStudents(riskStudents);
                 setError(null);
+                  // Get ML risk predictions for students
+                if (formattedStudents.length > 0) {
+                    try {
+                        getMlRiskPredictions(formattedStudents);
+                    } catch (mlError) {
+                        console.error('Error getting ML risk predictions:', mlError);
+                        setMlError('Failed to process ML risk predictions');
+                    }
+                }
             } catch (err) {
                 setError('Failed to fetch data');
                 console.error('Error fetching data:', err);
@@ -323,8 +393,7 @@ const MainPage = () => {
                             </div>
                         </div>
                     </Tabs.TabPane>
-                    
-                    <Tabs.TabPane tab="At-Risk Students" key="risk">
+                      <Tabs.TabPane tab="At-Risk Students" key="risk">
                         <div className={styles.tabContent}>
                             <Card
                                 title={
@@ -386,6 +455,46 @@ const MainPage = () => {
                                 ) : (
                                     <Empty description="No at-risk students detected" />
                                 )}
+                            </Card>
+                        </div>
+                    </Tabs.TabPane>
+                    
+                    <Tabs.TabPane 
+                        tab={
+                            <span>
+                                <RobotOutlined /> ML Risk Analysis
+                                {mlRiskStudents.length > 0 && (
+                                    <Tag color="red" style={{ marginLeft: '8px' }}>
+                                        {mlRiskStudents.length}
+                                    </Tag>
+                                )}
+                            </span>
+                        }
+                        key="mlRisk"
+                    >
+                        <div className={styles.tabContent}>
+                            <Card
+                                title={
+                                    <div className={styles.riskCardTitle}>
+                                        <RobotOutlined /> ML-Powered Risk Analysis
+                                        <Button 
+                                            size="small" 
+                                            type="primary"
+                                            onClick={() => getMlRiskPredictions(students)}
+                                            loading={mlLoading}
+                                            style={{ marginLeft: '12px' }}
+                                        >
+                                            Refresh Analysis
+                                        </Button>
+                                    </div>
+                                }
+                                className={styles.riskCard}
+                            >
+                                <MLRiskStudentList 
+                                    students={mlRiskStudents} 
+                                    loading={mlLoading}
+                                    error={mlError}
+                                />
                             </Card>
                         </div>
                     </Tabs.TabPane>

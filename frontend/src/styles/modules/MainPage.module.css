@@ -190,6 +190,26 @@
     }
 }
 
+/* ML Risk specific styles */
+.riskFactors {
+    margin: 12px 0;
+}
+
+.riskFactors h4 {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #555;
+}
+
+.riskCardTitle {
+    display: flex;
+    align-items: center;
+}
+
+.riskCardTitle svg {
+    margin-right: 8px;
+}
+
 @media (min-width: 1200px) {
     .metricsContainer {
         grid-template-columns: repeat(5, 1fr);

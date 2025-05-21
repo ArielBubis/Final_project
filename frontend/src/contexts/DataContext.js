@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useReducer } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchDocuments, fetchDocumentById, formatFirebaseTimestamp, fetchSubcollection } from '../utils/firebaseUtils';
 import { calculateAverage } from '../utils/dataProcessingUtils';
@@ -15,37 +15,154 @@ export const useData = () => {
   return context;
 };
 
-export const DataProvider = ({ children }) => {
-  const { currentUser } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Core data state
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [modules, setModules] = useState([]);
-  const [courseData, setCourseData] = useState([]);
-  
-  // Enhanced caching system
-  const [cacheTimestamps, setCacheTimestamps] = useState({
+// Define initial state for reducer
+const initialState = {
+  data: {
+    students: [],
+    teachers: [],
+    courses: [],
+    assignments: [],
+    modules: [],
+    courseData: []
+  },
+  cacheTimestamps: {
     students: null,
     teachers: null,
     courses: null,
     assignments: null,
     modules: null,
     courseData: null
-  });
-  
-  // Cache for specialized queries
-  const [queryCache, setQueryCache] = useState({
+  },
+  queryCache: {
     studentsByTeacher: new Map(),
     teacherCourses: new Map(),
     courseStats: new Map(),
     studentAssignments: new Map(),
     moduleProgress: new Map()
-  });
+  },
+  loading: true,
+  error: null
+};
+
+// Define reducer function
+function dataReducer(state, action) {
+  switch (action.type) {
+    case 'SET_DATA':
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          [action.dataType]: action.payload
+        },
+        cacheTimestamps: {
+          ...state.cacheTimestamps,
+          [action.dataType]: new Date().getTime()
+        }
+      };
+    
+    case 'UPDATE_QUERY_CACHE':
+      const updatedCache = new Map(state.queryCache[action.cacheType]);
+      updatedCache.set(action.key, {
+        data: action.payload,
+        timestamp: new Date().getTime(),
+        expiration: action.expiration
+      });
+      
+      return {
+        ...state,
+        queryCache: {
+          ...state.queryCache,
+          [action.cacheType]: updatedCache
+        }
+      };
+    
+    case 'REMOVE_FROM_QUERY_CACHE':
+      const modifiedCache = new Map(state.queryCache[action.cacheType]);
+      modifiedCache.delete(action.key);
+      
+      return {
+        ...state,
+        queryCache: {
+          ...state.queryCache,
+          [action.cacheType]: modifiedCache
+        }
+      };
+    
+    case 'CLEAR_CACHE':
+      if (action.cacheType === 'all') {
+        return {
+          ...state,
+          data: {
+            students: [],
+            teachers: [],
+            courses: [],
+            assignments: [],
+            modules: [],
+            courseData: []
+          },
+          cacheTimestamps: {
+            students: null,
+            teachers: null,
+            courses: null,
+            assignments: null,
+            modules: null,
+            courseData: null
+          },
+          queryCache: {
+            studentsByTeacher: new Map(),
+            teacherCourses: new Map(),
+            courseStats: new Map(),
+            studentAssignments: new Map(),
+            moduleProgress: new Map()
+          }
+        };
+      } else if (action.cacheType in state.cacheTimestamps) {
+        return {
+          ...state,
+          data: {
+            ...state.data,
+            [action.cacheType]: []
+          },
+          cacheTimestamps: {
+            ...state.cacheTimestamps,
+            [action.cacheType]: null
+          }
+        };
+      } else if (action.cacheType in state.queryCache) {
+        return {
+          ...state,
+          queryCache: {
+            ...state.queryCache,
+            [action.cacheType]: new Map()
+          }
+        };
+      }
+      return state;
+    
+    case 'SET_LOADING':
+      return {
+        ...state,
+        loading: action.payload
+      };
+    
+    case 'SET_ERROR':
+      return {
+        ...state,
+        error: action.payload
+      };
+    
+    default:
+      return state;
+  }
+}
+
+export const DataProvider = ({ children }) => {
+  const { currentUser } = useAuth();
+  const [state, dispatch] = useReducer(dataReducer, initialState);
+  
+  // Destructure state for convenience
+  const { data, cacheTimestamps, queryCache, loading, error } = state;
+  const { students, teachers, courses, assignments, modules, courseData } = data;
   
   // Constants for cache expiration times (in milliseconds)
   const CACHE_EXPIRATION = {
@@ -67,25 +184,21 @@ export const DataProvider = ({ children }) => {
   
   // Helper to update cache timestamps
   const updateCacheTimestamp = useCallback((cacheType) => {
-    setCacheTimestamps(prevState => ({
-      ...prevState,
-      [cacheType]: new Date().getTime()
-    }));
-  }, []);
+    dispatch({
+      type: 'SET_DATA',
+      dataType: cacheType,
+      payload: data[cacheType]
+    });
+  }, [data]);
   
   // Helper function to update specific query cache
   const updateQueryCache = useCallback((cacheType, key, value, expirationTime = CACHE_EXPIRATION.MEDIUM) => {
-    setQueryCache(prevCache => {
-      const updatedCache = new Map(prevCache[cacheType]);
-      updatedCache.set(key, {
-        data: value,
-        timestamp: new Date().getTime(),
-        expiration: expirationTime
-      });
-      return {
-        ...prevCache,
-        [cacheType]: updatedCache
-      };
+    dispatch({
+      type: 'UPDATE_QUERY_CACHE',
+      cacheType,
+      key,
+      payload: value,
+      expiration: expirationTime
     });
   }, []);
   
@@ -98,13 +211,10 @@ export const DataProvider = ({ children }) => {
     const now = new Date().getTime();
     if (now - cachedEntry.timestamp > cachedEntry.expiration) {
       // Cache expired, remove it
-      setQueryCache(prevCache => {
-        const updatedCache = new Map(prevCache[cacheType]);
-        updatedCache.delete(key);
-        return {
-          ...prevCache,
-          [cacheType]: updatedCache
-        };
+      dispatch({
+        type: 'REMOVE_FROM_QUERY_CACHE',
+        cacheType,
+        key
       });
       return null;
     }
@@ -115,67 +225,10 @@ export const DataProvider = ({ children }) => {
   // Clear specific cache or all caches
   const clearCache = useCallback((cacheType = null) => {
     if (cacheType) {
-      if (cacheType === 'all') {
-        // Clear all caches
-        setStudents([]);
-        setTeachers([]);
-        setCourses([]);
-        setAssignments([]);
-        setModules([]);
-        setCourseData([]);
-        
-        setCacheTimestamps({
-          students: null,
-          teachers: null,
-          courses: null,
-          assignments: null,
-          modules: null,
-          courseData: null
-        });
-        
-        setQueryCache({
-          studentsByTeacher: new Map(),
-          teacherCourses: new Map(),
-          courseStats: new Map(),
-          studentAssignments: new Map(),
-          moduleProgress: new Map()
-        });
-      } else if (cacheType in cacheTimestamps) {
-        // Clear specific main cache
-        switch(cacheType) {
-          case 'students':
-            setStudents([]);
-            break;
-          case 'teachers':
-            setTeachers([]);
-            break;
-          case 'courses':
-            setCourses([]);
-            break;
-          case 'assignments':
-            setAssignments([]);
-            break;
-          case 'modules':
-            setModules([]);
-            break;
-          case 'courseData':
-            setCourseData([]);
-            break;
-          default:
-            break;
-        }
-        
-        setCacheTimestamps(prevState => ({
-          ...prevState,
-          [cacheType]: null
-        }));
-      } else if (cacheType in queryCache) {
-        // Clear specific query cache
-        setQueryCache(prevCache => ({
-          ...prevCache,
-          [cacheType]: new Map()
-        }));
-      }
+      dispatch({
+        type: 'CLEAR_CACHE',
+        cacheType
+      });
     }
   }, []);
   
@@ -184,8 +237,8 @@ export const DataProvider = ({ children }) => {
     const loadInitialData = async () => {
       if (!currentUser) return;
       
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
       
       try {
         // Fetch core data if needed and cache isn't expired
@@ -193,15 +246,21 @@ export const DataProvider = ({ children }) => {
         // Courses data
         if (courses.length === 0 || isCacheExpired('courses')) {
           const coursesData = await fetchDocuments('courses');
-          setCourses(coursesData || []);
-          updateCacheTimestamp('courses');
+          dispatch({ 
+            type: 'SET_DATA', 
+            dataType: 'courses', 
+            payload: coursesData || [] 
+          });
         }
         
         // Teachers data
         if (teachers.length === 0 || isCacheExpired('teachers')) {
           const teachersData = await fetchDocuments('teachers');
-          setTeachers(teachersData || []);
-          updateCacheTimestamp('teachers');
+          dispatch({ 
+            type: 'SET_DATA', 
+            dataType: 'teachers', 
+            payload: teachersData || [] 
+          });
         }
         
         // Only fetch more detailed data if this is not an initial load
@@ -223,20 +282,148 @@ export const DataProvider = ({ children }) => {
               };
             });
             
-            setCourseData(aggregatedCourseData);
-            updateCacheTimestamp('courseData');
+            dispatch({ 
+              type: 'SET_DATA', 
+              dataType: 'courseData', 
+              payload: aggregatedCourseData 
+            });
           }
         }
       } catch (err) {
         console.error("Error loading initial data:", err);
-        setError(err.message);
+        dispatch({ type: 'SET_ERROR', payload: err.message });
       } finally {
-        setLoading(false);
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
     
     loadInitialData();
-  }, [currentUser, isCacheExpired, updateCacheTimestamp, courses.length, teachers.length, courseData.length]);
+  }, [currentUser, isCacheExpired, courses.length, teachers.length, courseData.length]);
+  
+  // Helper function to get student IDs from courses
+  const getStudentIdsFromCourses = useCallback((courses) => {
+    const studentIds = new Set();
+    courses.forEach(course => {
+      if (course.students && Array.isArray(course.students)) {
+        course.students.forEach(studentId => studentIds.add(studentId));
+      }
+    });
+    return Array.from(studentIds);
+  }, []);
+  
+  // Helper to fetch student records
+  const fetchStudentRecords = useCallback(async (studentIds) => {
+    console.log(`Fetching batch data for ${studentIds.length} students`);
+    
+    // Try fetching using id field
+    let students = await fetchDocuments('students', {
+      filters: [{ field: 'id', operator: 'in', value: studentIds }]
+    }) || [];
+    
+    // If no results, try studentId field
+    if (students.length === 0) {
+      students = await fetchDocuments('students', {
+        filters: [{ field: 'studentId', operator: 'in', value: studentIds }]
+      }) || [];
+    }
+    
+    return students;
+  }, []);
+  
+  // Helper to fetch user data for students
+  const fetchUserDataForStudents = useCallback(async (students) => {
+    const userIds = students
+      .map(student => student.userId)
+      .filter(Boolean);
+    
+    if (userIds.length === 0) return [];
+    
+    return await fetchDocuments('users', {
+      filters: [{ field: 'uid', operator: 'in', value: userIds }]
+    }) || [];
+  }, []);
+  
+  // Helper to fetch progress data for students and courses
+  const fetchProgressForStudentCourses = useCallback(async (studentProgressMap) => {
+    const progressMap = new Map();
+    
+    const progressPromises = Array.from(studentProgressMap.entries()).map(
+      async ([studentId, courseIds]) => {
+        try {
+          return await Promise.all(
+            courseIds.map(courseId => 
+              fetchDocumentById(`studentProgress/${studentId}/courses`, courseId)
+                .then(progress => {
+                  if (progress && progress.summary) {
+                    progressMap.set(`${studentId}-${courseId}`, progress.summary);
+                  }
+                  return progress;
+                })
+                .catch(err => {
+                  console.error(`Error getting progress for student ${studentId} in course ${courseId}:`, err);
+                  return null;
+                })
+            )
+          );
+        } catch (err) {
+          console.error(`Error fetching progress data for student ${studentId}:`, err);
+          return [];
+        }
+      }
+    );
+    
+    await Promise.all(progressPromises);
+    return progressMap;
+  }, []);
+  
+  // Helper to process and format student data
+  const processStudentData = useCallback((studentsData, userDataMap, progressMap, teacherCourses) => {
+    return studentsData.map(studentData => {
+      const studentId = studentData.id || studentData.studentId;
+      const userData = userDataMap.get(studentData.userId) || {};
+      
+      let totalScore = 0;
+      let totalCompletion = 0;
+      let courseCount = 0;
+      let lastAccessed = null;
+      
+      // Process progress data for courses
+      teacherCourses.forEach(course => {
+        const courseId = course.id || course.courseId;
+        const progressKey = `${studentId}-${courseId}`;
+        const summary = progressMap.get(progressKey);
+        
+        if (summary) {
+          if (summary.overallScore !== undefined) {
+            totalScore += summary.overallScore;
+          }
+          if (summary.overallCompletion !== undefined) {
+            totalCompletion += summary.overallCompletion;
+          }
+          if (summary.lastAccessed) {
+            const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
+            if (!lastAccessed || accessDate > lastAccessed) {
+              lastAccessed = accessDate;
+            }
+          }
+          courseCount++;
+        }
+      });
+      
+      return {
+        id: studentId,
+        studentId: studentId,
+        firstName: userData.firstName || 'Unknown',
+        lastName: userData.lastName || 'Student',
+        email: userData.email || '',
+        scores: {
+          average: courseCount > 0 ? totalScore / courseCount : 0
+        },
+        completion: courseCount > 0 ? totalCompletion / courseCount : 0,
+        lastAccessed: lastAccessed
+      };
+    });
+  }, []);
   
   // Get courses by teacher with enhanced caching
   const fetchTeacherCourses = useCallback(async (teacherIdOrEmail) => {
@@ -302,8 +489,9 @@ export const DataProvider = ({ children }) => {
       console.error("Error fetching teacher courses:", error);
       return [];
     }
-  }, [fetchDocuments, getFromQueryCache, updateQueryCache]);
-    // Get students by teacher with enhanced caching and batch operations
+  }, [getFromQueryCache, updateQueryCache]);
+  
+  // Get students by teacher with enhanced caching and batch operations
   const fetchStudentsByTeacher = useCallback(async (teacherIdOrEmail) => {
     if (!teacherIdOrEmail) return [];
     
@@ -316,176 +504,52 @@ export const DataProvider = ({ children }) => {
     
     try {
       console.time('fetchStudentsByTeacher');
+      
       // First get the teacher's courses
       const teacherCourses = await fetchTeacherCourses(teacherIdOrEmail);
-      
       if (!teacherCourses || teacherCourses.length === 0) {
         console.log('No courses found for teacher');
         return [];
       }
       
-      // Get all unique student IDs from all courses
-      const studentIds = new Set();
-      teacherCourses.forEach(course => {
-        if (course.students && Array.isArray(course.students)) {
-          course.students.forEach(studentId => studentIds.add(studentId));
-        }
-      });
-      
-      if (studentIds.size === 0) {
+      // Get all student IDs from courses
+      const studentIdsArray = getStudentIdsFromCourses(teacherCourses);
+      if (studentIdsArray.length === 0) {
         console.log("No students found in teacher courses");
         return [];
       }
       
-      const studentIdsArray = Array.from(studentIds);
-      console.log(`Fetching batch data for ${studentIdsArray.length} students`);
-      
-      // BATCH OPERATION 1: Fetch all students at once with a single query
-      let studentsQuery = await fetchDocuments('students', {
-        filters: [{ field: 'id', operator: 'in', value: studentIdsArray }]
-      }) || [];
-      
-      if (studentsQuery.length === 0) {
-        // Try querying by studentId field if id field doesn't work
-        const studentsByIdQuery = await fetchDocuments('students', {
-          filters: [{ field: 'studentId', operator: 'in', value: studentIdsArray }]
-        }) || [];
-        
-        if (studentsByIdQuery.length > 0) {
-          console.log(`Found ${studentsByIdQuery.length} students using studentId field`);
-          studentsQuery = studentsByIdQuery;
-        }
-      }
-      
+      // Fetch student records
+      const studentsQuery = await fetchStudentRecords(studentIdsArray);
       console.log(`Found ${studentsQuery.length} students in database`);
       if (studentsQuery.length === 0) return [];
       
-      // BATCH OPERATION 2: Fetch all relevant user data in a single query
-      const userIds = studentsQuery
-        .map(student => student.userId)
-        .filter(Boolean);
+      // Fetch user data for students
+      const usersData = await fetchUserDataForStudents(studentsQuery);
+      console.log(`Found ${usersData.length} user records for students`);
       
-      let usersData = [];
-      if (userIds.length > 0) {
-        usersData = await fetchDocuments('users', {
-          filters: [{ field: 'uid', operator: 'in', value: userIds }]
-        }) || [];
-        console.log(`Found ${usersData.length} user records for students`);
-      }
-      
-      // Create maps for quick lookups
+      // Create a map for quick user data lookups
       const userDataMap = new Map();
       usersData.forEach(user => {
         userDataMap.set(user.uid, user);
       });
       
-      // Create a map of student progress by studentId and courseId
-      // Instead of fetching each progress document individually with a separate request,
-      // we'll collect all studentId-courseId pairs and fetch their progress data with batched operations
-      
-      // IMPROVED APPROACH: Group all progress data fetching into a batch operation
-      const courseProgressPromises = [];
-      const progressMap = new Map(); // Maps studentId-courseId to progress
-      
-      // Group progress fetching by student to reduce number of requests
-      const studentProgressByStudent = new Map(); // Maps studentId to an array of course IDs
-      
-      // Group all requests by student
+      // Group progress fetching by student
+      const studentProgressByStudent = new Map();
       studentsQuery.forEach(student => {
         const studentId = student.id || student.studentId;
-        const coursesForStudent = [];
-        
-        teacherCourses.forEach(course => {
-          const courseId = course.id || course.courseId;
-          if (courseId) {
-            coursesForStudent.push(courseId);
-          }
-        });
-        
+        const coursesForStudent = teacherCourses.map(course => course.id || course.courseId).filter(Boolean);
         if (coursesForStudent.length > 0) {
           studentProgressByStudent.set(studentId, coursesForStudent);
         }
       });
       
-      // Now fetch progress data for each student's courses as a batch
-      const progressPromises = Array.from(studentProgressByStudent.entries()).map(
-        async ([studentId, courseIds]) => {
-          try {
-            // For each student, fetch progress data for all their courses in a batch
-            // This significantly reduces the number of network requests
-            const progressDataForStudent = await Promise.all(
-              courseIds.map(courseId => 
-                fetchDocumentById(`studentProgress/${studentId}/courses`, courseId)
-                  .then(progress => {
-                    if (progress && progress.summary) {
-                      progressMap.set(`${studentId}-${courseId}`, progress.summary);
-                    }
-                    return progress;
-                  })
-                  .catch(err => {
-                    console.error(`Error getting progress for student ${studentId} in course ${courseId}:`, err);
-                    return null;
-                  })
-              )
-            );
-            return progressDataForStudent;
-          } catch (err) {
-            console.error(`Error fetching progress data for student ${studentId}:`, err);
-            return [];
-          }
-        }
-      );
-      
-      // Wait for all progress data to be fetched
-      await Promise.all(progressPromises);
+      // Fetch progress data
+      const progressMap = await fetchProgressForStudentCourses(studentProgressByStudent);
       console.log(`Collected progress data for ${progressMap.size} student-course combinations`);
       
-      // Process students with their user and progress data
-      const students = studentsQuery.map(studentData => {
-        const studentId = studentData.id || studentData.studentId;
-        const userData = userDataMap.get(studentData.userId) || {};
-        
-        let totalScore = 0;
-        let totalCompletion = 0;
-        let courseCount = 0;
-        let lastAccessed = null;
-        
-        // Process all progress data for this student
-        teacherCourses.forEach(course => {
-          const courseId = course.id || course.courseId;
-          const progressKey = `${studentId}-${courseId}`;
-          const summary = progressMap.get(progressKey);
-          
-          if (summary) {
-            if (summary.overallScore !== undefined) {
-              totalScore += summary.overallScore;
-            }
-            if (summary.overallCompletion !== undefined) {
-              totalCompletion += summary.overallCompletion;
-            }
-            if (summary.lastAccessed) {
-              const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
-              if (!lastAccessed || accessDate > lastAccessed) {
-                lastAccessed = accessDate;
-              }
-            }
-            courseCount++;
-          }
-        });
-        
-        return {
-          id: studentId,
-          studentId: studentId,
-          firstName: userData.firstName || 'Unknown',
-          lastName: userData.lastName || 'Student',
-          email: userData.email || '',
-          scores: {
-            average: courseCount > 0 ? totalScore / courseCount : 0
-          },
-          completion: courseCount > 0 ? totalCompletion / courseCount : 0,
-          lastAccessed: lastAccessed
-        };
-      });
+      // Process and format student data
+      const students = processStudentData(studentsQuery, userDataMap, progressMap, teacherCourses);
       
       // Cache the result
       updateQueryCache('studentsByTeacher', cacheKey, students);
@@ -496,7 +560,16 @@ export const DataProvider = ({ children }) => {
       console.error("Error fetching students by teacher:", error);
       return [];
     }
-  }, [fetchTeacherCourses, fetchDocuments, fetchDocumentById, getFromQueryCache, updateQueryCache, formatFirebaseTimestamp]);
+  }, [
+    fetchTeacherCourses, 
+    getStudentIdsFromCourses, 
+    fetchStudentRecords, 
+    fetchUserDataForStudents, 
+    fetchProgressForStudentCourses, 
+    processStudentData, 
+    getFromQueryCache, 
+    updateQueryCache
+  ]);
   
   // Get course statistics with enhanced caching
   const fetchCourseStats = useCallback(async (courseId) => {
@@ -603,7 +676,7 @@ export const DataProvider = ({ children }) => {
       console.error("Error fetching course stats:", error);
       return null;
     }
-  }, [fetchDocumentById, fetchDocuments, fetchSubcollection, getFromQueryCache, updateQueryCache, formatFirebaseTimestamp]);
+  }, [fetchDocumentById, fetchDocuments, fetchSubcollection, getFromQueryCache, updateQueryCache]);
   
   // Get student assignments with enhanced caching
   const fetchStudentAssignments = useCallback(async (studentId) => {
@@ -720,7 +793,7 @@ export const DataProvider = ({ children }) => {
       console.error("Error fetching student assignments:", error);
       return [];
     }
-  }, [fetchDocuments, fetchDocumentById, fetchSubcollection, getFromQueryCache, updateQueryCache, formatFirebaseTimestamp]);
+  }, [fetchDocuments, fetchDocumentById, fetchSubcollection, getFromQueryCache, updateQueryCache]);
   
   // Get module progress for a student with enhanced caching
   const fetchModuleProgress = useCallback(async (studentId, courseId) => {
@@ -797,19 +870,22 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-      setLoading(true);
+      dispatch({ type: 'SET_LOADING', payload: true });
       const studentsData = await fetchDocuments('students');
-      setStudents(studentsData || []);
-      updateCacheTimestamp('students');
-      setLoading(false);
+      dispatch({ 
+        type: 'SET_DATA', 
+        dataType: 'students', 
+        payload: studentsData || [] 
+      });
+      dispatch({ type: 'SET_LOADING', payload: false });
       return studentsData || [];
     } catch (error) {
       console.error("Error fetching all students:", error);
-      setError("Failed to fetch students data");
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to fetch students data" });
+      dispatch({ type: 'SET_LOADING', payload: false });
       return [];
     }
-  }, [students, isCacheExpired, updateCacheTimestamp]);
+  }, [students, isCacheExpired]);
   
   // Fetch list of all assignments with caching
   const fetchAllAssignments = useCallback(async () => {
@@ -818,19 +894,22 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-      setLoading(true);
+      dispatch({ type: 'SET_LOADING', payload: true });
       const assignmentsData = await fetchDocuments('assignments');
-      setAssignments(assignmentsData || []);
-      updateCacheTimestamp('assignments');
-      setLoading(false);
+      dispatch({ 
+        type: 'SET_DATA', 
+        dataType: 'assignments', 
+        payload: assignmentsData || [] 
+      });
+      dispatch({ type: 'SET_LOADING', payload: false });
       return assignmentsData || [];
     } catch (error) {
       console.error("Error fetching all assignments:", error);
-      setError("Failed to fetch assignments data");
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to fetch assignments data" });
+      dispatch({ type: 'SET_LOADING', payload: false });
       return [];
     }
-  }, [assignments, isCacheExpired, updateCacheTimestamp]);
+  }, [assignments, isCacheExpired]);
   
   // Fetch list of all modules with caching
   const fetchAllModules = useCallback(async () => {
@@ -839,19 +918,22 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-      setLoading(true);
+      dispatch({ type: 'SET_LOADING', payload: true });
       const modulesData = await fetchDocuments('modules');
-      setModules(modulesData || []);
-      updateCacheTimestamp('modules');
-      setLoading(false);
+      dispatch({ 
+        type: 'SET_DATA', 
+        dataType: 'modules', 
+        payload: modulesData || [] 
+      });
+      dispatch({ type: 'SET_LOADING', payload: false });
       return modulesData || [];
     } catch (error) {
       console.error("Error fetching all modules:", error);
-      setError("Failed to fetch modules data");
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to fetch modules data" });
+      dispatch({ type: 'SET_LOADING', payload: false });
       return [];
     }
-  }, [modules, isCacheExpired, updateCacheTimestamp]);
+  }, [modules, isCacheExpired]);
   
   // Pre-emptively fetch data when user role changes
   useEffect(() => {
@@ -865,12 +947,12 @@ export const DataProvider = ({ children }) => {
   // Expose context value
   const value = {
     // Data
-    students,
-    teachers,
-    courses,
-    assignments,
-    modules,
-    courseData,
+    students: data.students,
+    teachers: data.teachers,
+    courses: data.courses,
+    assignments: data.assignments,
+    modules: data.modules,
+    courseData: data.courseData,
     
     // Status
     loading,

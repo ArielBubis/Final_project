@@ -34,3 +34,5 @@ serviceAccountKey.json
 *.pyc
 .vscode/mcp.json
 accountkey_Temp.txt
+backend/models
+

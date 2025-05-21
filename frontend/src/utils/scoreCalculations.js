@@ -98,6 +98,8 @@ export const formatTimestamp = (timestamp) => {
 
 /**
  * Calculates the risk level and score for a student or course based on various performance metrics
+ * This is the rule-based implementation that serves as a fallback if the ML model is not available
+ * 
  * @param {Object} data - Object containing performance metrics
  * @param {boolean} isStudentLevel - Whether this is a student-level assessment (true) or course-level (false)
  * @returns {Object} Risk assessment object with score, level, factors, and isAtRisk flag
