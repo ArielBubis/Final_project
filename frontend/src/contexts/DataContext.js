@@ -157,98 +157,104 @@ export const DataProvider = ({ children }) => {
       }
     }
   }, [cacheTimestamps, queryCache]);
-
   // NEW: Get teacher dashboard data
-  const fetchTeacherDashboard = useCallback(async (teacherId) => {
-    if (!teacherId) return null;
+  const fetchTeacherDashboard = useCallback(async (teacherUidOrId) => {
+    if (!teacherUidOrId) return null;
     
     // Check cache first
-    const cachedData = getFromQueryCache('teacherDashboard', teacherId);
+    const cachedData = getFromQueryCache('teacherDashboard', teacherUidOrId);
     if (cachedData) {
       return cachedData;
     }
     
     try {
-      const dashboard = await fetchDocumentById('teacherDashboards', teacherId);
-      if (dashboard) {
-        updateQueryCache('teacherDashboard', teacherId, dashboard);
+      let actualTeacherId = teacherUidOrId;
+        // If we're given a UID (Firebase Auth ID), we need to get the actual teacher ID
+      // Check if this looks like a UID (contains no @ and is long alphanumeric)
+      if (!teacherUidOrId.includes('@') && teacherUidOrId.length > 10) {
+        console.log(`Looking up teacher ID for UID: ${teacherUidOrId}`);
+        
+        // Find the teacher document by searching for the UID field
+        const teachersWithUid = await fetchDocuments('users', {
+          filters: [
+            { field: 'uid', operator: '==', value: teacherUidOrId },
+            { field: 'role', operator: '==', value: 'teacher' }
+          ]
+        });
+        
+        if (teachersWithUid && teachersWithUid.length > 0) {
+          // The document ID is the teacher ID we need
+          actualTeacherId = teachersWithUid[0].id;
+          console.log(`Found teacher ID: ${actualTeacherId} for UID: ${teacherUidOrId}`);
+        } else {
+          console.warn(`No teacher found with UID: ${teacherUidOrId}`);
+          return null;
+        }
       }
+      
+      console.log(`Fetching dashboard data for teacher ID: ${actualTeacherId}`);
+      const dashboard = await fetchDocumentById('teacherDashboards', actualTeacherId);
+      
+      if (dashboard) {
+        updateQueryCache('teacherDashboard', teacherUidOrId, dashboard);
+        console.log('Dashboard data found and cached');
+      } else {
+        console.log(`No dashboard data found for teacher ID: ${actualTeacherId}`);
+      }
+      
       return dashboard;
     } catch (error) {
       console.error("Error fetching teacher dashboard:", error);
       return null;
     }
   }, [getFromQueryCache, updateQueryCache]);
-  
-  // UPDATED: Get courses by teacher using new structure
-  const fetchTeacherCourses = useCallback(async (teacherIdOrEmail) => {
-    if (!teacherIdOrEmail) return [];
+    // UPDATED: Get courses by teacher using new structure
+  const fetchTeacherCourses = useCallback(async (teacherUidOrId) => {
+    if (!teacherUidOrId) return [];
     
     // Check cache first
-    const cacheKey = `teacher-${teacherIdOrEmail}`;
+    const cacheKey = `teacher-${teacherUidOrId}`;
     const cachedData = getFromQueryCache('teacherCourses', cacheKey);
     if (cachedData) {
       return cachedData;
     }
     
     try {
-      let teacherId = teacherIdOrEmail;
-      
-      // If we're given an email address, find the corresponding teacher ID
-      if (teacherIdOrEmail.includes('@')) {
-        console.log(`Looking up teacher by email: ${teacherIdOrEmail}`);
+      let actualTeacherId = teacherUidOrId;
+        // If we're given a UID (Firebase Auth ID), we need to get the actual teacher ID
+      // Check if this looks like a UID (contains no @ and is long alphanumeric)
+      if (!teacherUidOrId.includes('@') && teacherUidOrId.length > 10) {
+        console.log(`Looking up teacher ID for UID: ${teacherUidOrId}`);
         
-        const usersWithEmail = await fetchDocuments('users', {
+        // Find the teacher document by searching for the UID field
+        const teachersWithUid = await fetchDocuments('users', {
           filters: [
-            { field: 'email', operator: '==', value: teacherIdOrEmail },
+            { field: 'uid', operator: '==', value: teacherUidOrId },
             { field: 'role', operator: '==', value: 'teacher' }
           ]
         });
         
-        if (usersWithEmail && usersWithEmail.length > 0) {
-          // Use the document ID as teacherId (which should match the CSV ID we used)
-          teacherId = usersWithEmail[0].id;
-          console.log(`Found teacher with ID: ${teacherId} for email: ${teacherIdOrEmail}`);
+        if (teachersWithUid && teachersWithUid.length > 0) {
+          // The document ID is the teacher ID we need
+          actualTeacherId = teachersWithUid[0].id;
+          console.log(`Found teacher ID: ${actualTeacherId} for UID: ${teacherUidOrId}`);
         } else {
-          console.warn(`No teacher found with email ${teacherIdOrEmail}`);
+          console.warn(`No teacher found with UID: ${teacherUidOrId}`);
           return [];
         }
       }
       
-      console.log(`Searching for courses with teacherId: ${teacherId}`);
+      console.log(`Searching for courses with teacher ID: ${actualTeacherId}`);
       
-      // Try both old and new approaches for compatibility
-      let coursesQuery = [];
-      
-      // First try the new teacherIds array approach
-      try {
-        coursesQuery = await fetchDocuments('courses', {
-          filters: [
-            { field: 'teacherIds', operator: 'array-contains', value: teacherId }
-          ]
-        });
-        console.log(`Found ${coursesQuery?.length || 0} courses using teacherIds array`);
-      } catch (err) {
-        console.warn('teacherIds array query failed:', err.message);
-      }
-      
-      // If no results, try the old single teacherId approach for backward compatibility
-      if (!coursesQuery || coursesQuery.length === 0) {
-        try {
-          const fallbackQuery = await fetchDocuments('courses', {
-            filters: [
-              { field: 'teacherId', operator: '==', value: teacherId }
-            ]
-          });
-          console.log(`Found ${fallbackQuery?.length || 0} courses using single teacherId field`);
-          coursesQuery = fallbackQuery || [];
-        } catch (err) {
-          console.warn('Fallback teacherId query failed:', err.message);
-        }
-      }
+      // Use the new teacherIds array approach (no more fallback to old structure)
+      const coursesQuery = await fetchDocuments('courses', {
+        filters: [
+          { field: 'teacherIds', operator: 'array-contains', value: actualTeacherId }
+        ]
+      });
       
       const result = coursesQuery || [];
-      console.log(`Final result: ${result.length} courses for teacher ${teacherId}`);
+      console.log(`Found ${result.length} courses for teacher ${actualTeacherId}`);
       
       // Cache the result
       updateQueryCache('teacherCourses', cacheKey, result);
@@ -259,13 +265,12 @@ export const DataProvider = ({ children }) => {
       return [];
     }
   }, [getFromQueryCache, updateQueryCache]);
-
   // UPDATED: Get students by teacher using new normalized structure
-  const fetchStudentsByTeacher = useCallback(async (teacherIdOrEmail) => {
-    if (!teacherIdOrEmail) return [];
+  const fetchStudentsByTeacher = useCallback(async (teacherUidOrId) => {
+    if (!teacherUidOrId) return [];
     
     // Check cache first
-    const cacheKey = `teacher-${teacherIdOrEmail}`;
+    const cacheKey = `teacher-${teacherUidOrId}`;
     const cachedData = getFromQueryCache('studentsByTeacher', cacheKey);
     if (cachedData) {
       return cachedData;
@@ -274,8 +279,8 @@ export const DataProvider = ({ children }) => {
     try {
       console.time('fetchStudentsByTeacher');
       
-      // First get the teacher's courses
-      const teacherCourses = await fetchTeacherCourses(teacherIdOrEmail);
+      // First get the teacher's courses (this now handles UID-to-teacher-ID mapping)
+      const teacherCourses = await fetchTeacherCourses(teacherUidOrId);
       
       if (!teacherCourses || teacherCourses.length === 0) {
         console.log('No courses found for teacher');

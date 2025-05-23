@@ -185,10 +185,11 @@ const MainPage = () => {
                 console.log('MainPage: Starting data fetch for user:', currentUser?.email);
                 
                 // NEW: Try to get pre-computed dashboard data first
+                // FIXED: Now properly handles UID-to-teacher-ID mapping in DataContext
                 let teacherDashboard = null;
                 if (currentUser?.uid) {
                     try {
-                        // Try using the user ID to get dashboard data
+                        // The fetchTeacherDashboard function now handles UID-to-teacher-ID lookup
                         teacherDashboard = await fetchTeacherDashboard(currentUser.uid);
                         console.log('Dashboard data loaded:', teacherDashboard);
                         setDashboardData(teacherDashboard);
@@ -196,10 +197,9 @@ const MainPage = () => {
                         console.log('No dashboard data found, will calculate metrics manually');
                     }
                 }
-                
-                // Fetch teacher's courses
+                  // Fetch teacher's courses
                 console.log('Fetching teacher courses...');
-                const teacherCourses = await fetchTeacherCourses(currentUser?.email);
+                const teacherCourses = await fetchTeacherCourses(currentUser?.uid);
                 console.log('Found courses:', teacherCourses?.length || 0);
                 
                 if (!teacherCourses || teacherCourses.length === 0) {
@@ -251,10 +251,9 @@ const MainPage = () => {
                 );
                 
                 console.log('Courses with stats:', coursesWithStats.length);
-                
-                // Fetch students for the teacher
+                  // Fetch students for the teacher
                 console.log('Fetching students...');
-                const teacherStudents = await fetchStudentsByTeacher(currentUser?.email);
+                const teacherStudents = await fetchStudentsByTeacher(currentUser?.uid);
                 console.log('Found students:', teacherStudents?.length || 0);
                 
                 // FIXED: Transform student data to match the required format
@@ -268,11 +267,12 @@ const MainPage = () => {
                     attendance: Math.round(student.attendance || 95), // Default to 95 if not available
                     lastActive: student.lastAccessed || new Date().toISOString(),
                     performance: Math.round(student.scores?.average || 0),
-                    completion: Math.round(student.completion || 0),
-                    scores: student.scores || { average: 0 },
+                    completion: Math.round(student.completion || 0),                    scores: student.scores || { average: 0 },
                     // FIXED: Better risk score calculation
                     riskScore: calculateRiskScore(student),
-                    courses: student.courses || [] // Include courses for ML analysis
+                    // TODO: In new DB design, courses should be fetched from enrollments + studentCourseSummaries
+                    // This will need to be updated to query the normalized structure
+                    courses: student.courses || [] // DEPRECATED: Will be empty in new normalized design
                 }));
 
                 // Get teacher analytics if available

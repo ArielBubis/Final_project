@@ -35,7 +35,9 @@ const Student = () => {
 
   if (!student) {
     return <Empty description="No student data found" />;
-  }  // Log the student object for debugging
+  }
+
+  // Log the student object for debugging
   debugLogger.logDebug('Student component', 'Render with data', {
     studentId: id,
     hasStudent: !!student,
