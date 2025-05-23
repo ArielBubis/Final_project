@@ -25,13 +25,16 @@ const MainPage = () => {
         fetchTeacherCourses,
         fetchStudentsByTeacher,
         fetchCourseStats,
+        fetchTeacherDashboard, // NEW: Use pre-computed dashboard data
         loading: dataLoading,
         error: dataError,
         clearCache
     } = useData();
     const { getTeacherAnalytics } = usePerformance();
-      const [courses, setCourses] = useState([]);
+    
+    const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
+    const [dashboardData, setDashboardData] = useState(null); // NEW: Store dashboard data
     const [analytics, setAnalytics] = useState(null);
     const [atRiskStudents, setAtRiskStudents] = useState([]);
     const [mlRiskStudents, setMlRiskStudents] = useState([]);
@@ -42,26 +45,48 @@ const MainPage = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     const [selectedTab, setSelectedTab] = useState('overview');
 
-    // Dashboard metrics derived from fetched data
+    // UPDATED: Dashboard metrics derived from fetched data with fallbacks
     const dashboardMetrics = useMemo(() => {
-        if (!courses.length || !students.length) return null;
+        // First try to use pre-computed dashboard data
+        if (dashboardData) {
+            return {
+                totalCourses: dashboardData.totalCourses || 0,
+                totalStudents: dashboardData.totalStudents || 0,
+                avgCompletion: Math.round(dashboardData.averageCompletionRate || 0),
+                avgPerformance: Math.round(dashboardData.averageScore || 0),
+                activeStudents: dashboardData.totalActiveStudents || 0,
+                activeStudentsPercentage: dashboardData.totalStudents > 0 ? 
+                    Math.round((dashboardData.totalActiveStudents / dashboardData.totalStudents) * 100) : 0,
+                upcomingAssignments: dashboardData.upcomingAssignmentCount || 0
+            };
+        }
         
-        // Calculate average course completion
-        const avgCompletion = courses.reduce((sum, course) => sum + course.progress, 0) / courses.length;
+        // Fallback to calculated metrics if no dashboard data
+        if (!courses.length && !students.length) return null;
         
-        // Calculate average student performance
-        const avgPerformance = students.reduce((sum, student) => sum + student.performance, 0) / students.length;
+        // Calculate average course completion - FIXED: use averageCompletion instead of progress
+        const avgCompletion = courses.length > 0 ? 
+            courses.reduce((sum, course) => sum + (course.averageCompletion || course.progress || 0), 0) / courses.length : 0;
         
-        // Count active students in the last 7 days
+        // Calculate average student performance - FIXED: handle scores object properly
+        const avgPerformance = students.length > 0 ? 
+            students.reduce((sum, student) => sum + (student.performance || student.scores?.average || 0), 0) / students.length : 0;
+        
+        // Count active students in the last 7 days - FIXED: handle date parsing
         const now = new Date();
-        const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7));
-        const activeStudents = students.filter(student =>
-            new Date(student.lastActive) >= sevenDaysAgo
-        ).length;
+        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+        const activeStudents = students.filter(student => {
+            try {
+                const lastActiveDate = new Date(student.lastActive || student.lastAccessed);
+                return lastActiveDate >= sevenDaysAgo;
+            } catch (e) {
+                return false; // Invalid date
+            }
+        }).length;
         
-        // Count assignments due in the next week
+        // Count assignments - FIXED: use assignmentCount from course stats
         const upcomingAssignments = courses.reduce((count, course) =>
-            count + (course.upcomingAssignments || 0), 0);
+            count + (course.assignmentCount || course.upcomingAssignments || 0), 0);
             
         return {
             totalCourses: courses.length,
@@ -69,10 +94,10 @@ const MainPage = () => {
             avgCompletion: Math.round(avgCompletion),
             avgPerformance: Math.round(avgPerformance),
             activeStudents,
-            activeStudentsPercentage: Math.round((activeStudents / students.length) * 100),
+            activeStudentsPercentage: students.length > 0 ? Math.round((activeStudents / students.length) * 100) : 0,
             upcomingAssignments
         };
-    }, [courses, students]);
+    }, [courses, students, dashboardData]);
 
     // Function to refresh data
     const handleRefresh = () => {
@@ -80,9 +105,12 @@ const MainPage = () => {
         clearCache('teacherCourses');
         clearCache('studentsByTeacher');
         clearCache('courseStats');
+        clearCache('teacherDashboard'); // NEW: Clear dashboard cache
         // Trigger re-fetch by updating the key
         setRefreshKey(prev => prev + 1);
-    };    // Function to get ML risk predictions for students
+    };
+
+    // UPDATED: Function to get ML risk predictions for students
     const getMlRiskPredictions = async (studentList) => {
         setMlLoading(true);
         setMlError(null);
@@ -93,16 +121,22 @@ const MainPage = () => {
             const studentsWithPredictions = await Promise.all(
                 studentList.map(async (student) => {
                     try {
-                        // Get enhanced risk assessment that includes ML predictions
-                        // Transform student data to match the format expected by the ML model
+                        // FIXED: Better data transformation for ML model
                         const studentData = {
                             ...student,
                             courses: student.courses || [],
-                            averageScore: student.performance || student.averageScore || 0,
+                            averageScore: student.performance || student.scores?.average || 0,
                             completionRate: student.completion || student.completionRate || 0,
                             lastAccessed: student.lastActive || student.lastAccessed || new Date().toISOString(),
-                            // Add data needed for proper ML prediction
-                            assignments: (student.courses || []).flatMap(course => course.assignments || [])
+                            // Add more comprehensive assignment data
+                            assignments: (student.courses || []).reduce((allAssignments, course) => {
+                                const courseAssignments = (course.assignments || []).map(assignment => ({
+                                    ...assignment,
+                                    courseId: course.id,
+                                    courseName: course.name || course.courseName
+                                }));
+                                return allAssignments.concat(courseAssignments);
+                            }, [])
                         };
                         
                         const riskAssessment = await getEnhancedRiskAssessment(studentData, true);
@@ -146,46 +180,99 @@ const MainPage = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
+                setError(null);
+                
+                console.log('MainPage: Starting data fetch for user:', currentUser?.email);
+                
+                // NEW: Try to get pre-computed dashboard data first
+                let teacherDashboard = null;
+                if (currentUser?.uid) {
+                    try {
+                        // Try using the user ID to get dashboard data
+                        teacherDashboard = await fetchTeacherDashboard(currentUser.uid);
+                        console.log('Dashboard data loaded:', teacherDashboard);
+                        setDashboardData(teacherDashboard);
+                    } catch (dashboardErr) {
+                        console.log('No dashboard data found, will calculate metrics manually');
+                    }
+                }
                 
                 // Fetch teacher's courses
+                console.log('Fetching teacher courses...');
                 const teacherCourses = await fetchTeacherCourses(currentUser?.email);
+                console.log('Found courses:', teacherCourses?.length || 0);
+                
+                if (!teacherCourses || teacherCourses.length === 0) {
+                    console.log('No courses found for teacher');
+                    setCourses([]);
+                    setStudents([]);
+                    setAtRiskStudents([]);
+                    return;
+                }
                 
                 // Fetch course stats for each course
+                console.log('Fetching course stats...');
                 const coursesWithStats = await Promise.all(
                     teacherCourses.map(async (course) => {
-                        const stats = await fetchCourseStats(course.id || course.courseId);
-                        return {
-                            id: course.id || course.courseId,
-                            name: course.courseName || course.name,
-                            description: course.description || 'No description available',
-                            studentCount: stats?.studentCount || 0,
-                            progress: Math.round(stats?.averageCompletion || 0),
-                            lastUpdated: course.lastUpdated || new Date().toISOString(),
-                            activeStudentsLast7Days: stats?.activeStudentsLast7Days || 0,
-                            activeRatio7Days: stats?.activeRatio7Days || 0,
-                            assignmentCount: stats?.assignmentCount || 0,
-                            moduleCount: stats?.moduleCount || 0,
-                        };
+                        try {
+                            const stats = await fetchCourseStats(course.id);
+                            return {
+                                id: course.id,
+                                name: course.courseName || course.name,
+                                description: course.description || 'No description available',
+                                studentCount: stats?.studentCount || 0,
+                                progress: Math.round(stats?.averageCompletion || 0), // For CourseList compatibility
+                                averageCompletion: Math.round(stats?.averageCompletion || 0),
+                                averageScore: Math.round(stats?.averageScore || 0),
+                                lastUpdated: course.updatedAt || new Date().toISOString(),
+                                activeStudentsLast7Days: stats?.activeStudentsLast7Days || 0,
+                                activeRatio7Days: stats?.activeRatio7Days || 0,
+                                assignmentCount: stats?.assignmentCount || 0,
+                                moduleCount: stats?.moduleCount || 0,
+                            };
+                        } catch (err) {
+                            console.error(`Error fetching stats for course ${course.id}:`, err);
+                            return {
+                                id: course.id,
+                                name: course.courseName || course.name,
+                                description: course.description || 'No description available',
+                                studentCount: 0,
+                                progress: 0,
+                                averageCompletion: 0,
+                                averageScore: 0,
+                                lastUpdated: new Date().toISOString(),
+                                activeStudentsLast7Days: 0,
+                                activeRatio7Days: 0,
+                                assignmentCount: 0,
+                                moduleCount: 0,
+                            };
+                        }
                     })
                 );
                 
-                // Fetch students for the teacher
-                const teacherStudents = await fetchStudentsByTeacher(currentUser?.email);
+                console.log('Courses with stats:', coursesWithStats.length);
                 
-                // Transform student data to match the required format
-                const formattedStudents = teacherStudents.map(student => ({
+                // Fetch students for the teacher
+                console.log('Fetching students...');
+                const teacherStudents = await fetchStudentsByTeacher(currentUser?.email);
+                console.log('Found students:', teacherStudents?.length || 0);
+                
+                // FIXED: Transform student data to match the required format
+                const formattedStudents = (teacherStudents || []).map(student => ({
                     id: student.id || student.studentId,
-                    name: `${student.firstName} ${student.lastName}`,
-                    firstName: student.firstName,
-                    lastName: student.lastName,
-                    email: student.email,
+                    name: `${student.firstName || 'Unknown'} ${student.lastName || 'Student'}`,
+                    firstName: student.firstName || 'Unknown',
+                    lastName: student.lastName || 'Student',
+                    email: student.email || '',
                     grade: calculateGrade(student.scores?.average || 0),
                     attendance: Math.round(student.attendance || 95), // Default to 95 if not available
-                    lastActive: student.lastAccessed ? new Date(student.lastAccessed).toISOString() : new Date().toISOString(),
+                    lastActive: student.lastAccessed || new Date().toISOString(),
                     performance: Math.round(student.scores?.average || 0),
                     completion: Math.round(student.completion || 0),
-                    // Add risk score (mock data for now)
-                    riskScore: calculateRiskScore(student)
+                    scores: student.scores || { average: 0 },
+                    // FIXED: Better risk score calculation
+                    riskScore: calculateRiskScore(student),
+                    courses: student.courses || [] // Include courses for ML analysis
                 }));
 
                 // Get teacher analytics if available
@@ -195,29 +282,34 @@ const MainPage = () => {
                         teacherAnalytics = await getTeacherAnalytics(currentUser.uid);
                     }
                 } catch (analyticsErr) {
-                    console.error('Error fetching teacher analytics:', analyticsErr);
+                    console.log('Error fetching teacher analytics:', analyticsErr);
                 }
 
-                // Identify at-risk students
+                // FIXED: Identify at-risk students with better logic
                 const riskStudents = formattedStudents
-                    .filter(student => student.riskScore >= 70)
-                    .sort((a, b) => b.riskScore - a.riskScore);                setCourses(coursesWithStats);
+                    .filter(student => student.riskScore >= 40) // Lower threshold for more sensitivity
+                    .sort((a, b) => b.riskScore - a.riskScore);
+
+                console.log('At-risk students found:', riskStudents.length);
+
+                setCourses(coursesWithStats);
                 setStudents(formattedStudents);
                 setAnalytics(teacherAnalytics);
                 setAtRiskStudents(riskStudents);
                 setError(null);
-                  // Get ML risk predictions for students
+                
+                // Get ML risk predictions for students
                 if (formattedStudents.length > 0) {
                     try {
-                        getMlRiskPredictions(formattedStudents);
+                        await getMlRiskPredictions(formattedStudents);
                     } catch (mlError) {
                         console.error('Error getting ML risk predictions:', mlError);
                         setMlError('Failed to process ML risk predictions');
                     }
                 }
             } catch (err) {
-                setError('Failed to fetch data');
                 console.error('Error fetching data:', err);
+                setError('Failed to fetch data: ' + err.message);
             } finally {
                 setLoading(false);
             }
@@ -225,8 +317,11 @@ const MainPage = () => {
 
         if (currentUser?.email) {
             fetchData();
+        } else {
+            console.log('No current user email available');
+            setLoading(false);
         }
-    }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, getTeacherAnalytics, refreshKey]);
+    }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, fetchTeacherDashboard, getTeacherAnalytics, refreshKey]);
 
     // Helper function to calculate grade based on score
     const calculateGrade = (score) => {
@@ -237,26 +332,36 @@ const MainPage = () => {
         return 'F';
     };
 
-    // Helper function to calculate risk score
+    // FIXED: Helper function to calculate risk score with better logic
     const calculateRiskScore = (student) => {
         let score = 0;
         
         // Low performance increases risk
-        if (student.scores?.average < 60) score += 40;
-        else if (student.scores?.average < 70) score += 25;
+        const avgScore = student.scores?.average || 0;
+        if (avgScore < 50) score += 40;
+        else if (avgScore < 60) score += 30;
+        else if (avgScore < 70) score += 15;
         
         // Low completion increases risk
-        if (student.completion < 40) score += 30;
-        else if (student.completion < 60) score += 15;
+        const completion = student.completion || 0;
+        if (completion < 30) score += 35;
+        else if (completion < 50) score += 25;
+        else if (completion < 70) score += 10;
         
         // Recent inactivity increases risk
-        const lastAccess = new Date(student.lastAccessed || new Date());
-        const daysSinceLastAccess = Math.floor((new Date() - lastAccess) / (1000 * 60 * 60 * 24));
+        try {
+            const lastAccess = new Date(student.lastAccessed || new Date());
+            const daysSinceLastAccess = Math.floor((new Date() - lastAccess) / (1000 * 60 * 60 * 24));
+            
+            if (daysSinceLastAccess > 21) score += 25;
+            else if (daysSinceLastAccess > 14) score += 20;
+            else if (daysSinceLastAccess > 7) score += 10;
+        } catch (e) {
+            // Invalid date, add some risk
+            score += 15;
+        }
         
-        if (daysSinceLastAccess > 14) score += 30;
-        else if (daysSinceLastAccess > 7) score += 15;
-        
-        return score;
+        return Math.min(score, 100); // Cap at 100
     };
 
     if (loading || dataLoading) {
@@ -393,7 +498,8 @@ const MainPage = () => {
                             </div>
                         </div>
                     </Tabs.TabPane>
-                      <Tabs.TabPane tab="At-Risk Students" key="risk">
+                    
+                    <Tabs.TabPane tab="At-Risk Students" key="risk">
                         <div className={styles.tabContent}>
                             <Card
                                 title={
@@ -412,8 +518,8 @@ const MainPage = () => {
                                                     <div className={styles.riskScore}>
                                                         Risk Score:
                                                         <span className={
-                                                            student.riskScore >= 80 ? styles.highRisk :
-                                                            student.riskScore >= 60 ? styles.mediumRisk :
+                                                            student.riskScore >= 70 ? styles.highRisk :
+                                                            student.riskScore >= 40 ? styles.mediumRisk :
                                                             styles.lowRisk
                                                         }>
                                                             {student.riskScore}

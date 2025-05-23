@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../../contexts/DataContext';
 import { db } from '../../../firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-
 import debugLogger from '../../../utils/debugLogger';
 
 export const useStudentData = (studentId) => {
@@ -13,11 +12,7 @@ export const useStudentData = (studentId) => {
   const [debugInfo, setDebugInfo] = useState({});
   const navigate = useNavigate();
   
-  const { 
-    fetchStudentAssignments,
-    fetchModuleProgress,
-    currentUser 
-  } = useData();
+  const { currentUser } = useData();
 
   useEffect(() => {
     const loadStudentData = async () => {
@@ -30,11 +25,9 @@ export const useStudentData = (studentId) => {
       setLoading(true);
       setDebugInfo({});
       
-      // Track request counts for debugging
       let requestCount = 0;
       let startTime = performance.now();
       
-      // Wrapper for Firestore operations to track network requests
       const trackRequest = async (operation, description) => {
         console.log(`Starting ${description}...`);
         const start = performance.now();
@@ -53,39 +46,31 @@ export const useStudentData = (studentId) => {
       console.log('==================== STUDENT DATA DEBUG LOG ====================');
       console.log(`Starting to load student data for ID: ${studentId} at ${new Date().toISOString()}`);
       console.time('loadStudentData-total');
-        try {        // Student document
-        debugLogger.logDebug('useStudentData', 'Fetching student', { studentId });
-        const studentDoc = await trackRequest(
-          () => getDoc(doc(db, 'students', studentId)), 
-          `Fetching student document with ID ${studentId}`
-        );
-          if (!studentDoc.exists()) {
-          debugLogger.logError('useStudentData', 'Student document', new Error("Student not found"));
-          throw new Error("Student not found");
-        }
         
-        const studentData = studentDoc.data();
-        debugLogger.logDebug('useStudentData', 'Student data fetched', studentData);
-        setDebugInfo(prev => ({ ...prev, studentData }));
-
-        // User data
-        if (!studentData.userId) {
-          throw new Error("Student document missing userId field");
-        }
-
+      try {
+        // UPDATED: Get student from users collection instead of students collection
+        debugLogger.logDebug('useStudentData', 'Fetching user data', { studentId });
         const userDoc = await trackRequest(
-          () => getDoc(doc(db, 'users', studentData.userId)),
-          `Fetching user document with ID ${studentData.userId}`
+          () => getDoc(doc(db, 'users', studentId)), 
+          `Fetching user document with ID ${studentId}`
         );
-        
+          
         if (!userDoc.exists()) {
-          throw new Error(`User data not found for ID: ${studentData.userId}`);
+          debugLogger.logError('useStudentData', 'User document', new Error("Student user not found"));
+          throw new Error("Student user not found");
         }
         
         const userData = userDoc.data();
+        debugLogger.logDebug('useStudentData', 'User data fetched', userData);
+        
+        // Verify this is actually a student
+        if (userData.role !== 'student') {
+          throw new Error(`User ${studentId} is not a student (role: ${userData.role})`);
+        }
+        
         setDebugInfo(prev => ({ ...prev, userData }));
 
-        // Enrollments
+        // Get student enrollments to find courses
         const enrollmentsRef = collection(db, 'enrollments');
         const enrollmentsQuery = query(enrollmentsRef, where('studentId', '==', studentId));
         const enrollmentsSnapshot = await trackRequest(
@@ -100,23 +85,56 @@ export const useStudentData = (studentId) => {
         
         setDebugInfo(prev => ({ ...prev, enrollments }));
         
-        // Course data 
+        if (enrollments.length === 0) {
+          console.log(`No enrollments found for student ${studentId}`);
+          // Still create a basic student object
+          const basicStudentData = {
+            id: studentId,
+            userId: studentId,
+            firstName: userData.firstName || 'Unknown',
+            lastName: userData.lastName || 'Unknown',
+            email: userData.email || '',
+            gender: userData.gender || 'Not specified',
+            gradeLevel: userData.gradeLevel || null,
+            courses: [],
+            averageScore: 0,
+            completionRate: 0,
+            submissionRate: 0,
+            missingAssignments: 0,
+            daysSinceLastAccess: 0,
+            lastAccessed: new Date().toISOString(),
+            courseCount: 0,
+            isAtRisk: false,
+            riskScore: 0,
+            riskLevel: 'low',
+            riskReasons: []
+          };
+          
+          setStudent(basicStudentData);
+          setDebugInfo(prev => ({ ...prev, finalStudentObject: basicStudentData }));
+          return;
+        }
+        
+        // Course data processing
         const coursesData = await Promise.all(
           enrollments.map(async (enrollment) => {
             try {
-              // Course details
+              // Get course details
               const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
               if (!courseDoc.exists()) return null;
               
               const courseData = courseDoc.data();
 
-              // Course progress
-              const courseProgressPath = `studentProgress/${studentId}/courses/${enrollment.courseId}`;
-              const courseProgressDoc = await getDoc(doc(db, courseProgressPath));
-              const courseProgress = courseProgressDoc.exists() ? courseProgressDoc.data() : {};
-              const courseSummary = courseProgress.summary || {};
+              // Get student course summary for this course
+              const summaryDoc = await getDoc(doc(db, 'studentCourseSummaries', `${studentId}_${enrollment.courseId}`));
+              const courseSummary = summaryDoc.exists() ? summaryDoc.data() : {
+                overallScore: 0,
+                completionRate: 0,
+                totalTimeSpent: 0,
+                lastAccessed: new Date()
+              };
 
-              // Modules
+              // Get modules for this course
               const modulesRef = collection(db, `courses/${enrollment.courseId}/modules`);
               const modulesSnapshot = await getDocs(modulesRef);
               const modules = modulesSnapshot.docs.map(doc => ({
@@ -124,21 +142,7 @@ export const useStudentData = (studentId) => {
                 ...doc.data()
               }));
 
-              // Module progress
-              const modulesData = await Promise.all(
-                modules.map(async (module) => {
-                  const moduleProgressPath = `studentProgress/${studentId}/courses/${enrollment.courseId}/modules/${module.id}`;
-                  const moduleProgressDoc = await getDoc(doc(db, moduleProgressPath));
-                  const moduleProgress = moduleProgressDoc.exists() ? moduleProgressDoc.data() : {};
-                  
-                  return {
-                    ...module,
-                    progress: moduleProgress
-                  };
-                })
-              );
-
-              // Assignments
+              // Get assignments for this course
               const assignmentsRef = collection(db, `courses/${enrollment.courseId}/assignments`);
               const assignmentsSnapshot = await getDocs(assignmentsRef);
               const assignments = assignmentsSnapshot.docs.map(doc => ({
@@ -146,17 +150,24 @@ export const useStudentData = (studentId) => {
                 ...doc.data()
               }));
 
-              // Assignment progress
+              // Get student assignment progress
               const assignmentsData = await Promise.all(
                 assignments.map(async (assignment) => {
-                  const assignmentProgressPath = `studentProgress/${studentId}/courses/${enrollment.courseId}/assignments/${assignment.id}`;
-                  const assignmentProgressDoc = await getDoc(doc(db, assignmentProgressPath));
-                  const assignmentProgress = assignmentProgressDoc.exists() ? assignmentProgressDoc.data() : {};
-                  
-                  return {
-                    ...assignment,
-                    progress: assignmentProgress
-                  };
+                  try {
+                    const progressDoc = await getDoc(doc(db, 'studentAssignments', `${studentId}_${assignment.id}`));
+                    const progress = progressDoc.exists() ? progressDoc.data() : null;
+                    
+                    return {
+                      ...assignment,
+                      progress: progress
+                    };
+                  } catch (err) {
+                    console.error(`Error getting assignment progress for ${assignment.id}:`, err);
+                    return {
+                      ...assignment,
+                      progress: null
+                    };
+                  }
                 })
               );
               
@@ -165,7 +176,14 @@ export const useStudentData = (studentId) => {
                 ...courseData,
                 enrollment: enrollment,
                 summary: courseSummary,
-                modules: modulesData,
+                modules: modules.map(module => ({
+                  ...module,
+                  progress: {
+                    completion: 0, // Would need module progress tracking
+                    totalExpertiseRate: 0,
+                    lastAccessed: new Date()
+                  }
+                })),
                 assignments: assignmentsData
               };
             } catch (err) {
@@ -182,122 +200,56 @@ export const useStudentData = (studentId) => {
         // Calculate overall metrics
         let totalScore = 0;
         let totalCompletion = 0;
+        let totalTimeSpent = 0;
         let courseCount = 0;
         let lastAccessed = null;
+        let submittedAssignments = 0;
+        let totalAssignments = 0;
 
         validCoursesData.forEach(course => {
           if (course.summary) {
             if (course.summary.overallScore !== undefined) {
               totalScore += course.summary.overallScore;
             }
-            if (course.summary.overallCompletion !== undefined) {
-              totalCompletion += course.summary.overallCompletion;
+            if (course.summary.completionRate !== undefined) {
+              totalCompletion += course.summary.completionRate;
+            }
+            if (course.summary.totalTimeSpent) {
+              totalTimeSpent += course.summary.totalTimeSpent;
             }
             if (course.summary.lastAccessed) {
-              try {
-                const accessDate = course.summary.lastAccessed.toDate ? 
-                  new Date(course.summary.lastAccessed.toDate()) : 
-                  new Date(course.summary.lastAccessed);
-                
-                if (!lastAccessed || accessDate > lastAccessed) {
-                  lastAccessed = accessDate;
-                }
-              } catch (e) {
-                console.error('Error parsing date:', e);
+              const accessDate = course.summary.lastAccessed.toDate ? 
+                course.summary.lastAccessed.toDate() : 
+                new Date(course.summary.lastAccessed);
+              
+              if (!lastAccessed || accessDate > lastAccessed) {
+                lastAccessed = accessDate;
               }
             }
             courseCount++;
           }
-        });        // Calculate averages
+          
+          // Count assignments
+          if (course.assignments) {
+            totalAssignments += course.assignments.length;
+            submittedAssignments += course.assignments.filter(a => a.progress?.submissionDate).length;
+          }
+        });
+
+        // Calculate metrics
         const averageScore = courseCount > 0 ? totalScore / courseCount : 0;
         const completionRate = courseCount > 0 ? totalCompletion / courseCount : 0;
-
-        // Process courses data to ensure date fields are consistent
-        const processedCoursesData = validCoursesData.map(course => {
-          // Process course-level dates
-          const processedCourse = { ...course };
-          
-          // Ensure course summary has proper date format
-          if (processedCourse.summary?.lastAccessed) {
-            try {
-              if (typeof processedCourse.summary.lastAccessed.toDate === 'function') {
-                processedCourse.summary.lastAccessed = processedCourse.summary.lastAccessed.toDate().toISOString();
-              } else if (typeof processedCourse.summary.lastAccessed === 'string') {
-                // Already a string, check if it's a valid date string
-                new Date(processedCourse.summary.lastAccessed);
-              } else {
-                // Convert to ISO string if it's a valid date object
-                processedCourse.summary.lastAccessed = new Date().toISOString();
-              }
-            } catch (e) {
-              processedCourse.summary.lastAccessed = new Date().toISOString();
-              console.error('Error processing course lastAccessed date:', e);
-            }
-          }
-          
-          // Process modules
-          if (Array.isArray(processedCourse.modules)) {
-            processedCourse.modules = processedCourse.modules.map(module => {
-              const processedModule = { ...module };
-              if (processedModule.progress?.lastAccessed) {
-                try {
-                  if (typeof processedModule.progress.lastAccessed.toDate === 'function') {
-                    processedModule.progress.lastAccessed = processedModule.progress.lastAccessed.toDate().toISOString();
-                  }
-                } catch (e) {
-                  console.error('Error processing module lastAccessed date:', e);
-                }
-              }
-              return processedModule;
-            });
-          }
-          
-          // Process assignments
-          if (Array.isArray(processedCourse.assignments)) {
-            processedCourse.assignments = processedCourse.assignments.map(assignment => {
-              const processedAssignment = { ...assignment };
-              if (processedAssignment.progress?.submittedAt) {
-                try {
-                  if (typeof processedAssignment.progress.submittedAt.toDate === 'function') {
-                    processedAssignment.progress.submittedAt = processedAssignment.progress.submittedAt.toDate().toISOString();
-                  }
-                } catch (e) {
-                  console.error('Error processing assignment submittedAt date:', e);
-                }
-              }
-              return processedAssignment;
-            });
-          }
-          
-          return processedCourse;
-        });        // Import the enhanced risk assessment
-        const { getEnhancedRiskAssessment } = await import('../../../services/riskPredictionService');
-        
-        // Calculate missing assignments
-        let missingAssignments = 0;
-        let submittedAssignments = 0;
-        
-        processedCoursesData.forEach(course => {
-          course.assignments?.forEach(assignment => {
-            if (!assignment.progress?.submittedAt) {
-              missingAssignments++;
-            } else {
-              submittedAssignments++;
-            }
-          });
-        });
+        const submissionRate = totalAssignments > 0 ? (submittedAssignments / totalAssignments) * 100 : 0;
+        const missingAssignments = totalAssignments - submittedAssignments;
         
         // Calculate days since last access
         let daysSinceLastAccess = 0;
         if (lastAccessed) {
-          const lastAccessDate = typeof lastAccessed === 'string' ? new Date(lastAccessed) : 
-                              typeof lastAccessed.toDate === 'function' ? lastAccessed.toDate() : lastAccessed;
-          daysSinceLastAccess = Math.floor((new Date() - lastAccessDate) / (1000 * 60 * 60 * 24));
+          daysSinceLastAccess = Math.floor((new Date() - lastAccessed) / (1000 * 60 * 60 * 24));
         }
         
-        // Calculate submission rate
-        const totalAssignments = missingAssignments + submittedAssignments;
-        const submissionRate = totalAssignments > 0 ? (submittedAssignments / totalAssignments) * 100 : 0;
+        // Import risk assessment function
+        const { getEnhancedRiskAssessment } = await import('../../../services/riskPredictionService');
         
         // Data for risk assessment
         const studentDataForRisk = {
@@ -306,33 +258,31 @@ export const useStudentData = (studentId) => {
           submissionRate,
           missingAssignments,
           daysSinceLastAccess,
-          courses: processedCoursesData,
-          lastAccessed: lastAccessed ? 
-            (typeof lastAccessed.toISOString === 'function' ? lastAccessed.toISOString() : lastAccessed) : 
-            new Date().toISOString()
+          courses: validCoursesData,
+          lastAccessed: lastAccessed ? lastAccessed.toISOString() : new Date().toISOString()
         };
         
-        // Get risk assessment from ML model with fallback to rule-based
+        // Get risk assessment
         const riskAssessment = await getEnhancedRiskAssessment(studentDataForRisk, true);
         
         // Final student object
         const enrichedStudentData = {
           id: studentId,
-          userId: studentData.userId,
+          userId: studentId,
           firstName: userData.firstName || 'Unknown',
           lastName: userData.lastName || 'Unknown',
           email: userData.email || '',
           gender: userData.gender || 'Not specified',
-          courses: processedCoursesData,
+          gradeLevel: userData.gradeLevel || null,
+          courses: validCoursesData,
           averageScore,
           completionRate,
           submissionRate,
           missingAssignments,
           daysSinceLastAccess,
-          lastAccessed: lastAccessed ? 
-            (typeof lastAccessed.toISOString === 'function' ? lastAccessed.toISOString() : lastAccessed) : 
-            new Date().toISOString(),
-          courseCount: processedCoursesData.length,
+          totalTimeSpent,
+          lastAccessed: lastAccessed ? lastAccessed.toISOString() : new Date().toISOString(),
+          courseCount: validCoursesData.length,
           isAtRisk: riskAssessment.isAtRisk,
           riskScore: riskAssessment.score,
           riskLevel: riskAssessment.level,
@@ -340,12 +290,13 @@ export const useStudentData = (studentId) => {
         };
 
         setDebugInfo(prev => ({ ...prev, finalStudentObject: enrichedStudentData }));
-        setStudent(enrichedStudentData);      } catch (err) {
+        setStudent(enrichedStudentData);
+        
+      } catch (err) {
         debugLogger.logError('useStudentData', 'Loading student data', err);
         setError(`Error loading student data: ${err.message}`);
         setDebugInfo(prev => ({ ...prev, error: err.message, errorStack: err.stack }));
       } finally {
-        // Calculate final load time
         const endTime = performance.now();
         const loadTime = endTime - startTime;
         
@@ -361,7 +312,7 @@ export const useStudentData = (studentId) => {
         
         setLoading(false);
         console.timeEnd('loadStudentData-total');
-          // Log final student data
+        
         if (student) {
           debugLogger.logDebug('useStudentData', 'Final student data', { 
             id: student.id,
@@ -381,7 +332,7 @@ export const useStudentData = (studentId) => {
     };
   
     loadStudentData();
-  }, [studentId, navigate, fetchStudentAssignments, fetchModuleProgress, currentUser]);
+  }, [studentId, navigate, currentUser]);
 
   return { student, loading, error, debugInfo };
 };

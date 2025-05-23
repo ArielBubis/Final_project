@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
 const admin = require('firebase-admin');
-const serviceAccount = require('../serviceAccountKey.json'); // You'll need to create this
+const serviceAccount = require('../serviceAccountKey.json');
 
 // Initialize Firebase Admin
 admin.initializeApp({
@@ -16,16 +16,13 @@ async function importCsvToFirebase(csvFolder) {
   try {
     // Configure which parts of the import to run
     const importOptions = {
-      users: false,
-      schools: false,
-      teachers: false,
-      students: false,
-      courses: false,
-      modules: false, //
-      assignments: false,//
-      enrollments: false,
-      courseEnrollments: true,
-      studentProgress: false // Set to false if already imported
+      users: true,
+      schools: true,
+      courses: true,
+      enrollments: true,
+      studentAssignments: true,
+      studentCourseSummaries: true,
+      teacherDashboards: true
     };
     
     // Load all CSV data first
@@ -33,8 +30,7 @@ async function importCsvToFirebase(csvFolder) {
     const csvFiles = [
       'schools.csv', 'students.csv', 'teachers.csv', 'courses.csv', 
       'modules.csv', 'assignments.csv', 'studentAssignments.csv',
-      'studentCourses.csv', 'enrollments.csv', 'futureAssignments.csv',
-      'pendingAssignments.csv'
+      'studentCourses.csv'
     ];
 
     for (const fileName of csvFiles) {
@@ -54,28 +50,41 @@ async function importCsvToFirebase(csvFolder) {
       console.log(`Loaded ${csvData[fileName].length} records from ${fileName}`);
     }
 
-    // Import users first (required for students and teachers)
+    // 1. Import Schools
+    if (importOptions.schools && csvData['schools.csv']) {
+      console.log('Importing schools...');
+      await importCollection(csvData['schools.csv'], 'schools', record => ({
+        name: record.name,
+        location: record.location,
+        ranking: parseFloat(record.ranking) || 0,
+        specialization: record.specialization,
+        studentCapacity: parseInt(record.studentCapacity) || 0,
+        foundingYear: parseInt(record.foundingYear) || 0,
+        website: record.website
+      }), record => record.id);
+    }
+
+    // 2. Import Users (Students and Teachers)
     if (importOptions.users) {
       console.log('Creating users collection...');
       const users = [];
       
       // Process students as users
       if (csvData['students.csv']) {
-        csvData['students.csv'].forEach(student => {
+        for (const student of csvData['students.csv']) {
           users.push({
-            userId: student.id,
+            uid: student.id, // Use student ID as UID
             firstName: extractFirstName(student.name),
             lastName: extractLastName(student.name),
             email: student.email,
-            gender: student.gender || '',
-            roles: {
-              student: true,
-              teacher: false,
-              admin: false
-            },
+            role: 'student',
+            schoolId: 'SCH920609', // Default school from your data
+            registrationDate: formatDate(student.createdAt),
+            gradeLevel: parseInt(student.gradeLevel) || null,
+            entryYear: parseInt(student.entryYear) || null,
             createdAt: formatDate(student.createdAt)
           });
-        });
+        }
       }
       
       // Process teachers as users
@@ -177,409 +186,215 @@ async function importCsvToFirebase(csvFolder) {
       }
       
       // Import users
-      await importCollection(users, 'users', user => user);
+      await importCollection(users, 'users', user => user, user => user.uid);
     }
 
-    // Import schools
-    if (importOptions.schools && csvData['schools.csv']) {
-      console.log('Importing schools...');
-      await importCollection(csvData['schools.csv'], 'schools', record => {
-        return {
-          schoolId: record.id,
-          name: record.name,
-          location: record.location,
-          ranking: parseFloat(record.ranking) || 0,
-          specialization: record.specialization,
-          studentCapacity: parseInt(record.studentCapacity) || 0,
-          foundingYear: parseInt(record.foundingYear) || 0,
-          website: record.website
-        };
-      });
-    }
-
-    // Import teachers
-    if (importOptions.teachers && csvData['teachers.csv']) {
-      console.log('Importing teachers...');
-      await importCollection(csvData['teachers.csv'], 'teachers', record => {
-        return {
-          teacherId: record.id,
-          userId: record.id, // Using the same ID as the user document
-          schoolId: record.schoolId,
-          department: record.department || '',
-          title: record.title || '',
-          courses: parseArray(record.courses)
-        };
-      });
-    }
-
-    // Import students
-    if (importOptions.students && csvData['students.csv']) {
-      console.log('Importing students...');
-      await importCollection(csvData['students.csv'], 'students', record => {
-        return {
-          studentId: record.id,
-          userId: record.id, // Using the same ID as the user document
-          registrationDate: formatDate(record.createdAt),
-          entryYear: parseInt(record.entryYear) || null,
-          gradeLevel: parseInt(record.gradeLevel) || null,
-          courses: parseArray(record.courses),
-          totalScore: parseFloat(record.totalScore) || 0
-        };
-      });
-    }
-
-    // Import courses
+    // 3. Import Courses with subcollections
     if (importOptions.courses && csvData['courses.csv']) {
       console.log('Importing courses...');
-      console.log('First course record sample:', JSON.stringify(csvData['courses.csv'][0])); // Debug first record
       
-      await importCollection(csvData['courses.csv'], 'courses', record => {
-        console.log('Processing course:', record.id);
+      for (const courseRecord of csvData['courses.csv']) {
+        const courseId = courseRecord.id;
+        const parsedTeachers = parseArray(courseRecord.teachers);
+        const teacherId = parsedTeachers[0] || null;
         
-        const parsedTeachers = parseArray(record.teachers);
-        console.log('Parsed teachers for course', record.id, ':', parsedTeachers);
-        const teacherId = parsedTeachers[0] || null; // Take first teacher as primary
-        console.log('Selected teacherId:', teacherId);
-        
-        const parsedStudents = parseArray(record.students);
-        console.log('Parsed students for course', record.id, ':', parsedStudents);
-        
-        const formattedCourse = {
-          courseId: record.id,
-          courseName: record.name,
-          description: record.description,
-          schoolId: record.schoolId,
-          teacherId: teacherId,
-          teachers: parsedTeachers,
-          activeCode: record.accessCode, // Note: accessCode in CSV maps to activeCode in Firestore
-          isEnabled: true,
-          createdAt: formatDate(record.createdAt),
-          startDate: formatDate(record.startDate),
-          endDate: formatDate(record.endDate),
-          subjectArea: record.subjectArea,
-          published: record.published === 'true' || record.published === 'True',
-          durationWeeks: parseInt(record.durationWeeks) || null,
-          students: parsedStudents
+        // Create main course document
+        const courseDoc = {
+          courseName: courseRecord.name,
+          description: courseRecord.description,
+          schoolId: courseRecord.schoolId,
+          teacherIds: parsedTeachers, // Array of teacher IDs
+          subjectArea: courseRecord.subjectArea,
+          startDate: formatDate(courseRecord.startDate),
+          endDate: formatDate(courseRecord.endDate),
+          durationWeeks: parseInt(courseRecord.durationWeeks) || null,
+          published: courseRecord.published === 'true',
+          activeCode: courseRecord.accessCode,
+          createdAt: formatDate(courseRecord.createdAt)
         };
         
-        console.log('Formatted course object:', JSON.stringify(formattedCourse));
-        return formattedCourse;
-      });
-    }
-
-    // Import modules as subcollections of courses
-    if (importOptions.modules && csvData['modules.csv']) {
-      console.log('Importing modules as course subcollections...');
-      
-      const modulesByCourse = {};
-      csvData['modules.csv'].forEach(module => {
-        if (!modulesByCourse[module.courseId]) {
-          modulesByCourse[module.courseId] = [];
-        }
-        modulesByCourse[module.courseId].push({
-          moduleId: module.id,
-          moduleTitle: module.name,
-          description: module.description,
-          isRequired: module.required === 'true' || module.required === 'True',
-          sequenceNumber: parseInt(module.sequenceNumber) || 0,
-          startDate: formatDate(module.startDate),
-          endDate: formatDate(module.endDate),
-          durationDays: parseInt(module.durationDays) || null,
-          subject: module.subject || '',
-          assignments: parseArray(module.assignments)
-        });
-      });
-      
-      for (const [courseId, modules] of Object.entries(modulesByCourse)) {
-        for (const module of modules) {
-          const moduleRef = db.collection('courses').doc(courseId)
-            .collection('modules').doc(module.moduleId);
+        const courseRef = db.collection('courses').doc(courseId);
+        await courseRef.set(courseDoc);
+        
+        // Import modules as subcollection
+        if (csvData['modules.csv']) {
+          const courseModules = csvData['modules.csv'].filter(m => m.courseId === courseId);
           
-          // Check if module already exists
-          const moduleDoc = await moduleRef.get();
-          if (!moduleDoc.exists) {
-            await moduleRef.set(module);
-          } else {
-            console.log(`Module ${module.moduleId} already exists in course ${courseId}, skipping...`);
+          for (const module of courseModules) {
+            const moduleRef = courseRef.collection('modules').doc(module.id);
+            await moduleRef.set({
+              moduleTitle: module.name,
+              description: module.description,
+              sequenceNumber: parseInt(module.sequenceNumber) || 0,
+              isRequired: module.required === 'true',
+              startDate: formatDate(module.startDate),
+              endDate: formatDate(module.endDate),
+              durationDays: parseInt(module.durationDays) || null
+            });
           }
-          
-          // Add delay to avoid quota issues
-          await new Promise(resolve => setTimeout(resolve, 100));
         }
+        
+        // Import assignments as subcollection
+        if (csvData['assignments.csv']) {
+          const courseAssignments = csvData['assignments.csv'].filter(a => {
+            // Find assignments through module relationship
+            const moduleId = a.moduleId;
+            const module = csvData['modules.csv']?.find(m => m.id === moduleId);
+            return module?.courseId === courseId;
+          });
+          
+          for (const assignment of courseAssignments) {
+            const assignmentRef = courseRef.collection('assignments').doc(assignment.id);
+            await assignmentRef.set({
+              title: assignment.name,
+              description: assignment.description,
+              moduleId: assignment.moduleId,
+              assignmentType: assignment.assignmentType,
+              assignDate: formatDate(assignment.assignDate),
+              dueDate: formatDate(assignment.dueDate),
+              maxScore: parseFloat(assignment.maxScore) || 100,
+              weight: parseFloat(assignment.weight) || 0,
+              maxAttempts: parseInt(assignment.maxAttempts) || 1,
+              createdAt: formatDate(assignment.createdAt)
+            });
+          }
+        }
+        
+        console.log(`Imported course ${courseId} with modules and assignments`);
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
-    // Import assignments as subcollections of courses
-    if (importOptions.assignments && csvData['assignments.csv']) {
-      console.log('Importing assignments as course subcollections...');
-      
-      const assignmentsByCourse = {};
-      csvData['assignments.csv'].forEach(assignment => {
-        // Find the course ID for this assignment via its module
-        const moduleId = assignment.moduleId;
-        const courseId = findCourseIdByModuleId(moduleId, csvData['modules.csv']);
-        
-        if (!courseId) {
-          console.log(`Could not find course for assignment ${assignment.id}, skipping...`);
-          return;
-        }
-        
-        if (!assignmentsByCourse[courseId]) {
-          assignmentsByCourse[courseId] = [];
-        }
-        
-        assignmentsByCourse[courseId].push({
-          assignmentId: assignment.id,
-          title: assignment.name,
-          moduleId: moduleId,
-          description: assignment.description,
-          assignmentType: assignment.assignmentType,
-          averageScore: parseFloat(assignment.averageScore) || 0,
-          submissionRate: parseFloat(assignment.submissionRate) || 0,
-          dueDate: formatDate(assignment.dueDate),
-          assignDate: formatDate(assignment.assignDate),
-          maxScore: parseFloat(assignment.maxScore) || 0,
-          lateRate: parseFloat(assignment.lateRate) || 0,
-          createdAt: formatDate(assignment.createdAt),
-          maxAttempts: parseInt(assignment.maxAttempts) || 1,
-          weight: parseFloat(assignment.weight) || 0
-        });
-      });
-      
-      for (const [courseId, assignments] of Object.entries(assignmentsByCourse)) {
-        for (const assignment of assignments) {
-          const assignmentRef = db.collection('courses').doc(courseId)
-            .collection('assignments').doc(assignment.assignmentId);
-          
-          // Check if assignment already exists
-          const assignmentDoc = await assignmentRef.get();
-          if (!assignmentDoc.exists) {
-            await assignmentRef.set(assignment);
-          } else {
-            console.log(`Assignment ${assignment.assignmentId} already exists in course ${courseId}, skipping...`);
-          }
-          
-          // Add delay to avoid quota issues
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-    }
-
-    // Import enrollments
+    // 4. Import Enrollments
     if (importOptions.enrollments && csvData['studentCourses.csv']) {
       console.log('Importing enrollments...');
-      await importCollection(csvData['studentCourses.csv'], 'enrollments', record => {
-        return {
-          enrollmentId: `${record.studentId}_${record.courseId}`,
-          studentId: record.studentId,
-          courseId: record.courseId,
-          classLevel: '', // Not provided in CSV
-          finalScore: parseFloat(record.finalScore) || 0,
-          totalTimeSpentMinutes: parseInt(record.totalTimeSpentMinutes) || 0,
-          trend: record.trend || '',
-          createdAt: formatDate(record.createdAt),
-          updatedAt: formatDate(record.updatedAt)
-        };
-      });
+      await importCollection(csvData['studentCourses.csv'], 'enrollments', record => ({
+        studentId: record.studentId,
+        courseId: record.courseId,
+        enrollmentDate: formatDate(record.createdAt),
+        status: 'active' // Default status
+      }), record => `${record.studentId}_${record.courseId}`);
     }
 
-    // Import student progress
-    if (importOptions.studentProgress && csvData['studentCourses.csv'] && csvData['studentAssignments.csv']) {
-      console.log('Importing student progress...');
+    // 5. Import Student Assignment Progress
+    if (importOptions.studentAssignments && csvData['studentAssignments.csv']) {
+      console.log('Importing student assignments...');
       
-      // Group assignments by student and course
-      const progressByStudent = {};
-      
-      // First, set up the basic course structure for each student
-      csvData['studentCourses.csv'].forEach(enrollment => {
-        const studentId = enrollment.studentId;
-        const courseId = enrollment.courseId;
+      for (const studentAssignment of csvData['studentAssignments.csv']) {
+        const docId = `${studentAssignment.studentId}_${studentAssignment.assignmentId}`;
         
-        if (!progressByStudent[studentId]) {
-          progressByStudent[studentId] = {};
-        }
+        // Find course ID through assignment -> module relationship
+        const assignment = csvData['assignments.csv']?.find(a => a.id === studentAssignment.assignmentId);
+        if (!assignment) continue;
         
-        const progressMetrics = parseJsonField(enrollment.progressMetrics);
+        const module = csvData['modules.csv']?.find(m => m.id === assignment.moduleId);
+        if (!module) continue;
         
-        progressByStudent[studentId][courseId] = {
-          summary: {
-            overallCompletion: progressMetrics?.overallProgressPercent || 
-                              progressMetrics?.completionRate || 
-                              parseFloat(enrollment.finalScore) || 0,
-            overallScore: parseFloat(enrollment.finalScore) || 0,
-            lastAccessed: formatDate(enrollment.updatedAt),
-            totalTimeSpentMinutes: parseInt(enrollment.totalTimeSpentMinutes) || 0,
-            // trend: enrollment.trend || '',
-            progressMetrics: progressMetrics
-          },
-          modules: {},
-          assignments: {}
+        const courseId = module.courseId;
+        
+        const progressDoc = {
+          studentId: studentAssignment.studentId,
+          assignmentId: studentAssignment.assignmentId,
+          courseId: courseId,
+          moduleId: assignment.moduleId,
+          status: 'completed',
+          submissionDate: formatDate(studentAssignment.submissionDate),
+          currentScore: parseFloat(studentAssignment.assessmentScore) || 0,
+          isLate: studentAssignment.isLate === 'true',
+          timeSpentMinutes: parseInt(studentAssignment.timeSpentMinutes) || 0,
+          attemptCount: 1,
+          attempts: [{
+            attemptNumber: 1,
+            score: parseFloat(studentAssignment.assessmentScore) || 0,
+            submissionDate: formatDate(studentAssignment.submissionDate),
+            timeSpentMinutes: parseInt(studentAssignment.timeSpentMinutes) || 0,
+            isLate: studentAssignment.isLate === 'true'
+          }],
+          createdAt: formatDate(studentAssignment.createdAt),
+          updatedAt: formatDate(studentAssignment.updatedAt)
         };
-      });
-      
-      // Add assignment progress data
-      if (csvData['studentAssignments.csv']) {
-        csvData['studentAssignments.csv'].forEach(studentAssignment => {
-          const studentId = studentAssignment.studentId;
-          const assignmentId = studentAssignment.assignmentId;
-          
-          // Find the courseId for this assignment
-          const assignment = csvData['assignments.csv']?.find(a => a.id === assignmentId);
-          if (!assignment) return;
-          
-          const moduleId = assignment.moduleId;
-          const courseId = findCourseIdByModuleId(moduleId, csvData['modules.csv']);
-          
-          if (!courseId || !progressByStudent[studentId] || !progressByStudent[studentId][courseId]) return;
-          
-          // Add assignment data
-          progressByStudent[studentId][courseId].assignments[assignmentId] = {
-            totalScore: parseFloat(studentAssignment.assessmentScore) || 0,
-            totalTime: parseFloat(studentAssignment.timeSpentMinutes) || 0,
-            notes: '',
-            submittedAt: formatDate(studentAssignment.submissionDate),
-            isLate: studentAssignment.isLate === 'true' || studentAssignment.isLate === 'True',
-            status: studentAssignment.status || 'completed'
-          };
-          
-          // Initialize module if not exists
-          if (!progressByStudent[studentId][courseId].modules[moduleId]) {
-            progressByStudent[studentId][courseId].modules[moduleId] = {
-              totalExpertiseRate: 0,
-              completion: 0,
-              lastAccessed: formatDate(studentAssignment.updatedAt)
-            };
-          }
-        });
-      }
-
-      // Add pending and future assignments
-      if (csvData['pendingAssignments.csv']) {
-        csvData['pendingAssignments.csv'].forEach(pendingAssignment => {
-          processSpecialAssignment(pendingAssignment, progressByStudent, csvData, 'pending');
-        });
-      }
-
-      if (csvData['futureAssignments.csv']) {
-        csvData['futureAssignments.csv'].forEach(futureAssignment => {
-          processSpecialAssignment(futureAssignment, progressByStudent, csvData, 'future');
-        });
-      }
-      
-      // Save student progress to Firestore with throttling
-      let counter = 0;
-      const totalStudents = Object.keys(progressByStudent).length;
-      
-      for (const [studentId, courses] of Object.entries(progressByStudent)) {
-        counter++;
-        console.log(`Processing student ${counter}/${totalStudents}: ${studentId}`);
         
-        const studentProgressRef = db.collection('studentProgress').doc(studentId);
-        const studentDoc = await studentProgressRef.get();
+        await db.collection('studentAssignments').doc(docId).set(progressDoc);
         
-        if (!studentDoc.exists) {
-          await studentProgressRef.set({});
-        } else {
-          console.log(`Student progress for ${studentId} already exists, updating...`);
-        }
-        
-        // Add delay between students
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        for (const [courseId, courseData] of Object.entries(courses)) {
-          const courseRef = studentProgressRef.collection('courses').doc(courseId);
-          const courseDoc = await courseRef.get();
-          
-          if (!courseDoc.exists) {
-            await courseRef.set({
-              summary: courseData.summary
-            });
-            
-            // Process modules in smaller batches
-            const moduleEntries = Object.entries(courseData.modules);
-            for (let i = 0; i < moduleEntries.length; i += 10) {
-              const batchModules = moduleEntries.slice(i, i + 10);
-              
-              for (const [moduleId, moduleData] of batchModules) {
-                const moduleRef = courseRef.collection('modules').doc(moduleId);
-                const moduleDoc = await moduleRef.get();
-                
-                if (!moduleDoc.exists) {
-                  await moduleRef.set(moduleData);
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, 200));
-            }
-            
-            // Process assignments in smaller batches
-            const assignmentEntries = Object.entries(courseData.assignments);
-            for (let i = 0; i < assignmentEntries.length; i += 10) {
-              const batchAssignments = assignmentEntries.slice(i, i + 10);
-              
-              for (const [assignmentId, assignmentData] of batchAssignments) {
-                const assignmentRef = courseRef.collection('assignments').doc(assignmentId);
-                const assignmentDoc = await assignmentRef.get();
-                
-                if (!assignmentDoc.exists) {
-                  await assignmentRef.set(assignmentData);
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, 200));
-            }
-          } else {
-            console.log(`Course progress for student ${studentId}, course ${courseId} already exists, skipping...`);
-          }
-        }
-      }
-    }
-
-    // Import course enrollments with progress summaries
-    if (importOptions.courseEnrollments && csvData['studentCourses.csv']) {
-      console.log('Creating course-specific student enrollments...');
-      
-      const enrollmentsByCourse = {};
-      
-      // Group enrollments by course
-      csvData['studentCourses.csv'].forEach(enrollment => {
-        const courseId = enrollment.courseId;
-        const studentId = enrollment.studentId;
-        
-        if (!enrollmentsByCourse[courseId]) {
-          enrollmentsByCourse[courseId] = [];
-        }
-        
-        // Find student data
-        const studentData = csvData['students.csv']?.find(s => s.id === studentId);
-        const userData = csvData['students.csv']?.find(s => s.id === studentId); // In real scenario, this would be from users.csv
-        
-        enrollmentsByCourse[courseId].push({
-          studentId: studentId,
-          userId: studentId,
-          firstName: extractFirstName(studentData?.name || ''),
-          lastName: extractLastName(studentData?.name || ''),
-          email: studentData?.email || '',
-          enrolledAt: formatDate(enrollment.createdAt),
-          finalScore: parseFloat(enrollment.finalScore) || 0,
-          overallCompletion: parseFloat(enrollment.progressMetrics?.overallProgressPercent) || 0,
-          totalTimeSpentMinutes: parseInt(enrollment.totalTimeSpentMinutes) || 0,
-          lastAccessed: formatDate(enrollment.updatedAt),
-          status: 'active'
-        });
-      });
-      
-      // Save to Firestore as subcollections
-      for (const [courseId, students] of Object.entries(enrollmentsByCourse)) {
-        console.log(`Processing enrollments for course ${courseId}: ${students.length} students`);
-        
-        for (const student of students) {
-          const enrollmentRef = db.collection('courses').doc(courseId)
-            .collection('students').doc(student.studentId);
-          
-          await enrollmentRef.set(student);
+        if (csvData['studentAssignments.csv'].indexOf(studentAssignment) % 100 === 0) {
+          console.log(`Processed ${csvData['studentAssignments.csv'].indexOf(studentAssignment)} student assignments...`);
           await new Promise(resolve => setTimeout(resolve, 100));
         }
+      }
+    }
+
+    // 6. Import Student Course Summaries
+    if (importOptions.studentCourseSummaries && csvData['studentCourses.csv']) {
+      console.log('Importing student course summaries...');
+      
+      for (const enrollment of csvData['studentCourses.csv']) {
+        const docId = `${enrollment.studentId}_${enrollment.courseId}`;
+        
+        // Calculate risk level based on final score
+        let riskLevel = 'low';
+        const finalScore = parseFloat(enrollment.finalScore) || 0;
+        if (finalScore < 60) riskLevel = 'high';
+        else if (finalScore < 70) riskLevel = 'medium';
+        
+        const summaryDoc = {
+          studentId: enrollment.studentId,
+          courseId: enrollment.courseId,
+          overallScore: finalScore,
+          completionRate: 85, // Default completion rate
+          totalTimeSpent: parseInt(enrollment.totalTimeSpentMinutes) || 0,
+          completedAssignments: 3, // Default
+          totalAssignments: 5, // Default
+          lastAccessed: formatDate(enrollment.updatedAt),
+          riskLevel: riskLevel,
+          riskScore: finalScore < 60 ? 75 : finalScore < 70 ? 45 : 15,
+          updatedAt: formatDate(enrollment.updatedAt)
+        };
+        
+        await db.collection('studentCourseSummaries').doc(docId).set(summaryDoc);
+      }
+    }
+
+    // 7. Generate Teacher Dashboards
+    if (importOptions.teacherDashboards && csvData['teachers.csv']) {
+      console.log('Generating teacher dashboards...');
+      
+      for (const teacher of csvData['teachers.csv']) {
+        const teacherId = teacher.id;
+        
+        // Get teacher's courses
+        const teacherCourses = csvData['courses.csv']?.filter(course => {
+          const teachers = parseArray(course.teachers);
+          return teachers.includes(teacherId);
+        }) || [];
+        
+        // Calculate basic metrics
+        const totalCourses = teacherCourses.length;
+        const courseIds = teacherCourses.map(c => c.id);
+        
+        // Count total students across all courses
+        let totalStudents = 0;
+        teacherCourses.forEach(course => {
+          const students = parseArray(course.students);
+          totalStudents += students.length;
+        });
+        
+        const dashboardDoc = {
+          teacherId: teacherId,
+          totalCourses: totalCourses,
+          totalStudents: totalStudents,
+          totalActiveStudents: Math.floor(totalStudents * 0.8), // 80% active assumption
+          averageCompletionRate: 75, // Default
+          upcomingAssignmentCount: 5, // Default
+          courseIds: courseIds,
+          riskAnalysis: {
+            lastRun: admin.firestore.Timestamp.now(),
+            highRiskStudentIds: [],
+            mediumRiskStudentIds: []
+          },
+          lastUpdated: admin.firestore.Timestamp.now()
+        };
+        
+        await db.collection('teacherDashboards').doc(teacherId).set(dashboardDoc);
       }
     }
 
@@ -589,80 +404,34 @@ async function importCsvToFirebase(csvFolder) {
   }
 }
 
-// Process pending or future assignments
-function processSpecialAssignment(specialAssignment, progressByStudent, csvData, type) {
-  const studentId = specialAssignment.studentId;
-  const assignmentId = specialAssignment.assignmentId;
-  
-  // Find the courseId for this assignment
-  const assignment = csvData['assignments.csv']?.find(a => a.id === assignmentId);
-  if (!assignment) return;
-  
-  const moduleId = assignment.moduleId;
-  const courseId = findCourseIdByModuleId(moduleId, csvData['modules.csv']);
-  
-  if (!courseId || !progressByStudent[studentId] || !progressByStudent[studentId][courseId]) return;
-  
-  // Add assignment data with status
-  progressByStudent[studentId][courseId].assignments[assignmentId] = {
-    totalScore: 0,
-    totalTime: 0,
-    notes: '',
-    submittedAt: null,
-    status: type,
-    isAvailable: specialAssignment.isAvailable === 'true' || specialAssignment.isAvailable === 'True'
-  };
-}
-
 // Helper function to import a collection with batch processing
-async function importCollection(records, collectionName, formatFunction) {
-  const batchSize = 250; // Reduced from 500
+async function importCollection(records, collectionName, formatFunction, getDocId = null) {
+  const batchSize = 100;
   
   for (let i = 0; i < records.length; i += batchSize) {
     const batch = db.batch();
     const currentBatch = records.slice(i, i + batchSize);
     
-    // Check which documents already exist
-    const existChecks = await Promise.all(
-      currentBatch.map(async (record) => {
-        const formattedRecord = formatFunction(record);
-        const docId = 
-        // formattedRecord.userId || formattedRecord.schoolId || 
-        //             formattedRecord.studentId || formattedRecord.teacherId || 
-                    formattedRecord.courseId || formattedRecord.assignmentId || 
-                    formattedRecord.enrollmentId || record.id;
-        
-        const docRef = db.collection(collectionName).doc(docId);
-        const doc = await docRef.get();
-        return {
-          docRef,
-          formattedRecord,
-          exists: doc.exists
-        };
-      })
-    );
-    
-    // Always add all documents to the batch - overwrite existing ones
-    let overwriteCount = 0;
-    existChecks.forEach(({ docRef, formattedRecord, exists }) => {
+    currentBatch.forEach((record) => {
+      const formattedRecord = formatFunction(record);
+      const docId = getDocId ? getDocId(record) : 
+                   formattedRecord.uid || formattedRecord.id || 
+                   db.collection(collectionName).doc().id;
+      
+      const docRef = db.collection(collectionName).doc(docId);
       batch.set(docRef, formattedRecord);
-      if (exists) {
-        overwriteCount++;
-      }
     });
     
     try {
       await batch.commit();
-      console.log(`Imported batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(records.length/batchSize)} to ${collectionName} (overwrote ${overwriteCount} existing documents)`);
-      // Add delay between batches to avoid hitting quota limits
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`Imported batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(records.length/batchSize)} to ${collectionName}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error(`Error importing batch to ${collectionName}:`, error);
     }
   }
   
   console.log(`Successfully processed ${records.length} records for ${collectionName}`);
-  return true;
 }
 
 // Helper functions
@@ -678,62 +447,33 @@ function formatDate(dateStr) {
 function parseArray(value) {
   if (!value) return [];
   try {
-    // For debugging
-    console.log('Parsing array value:', value, 'Type:', typeof value);
-    
     if (Array.isArray(value)) return value;
     if (typeof value === 'string') {
-      // Handle the specific format from CSV: "[""id1"", ""id2""]"
+      // Handle CSV array formats
       if (value.includes('""')) {
-        console.log('Detected special format with double quotes');
         const cleanedString = value.replace(/\[""/g, '["').replace(/""\]/g,'"]').replace(/"", ""/g, '","');
-        console.log('Cleaned string:', cleanedString);
         try {
-          const parsed = JSON.parse(cleanedString);
-          console.log('Successfully parsed special format:', parsed);
-          return parsed;
+          return JSON.parse(cleanedString);
         } catch (parseErr) {
           console.warn('Error parsing special format:', parseErr);
-          // Fall back to comma splitting
         }
       }
       
       if (value.trim().startsWith('[') && value.trim().endsWith(']')) {
         try {
-          // Handle standard JSON array strings
           return JSON.parse(value.replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
         } catch (jsonErr) {
-          console.warn('Error parsing JSON array:', jsonErr, 'Value:', value);
-          // Fall back to comma splitting
+          console.warn('Error parsing JSON array:', jsonErr);
         }
       }
       
-      // Default fallback: split by comma
+      // Fallback: split by comma
       return value.split(',').map(item => item.trim()).filter(Boolean);
     }
     return [];
   } catch (e) {
-    console.warn('Error parsing array:', e, 'Value:', value);
-    // Fallback: Try to parse comma-separated strings
-    try {
-      return value.split(',').map(item => item.trim()).filter(Boolean);
-    } catch (err) {
-      return [];
-    }
-  }
-}
-
-function parseJsonField(value) {
-  if (!value) return {};
-  try {
-    if (typeof value === 'object') return value;
-    if (typeof value === 'string') {
-      return JSON.parse(value.replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
-    }
-    return {};
-  } catch (e) {
-    console.warn('Error parsing JSON:', e);
-    return {};
+    console.warn('Error parsing array:', e);
+    return [];
   }
 }
 
@@ -748,12 +488,6 @@ function extractLastName(fullName) {
   return nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 }
 
-function findCourseIdByModuleId(moduleId, modulesData) {
-  if (!moduleId || !modulesData) return null;
-  const module = modulesData.find(m => m.id === moduleId);
-  return module?.courseId || null;
-}
-
-// Example usage
+// Run the import
 const csvFolder = path.join(__dirname, '../data/csv');
 importCsvToFirebase(csvFolder);
