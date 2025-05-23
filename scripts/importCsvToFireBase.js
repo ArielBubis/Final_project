@@ -24,7 +24,8 @@ async function importCsvToFirebase(csvFolder) {
       modules: false, //
       assignments: false,//
       enrollments: false,
-      studentProgress: true // Set to false if already imported
+      courseEnrollments: true,
+      studentProgress: false // Set to false if already imported
     };
     
     // Load all CSV data first
@@ -530,6 +531,54 @@ async function importCsvToFirebase(csvFolder) {
           } else {
             console.log(`Course progress for student ${studentId}, course ${courseId} already exists, skipping...`);
           }
+        }
+      }
+    }
+
+    // Import course enrollments with progress summaries
+    if (importOptions.courseEnrollments && csvData['studentCourses.csv']) {
+      console.log('Creating course-specific student enrollments...');
+      
+      const enrollmentsByCourse = {};
+      
+      // Group enrollments by course
+      csvData['studentCourses.csv'].forEach(enrollment => {
+        const courseId = enrollment.courseId;
+        const studentId = enrollment.studentId;
+        
+        if (!enrollmentsByCourse[courseId]) {
+          enrollmentsByCourse[courseId] = [];
+        }
+        
+        // Find student data
+        const studentData = csvData['students.csv']?.find(s => s.id === studentId);
+        const userData = csvData['students.csv']?.find(s => s.id === studentId); // In real scenario, this would be from users.csv
+        
+        enrollmentsByCourse[courseId].push({
+          studentId: studentId,
+          userId: studentId,
+          firstName: extractFirstName(studentData?.name || ''),
+          lastName: extractLastName(studentData?.name || ''),
+          email: studentData?.email || '',
+          enrolledAt: formatDate(enrollment.createdAt),
+          finalScore: parseFloat(enrollment.finalScore) || 0,
+          overallCompletion: parseFloat(enrollment.progressMetrics?.overallProgressPercent) || 0,
+          totalTimeSpentMinutes: parseInt(enrollment.totalTimeSpentMinutes) || 0,
+          lastAccessed: formatDate(enrollment.updatedAt),
+          status: 'active'
+        });
+      });
+      
+      // Save to Firestore as subcollections
+      for (const [courseId, students] of Object.entries(enrollmentsByCourse)) {
+        console.log(`Processing enrollments for course ${courseId}: ${students.length} students`);
+        
+        for (const student of students) {
+          const enrollmentRef = db.collection('courses').doc(courseId)
+            .collection('students').doc(student.studentId);
+          
+          await enrollmentRef.set(student);
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
     }

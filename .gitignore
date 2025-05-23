@@ -36,3 +36,8 @@ serviceAccountKey.json
 accountkey_Temp.txt
 backend/models
 
+temp.py
+.gitignore
+original.json
+temp.txt
+truncated.json
