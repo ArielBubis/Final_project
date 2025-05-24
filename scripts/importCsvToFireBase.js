@@ -96,7 +96,7 @@ async function importCsvToFirebase(csvFolder) {
         // 3. Consider using email verification
         for (const teacher of csvData['teachers.csv']) {
           try {
-            let userUID = null;
+            let firebaseUID = null;
             
             try {
               // Create the user in Firebase Authentication
@@ -108,7 +108,7 @@ async function importCsvToFirebase(csvFolder) {
               });
               
               console.log(`Created new user: ${userRecord.uid} for teacher: ${teacher.name}`);
-              userUID = userRecord.id;
+              firebaseUID = userRecord.uid;
             } catch (authError) {
               // Handle errors like email already exists
               console.log(`Error creating user for teacher ${teacher.name} (${teacher.email}): ${authError.message}`);
@@ -118,23 +118,27 @@ async function importCsvToFirebase(csvFolder) {
                 try {
                   const existingUser = await admin.auth().getUserByEmail(teacher.email);
                   console.log(`User already exists for ${teacher.email}, using existing UID: ${existingUser.uid}`);
-                  userUID = existingUser.uid;
+                  firebaseUID = existingUser.uid;
                 } catch (getUserError) {
                   console.error(`Failed to get existing user for ${teacher.email}:`, getUserError.message);
-                  // Continue without UID - will use teacher.id as fallback
+                  // Continue without Firebase UID
+                  firebaseUID = null;
                 }
+              } else {
+                // For other errors, continue without Firebase UID
+                firebaseUID = null;
               }
             }
             
-            // Add the teacher to users array with proper UID handling
+            // Add the teacher to users array with teacher.id as document ID
             const teacherUser = {
-              uid: userRecord.uid, // Use Firebase UID or fallback to teacher.id
-              userId: teacher.id,
+              uid: firebaseUID, // Store Firebase Auth UID in the document
+              userId: teacher.id, // Keep original teacher ID for reference
               firstName: extractFirstName(teacher.name),
               lastName: extractLastName(teacher.name),
               email: teacher.email,
               gender: teacher.gender || '',
-              role: 'teacher', // Use single role field for consistency
+              role: 'teacher',
               roles: {
                 student: false,
                 teacher: true,
@@ -154,8 +158,12 @@ async function importCsvToFirebase(csvFolder) {
         }
       }
       
-      // Import users
-      await importCollection(users, 'users', user => user, user => user.uid);
+      // Import users - Updated to use teacher ID as document ID
+      await importCollection(users, 'users', user => user, user => {
+        // For teachers, use their original ID as document ID
+        // For students, use their student ID as document ID
+        return user.userId ? user.userId.toString() : user.uid;
+      });
     }
 
     // 3. Import Courses with subcollections
@@ -175,11 +183,16 @@ async function importCsvToFirebase(csvFolder) {
       }), record => `${record.studentId}_${record.courseId}`);
     }
 
-    // 5. Import Student Assignment Progress
+    // 5. Import Student Assignment Progress - UPDATED
     if (importOptions.studentAssignments && csvData['studentAssignments.csv']) {
       console.log('Importing student assignments...');
       
-      for (const studentAssignment of csvData['studentAssignments.csv']) {
+      // Process completed assignments only (those with scores)
+      const completedAssignments = csvData['studentAssignments.csv'].filter(sa => 
+        sa.assessmentScore != null && sa.status === 'completed'
+      );
+      
+      for (const studentAssignment of completedAssignments) {
         const docId = `${studentAssignment.studentId}_${studentAssignment.assignmentId}`;
         
         // Find course ID through assignment -> module relationship
@@ -192,7 +205,7 @@ async function importCsvToFirebase(csvFolder) {
         const courseId = module.courseId;
         
         const progressDoc = {
-          studentId: studentAssignment.studentId,
+          studentId: studentAssignment.studentId.toString(),
           assignmentId: studentAssignment.assignmentId,
           courseId: courseId,
           moduleId: assignment.moduleId,
@@ -215,37 +228,88 @@ async function importCsvToFirebase(csvFolder) {
         
         await db.collection('studentAssignments').doc(docId).set(progressDoc);
         
-        if (csvData['studentAssignments.csv'].indexOf(studentAssignment) % 100 === 0) {
-          console.log(`Processed ${csvData['studentAssignments.csv'].indexOf(studentAssignment)} student assignments...`);
+        if (completedAssignments.indexOf(studentAssignment) % 100 === 0) {
+          console.log(`Processed ${completedAssignments.indexOf(studentAssignment)} completed student assignments...`);
           await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      // Process future assignments separately
+      if (csvData['future_assignments_df']) {
+        console.log('Processing future assignments...');
+        for (const futureAssignment of csvData['future_assignments_df']) {
+          const docId = `${futureAssignment.studentId}_${futureAssignment.assignmentId}`;
+          
+          // Find course ID through assignment -> module relationship
+          const assignment = csvData['assignments.csv']?.find(a => a.id === futureAssignment.assignmentId);
+          if (!assignment) continue;
+          
+          const module = csvData['modules.csv']?.find(m => m.id === assignment.moduleId);
+          if (!module) continue;
+          
+          const futureDoc = {
+            studentId: futureAssignment.studentId.toString(),
+            assignmentId: futureAssignment.assignmentId,
+            courseId: module.courseId,
+            moduleId: assignment.moduleId,
+            status: 'future',
+            isAvailable: futureAssignment.isAvailable || false,
+            createdAt: formatDate(futureAssignment.createdAt),
+            updatedAt: formatDate(futureAssignment.updatedAt)
+          };
+          
+          await db.collection('futureAssignments').doc(docId).set(futureDoc);
         }
       }
     }
 
-    // 6. Import Student Course Summaries
+    // 6. Import Student Course Summaries - UPDATED
     if (importOptions.studentCourseSummaries && csvData['studentCourses.csv']) {
       console.log('Importing student course summaries...');
       
       for (const enrollment of csvData['studentCourses.csv']) {
         const docId = `${enrollment.studentId}_${enrollment.courseId}`;
         
-        // Calculate risk level based on final score
+        // Calculate metrics based only on completed assignments
+        const studentCompletedAssignments = csvData['studentAssignments.csv']?.filter(sa => 
+          sa.studentId == enrollment.studentId && 
+          sa.courseId === enrollment.courseId &&
+          sa.assessmentScore != null &&
+          sa.status === 'completed'
+        ) || [];
+        
+        // Get total assignments for this course (including future ones)
+        const courseAssignments = csvData['assignments.csv']?.filter(a => {
+          const module = csvData['modules.csv']?.find(m => m.id === a.moduleId);
+          return module && module.courseId === enrollment.courseId;
+        }) || [];
+        
+        const completedCount = studentCompletedAssignments.length;
+        const totalCount = courseAssignments.length;
+        const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        
+        // Calculate average score from completed assignments only
+        const overallScore = studentCompletedAssignments.length > 0 
+          ? studentCompletedAssignments.reduce((sum, sa) => sum + parseFloat(sa.assessmentScore), 0) / studentCompletedAssignments.length
+          : 0;
+        
+        // Calculate risk level based on completed work
         let riskLevel = 'low';
-        const finalScore = parseFloat(enrollment.finalScore) || 0;
-        if (finalScore < 60) riskLevel = 'high';
-        else if (finalScore < 70) riskLevel = 'medium';
+        if (overallScore < 60 || completionRate < 50) riskLevel = 'high';
+        else if (overallScore < 70 || completionRate < 75) riskLevel = 'medium';
         
         const summaryDoc = {
-          studentId: enrollment.studentId,
+          studentId: enrollment.studentId.toString(),
           courseId: enrollment.courseId,
-          overallScore: finalScore,
-          completionRate: 85, // Default completion rate
+          overallScore: Math.round(overallScore * 100) / 100,
+          completionRate: completionRate,
           totalTimeSpent: parseInt(enrollment.totalTimeSpentMinutes) || 0,
-          completedAssignments: 3, // Default
-          totalAssignments: 5, // Default
+          completedAssignments: completedCount,
+          totalAssignments: totalCount,
           lastAccessed: formatDate(enrollment.updatedAt),
           riskLevel: riskLevel,
-          riskScore: finalScore < 60 ? 75 : finalScore < 70 ? 45 : 15,
+          riskScore: overallScore < 60 ? 75 : overallScore < 70 ? 45 : 15,
+          trend: enrollment.trend || 'stable',
           updatedAt: formatDate(enrollment.updatedAt)
         };
         
@@ -253,12 +317,39 @@ async function importCsvToFirebase(csvFolder) {
       }
     }
 
-    // 7. Generate Teacher Dashboards
+    // Helper function to calculate course statistics - NEW
+    function calculateCourseStatistics(courseId, csvData) {
+      const courseAssignments = csvData['assignments.csv']?.filter(a => {
+        const module = csvData['modules.csv']?.find(m => m.id === a.moduleId);
+        return module && module.courseId === courseId;
+      }) || [];
+      
+      const completedStudentAssignments = csvData['studentAssignments.csv']?.filter(sa => 
+        sa.courseId === courseId && sa.assessmentScore != null && sa.status === 'completed'
+      ) || [];
+      
+      const courseEnrollments = csvData['studentCourses.csv']?.filter(sc => 
+        sc.courseId === courseId
+      ) || [];
+      
+      return {
+        totalAssignments: courseAssignments.length,
+        totalStudents: courseEnrollments.length,
+        averageScore: completedStudentAssignments.length > 0 
+          ? completedStudentAssignments.reduce((sum, sa) => sum + parseFloat(sa.assessmentScore), 0) / completedStudentAssignments.length 
+          : 0,
+        completionRate: courseEnrollments.length > 0 
+          ? (completedStudentAssignments.length / (courseEnrollments.length * courseAssignments.length)) * 100 
+          : 0
+      };
+    }
+
+    // 7. Generate Teacher Dashboards - UPDATED
     if (importOptions.teacherDashboards && csvData['teachers.csv']) {
       console.log('Generating teacher dashboards...');
       
       for (const teacher of csvData['teachers.csv']) {
-        const teacherId = teacher.id;
+        const teacherId = teacher.id.toString();
         
         // Get teacher's courses
         const teacherCourses = csvData['courses.csv']?.filter(course => {
@@ -266,29 +357,51 @@ async function importCsvToFirebase(csvFolder) {
           return teachers.includes(teacherId);
         }) || [];
         
-        // Calculate basic metrics
-        const totalCourses = teacherCourses.length;
         const courseIds = teacherCourses.map(c => c.id);
         
-        // Count total students across all courses
+        // Calculate metrics based on completed assignments only
         let totalStudents = 0;
+        let totalActiveStudents = 0;
+        let averageCompletionRate = 0;
+        
         teacherCourses.forEach(course => {
-          const students = parseArray(course.students);
-          totalStudents += students.length;
+          const stats = calculateCourseStatistics(course.id, csvData);
+          totalStudents += stats.totalStudents;
+          totalActiveStudents += Math.floor(stats.totalStudents * 0.8); // Assume 80% are active
+          averageCompletionRate += stats.completionRate;
+        });
+        
+        averageCompletionRate = teacherCourses.length > 0 
+          ? averageCompletionRate / teacherCourses.length 
+          : 0;
+        
+        // Find high-risk students
+        const highRiskStudentIds = [];
+        const mediumRiskStudentIds = [];
+        
+        csvData['studentCourses.csv']?.forEach(enrollment => {
+          if (courseIds.includes(enrollment.courseId)) {
+            const finalScore = parseFloat(enrollment.finalScore) || 0;
+            if (finalScore < 60) {
+              highRiskStudentIds.push(enrollment.studentId.toString());
+            } else if (finalScore < 70) {
+              mediumRiskStudentIds.push(enrollment.studentId.toString());
+            }
+          }
         });
         
         const dashboardDoc = {
           teacherId: teacherId,
-          totalCourses: totalCourses,
+          totalCourses: teacherCourses.length,
           totalStudents: totalStudents,
-          totalActiveStudents: Math.floor(totalStudents * 0.8), // 80% active assumption
-          averageCompletionRate: 75, // Default
-          upcomingAssignmentCount: 5, // Default
+          totalActiveStudents: totalActiveStudents,
+          averageCompletionRate: Math.round(averageCompletionRate),
+          upcomingAssignmentCount: 5, // This could be calculated from future assignments
           courseIds: courseIds,
           riskAnalysis: {
             lastRun: admin.firestore.Timestamp.now(),
-            highRiskStudentIds: [],
-            mediumRiskStudentIds: []
+            highRiskStudentIds: [...new Set(highRiskStudentIds)], // Remove duplicates
+            mediumRiskStudentIds: [...new Set(mediumRiskStudentIds)]
           },
           lastUpdated: admin.firestore.Timestamp.now()
         };

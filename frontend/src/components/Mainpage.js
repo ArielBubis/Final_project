@@ -499,7 +499,7 @@ const MainPage = () => {
                         </div>
                     </Tabs.TabPane>
                     
-                    <Tabs.TabPane tab="At-Risk Students" key="risk">
+                    {/* <Tabs.TabPane tab="At-Risk Students" key="risk">
                         <div className={styles.tabContent}>
                             <Card
                                 title={
@@ -563,7 +563,7 @@ const MainPage = () => {
                                 )}
                             </Card>
                         </div>
-                    </Tabs.TabPane>
+                    </Tabs.TabPane> */}
                     
                     <Tabs.TabPane 
                         tab={

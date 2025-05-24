@@ -33,11 +33,7 @@ const StudentsPage = () => {
 
   // Helper function to calculate grade based on score
   const calculateGrade = (score) => {
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
-    return 'F';
+    return Math.round(score / 10) * 10; // Round to nearest 10
   };  // Fetch students dynamically based on the logged-in teacher's UID
   useEffect(() => {
     const fetchStudents = async () => {

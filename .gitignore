@@ -42,3 +42,5 @@ original.json
 temp.txt
 truncated.json
 DATABASE_MIGRATION_ISSUES.md
+backend/INTEGRATION_SUMMARY.md
+backend/API_USAGE_GUIDE.md
