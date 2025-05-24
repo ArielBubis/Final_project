@@ -17,12 +17,12 @@ async function importCsvToFirebase(csvFolder) {
     // Configure which parts of the import to run
     const importOptions = {
       users: true,
-      schools: true,
-      courses: true,
-      enrollments: true,
-      studentAssignments: true,
-      studentCourseSummaries: true,
-      teacherDashboards: true
+      schools: false,
+      courses: false,
+      enrollments: false,
+      studentAssignments: false,
+      studentCourseSummaries: false,
+      teacherDashboards: false
     };
     
     // Load all CSV data first
@@ -94,95 +94,64 @@ async function importCsvToFirebase(csvFolder) {
         // 1. Use a more secure password
         // 2. Implement a password reset flow for first login
         // 3. Consider using email verification
-        const createTeacherPromises = csvData['teachers.csv'].map(async (teacher) => {
+        for (const teacher of csvData['teachers.csv']) {
           try {
-            // Create the user in Firebase Authentication
-            const userRecord = await admin.auth().createUser({
-              email: teacher.email,
-              password: "123456", // This should be changed in production
-              displayName: teacher.name,
-              disabled: false
-            });
+            let userUID = null;
             
-            console.log(`Created new user: ${userRecord.uid} for teacher: ${teacher.name}`);
+            try {
+              // Create the user in Firebase Authentication
+              const userRecord = await admin.auth().createUser({
+                email: teacher.email,
+                password: "123456", // This should be changed in production
+                displayName: teacher.name,
+                disabled: false
+              });
+              
+              console.log(`Created new user: ${userRecord.uid} for teacher: ${teacher.name}`);
+              userUID = userRecord.id;
+            } catch (authError) {
+              // Handle errors like email already exists
+              console.log(`Error creating user for teacher ${teacher.name} (${teacher.email}): ${authError.message}`);
+              
+              // If the user already exists, try to get their UID
+              if (authError.code === 'auth/email-already-exists') {
+                try {
+                  const existingUser = await admin.auth().getUserByEmail(teacher.email);
+                  console.log(`User already exists for ${teacher.email}, using existing UID: ${existingUser.uid}`);
+                  userUID = existingUser.uid;
+                } catch (getUserError) {
+                  console.error(`Failed to get existing user for ${teacher.email}:`, getUserError.message);
+                  // Continue without UID - will use teacher.id as fallback
+                }
+              }
+            }
             
-            // Push the teacher to users array with the UID from Firebase Auth
-            users.push({
-              UID: userRecord.uid, // Store the Firebase Auth UID
+            // Add the teacher to users array with proper UID handling
+            const teacherUser = {
+              uid: userRecord.uid, // Use Firebase UID or fallback to teacher.id
               userId: teacher.id,
               firstName: extractFirstName(teacher.name),
               lastName: extractLastName(teacher.name),
               email: teacher.email,
               gender: teacher.gender || '',
+              role: 'teacher', // Use single role field for consistency
               roles: {
                 student: false,
                 teacher: true,
                 admin: false
               },
               createdAt: formatDate(teacher.createdAt)
-            });
-          } catch (error) {
-            // Handle errors like email already exists
-            console.error(`Error creating user for teacher ${teacher.name} (${teacher.email}): `, error);
+            };
             
-            // If the user already exists, try to get their UID
-            if (error.code === 'auth/email-already-exists') {
-              try {
-                const existingUser = await admin.auth().getUserByEmail(teacher.email);
-                console.log(`User already exists for ${teacher.email}, using existing UID: ${existingUser.uid}`);
-                
-                users.push({
-                  UID: existingUser.uid,
-                  userId: teacher.id,
-                  firstName: extractFirstName(teacher.name),
-                  lastName: extractLastName(teacher.name),
-                  email: teacher.email,
-                  gender: teacher.gender || '',
-                  roles: {
-                    student: false,
-                    teacher: true,
-                    admin: false
-                  },
-                  createdAt: formatDate(teacher.createdAt)
-                });
-              } catch (getUserError) {
-                console.error(`Failed to get existing user for ${teacher.email}:`, getUserError);
-                // Add the user without a UID as a fallback
-                users.push({
-                  userId: teacher.id,
-                  firstName: extractFirstName(teacher.name),
-                  lastName: extractLastName(teacher.name),
-                  email: teacher.email,
-                  gender: teacher.gender || '',
-                  roles: {
-                    student: false,
-                    teacher: true,
-                    admin: false
-                  },
-                  createdAt: formatDate(teacher.createdAt)
-                });
-              }
-            } else {
-              // For other errors, add the user without a UID
-              users.push({
-                userId: teacher.id,
-                firstName: extractFirstName(teacher.name),
-                lastName: extractLastName(teacher.name),
-                email: teacher.email,
-                gender: teacher.gender || '',
-                roles: {
-                  student: false,
-                  teacher: true,
-                  admin: false
-                },
-                createdAt: formatDate(teacher.createdAt)
-              });
-            }
+            users.push(teacherUser);
+            console.log(`Successfully processed teacher: ${teacher.name}`);
+            
+          } catch (error) {
+            console.error(`Failed to process teacher ${teacher.name}:`, error.message);
+            // Continue with next teacher
+            continue;
           }
-        });
-        
-        // Wait for all teacher user creation to complete
-        await Promise.all(createTeacherPromises);
+        }
       }
       
       // Import users
@@ -192,77 +161,7 @@ async function importCsvToFirebase(csvFolder) {
     // 3. Import Courses with subcollections
     if (importOptions.courses && csvData['courses.csv']) {
       console.log('Importing courses...');
-      
-      for (const courseRecord of csvData['courses.csv']) {
-        const courseId = courseRecord.id;
-        const parsedTeachers = parseArray(courseRecord.teachers);
-        const teacherId = parsedTeachers[0] || null;
-        
-        // Create main course document
-        const courseDoc = {
-          courseName: courseRecord.name,
-          description: courseRecord.description,
-          schoolId: courseRecord.schoolId,
-          teacherIds: parsedTeachers, // Array of teacher IDs
-          subjectArea: courseRecord.subjectArea,
-          startDate: formatDate(courseRecord.startDate),
-          endDate: formatDate(courseRecord.endDate),
-          durationWeeks: parseInt(courseRecord.durationWeeks) || null,
-          published: courseRecord.published === 'true',
-          activeCode: courseRecord.accessCode,
-          createdAt: formatDate(courseRecord.createdAt)
-        };
-        
-        const courseRef = db.collection('courses').doc(courseId);
-        await courseRef.set(courseDoc);
-        
-        // Import modules as subcollection
-        if (csvData['modules.csv']) {
-          const courseModules = csvData['modules.csv'].filter(m => m.courseId === courseId);
-          
-          for (const module of courseModules) {
-            const moduleRef = courseRef.collection('modules').doc(module.id);
-            await moduleRef.set({
-              moduleTitle: module.name,
-              description: module.description,
-              sequenceNumber: parseInt(module.sequenceNumber) || 0,
-              isRequired: module.required === 'true',
-              startDate: formatDate(module.startDate),
-              endDate: formatDate(module.endDate),
-              durationDays: parseInt(module.durationDays) || null
-            });
-          }
-        }
-        
-        // Import assignments as subcollection
-        if (csvData['assignments.csv']) {
-          const courseAssignments = csvData['assignments.csv'].filter(a => {
-            // Find assignments through module relationship
-            const moduleId = a.moduleId;
-            const module = csvData['modules.csv']?.find(m => m.id === moduleId);
-            return module?.courseId === courseId;
-          });
-          
-          for (const assignment of courseAssignments) {
-            const assignmentRef = courseRef.collection('assignments').doc(assignment.id);
-            await assignmentRef.set({
-              title: assignment.name,
-              description: assignment.description,
-              moduleId: assignment.moduleId,
-              assignmentType: assignment.assignmentType,
-              assignDate: formatDate(assignment.assignDate),
-              dueDate: formatDate(assignment.dueDate),
-              maxScore: parseFloat(assignment.maxScore) || 100,
-              weight: parseFloat(assignment.weight) || 0,
-              maxAttempts: parseInt(assignment.maxAttempts) || 1,
-              createdAt: formatDate(assignment.createdAt)
-            });
-          }
-        }
-        
-        console.log(`Imported course ${courseId} with modules and assignments`);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      await importCoursesWithEnhancedData(csvData);
     }
 
     // 4. Import Enrollments
@@ -404,6 +303,156 @@ async function importCsvToFirebase(csvFolder) {
   }
 }
 
+// Helper function for enhanced assignment-module mapping
+async function enhanceAssignmentModuleMapping(csvData) {
+  console.log('Enhancing assignment and module data mapping...');
+  
+  // Create comprehensive assignment-module-course mapping
+  const assignmentModuleMap = new Map();
+  const moduleAssignmentMap = new Map();
+  
+  if (csvData['assignments.csv'] && csvData['modules.csv']) {
+    // Build assignment to module mapping
+    csvData['assignments.csv'].forEach(assignment => {
+      const moduleId = assignment.moduleId;
+      const assignmentData = {
+        ...assignment,
+        maxScore: parseFloat(assignment.maxScore) || 100,
+        weight: parseFloat(assignment.weight) || 0,
+        averageScore: parseFloat(assignment.averageScore) || 0,
+        lateRate: parseFloat(assignment.lateRate) || 0,
+        submissionRate: parseInt(assignment.submissionRate) || 0,
+        maxAttempts: assignment.maxAttempts ? parseInt(assignment.maxAttempts) : null
+      };
+      
+      assignmentModuleMap.set(assignment.id, {
+        assignment: assignmentData,
+        moduleId: moduleId
+      });
+      
+      // Group assignments by module
+      if (!moduleAssignmentMap.has(moduleId)) {
+        moduleAssignmentMap.set(moduleId, []);
+      }
+      moduleAssignmentMap.get(moduleId).push(assignmentData);
+    });
+    
+    // Enhanced module data with assignment aggregation
+    csvData['modules.csv'].forEach(module => {
+      const assignments = moduleAssignmentMap.get(module.id) || [];
+      const moduleData = {
+        ...module,
+        durationDays: parseInt(module.durationDays) || 0,
+        sequenceNumber: parseInt(module.sequenceNumber) || 0,
+        required: module.required === 'true',
+        assignmentCount: assignments.length,
+        totalWeight: assignments.reduce((sum, a) => sum + a.weight, 0),
+        averageAssignmentScore: assignments.length > 0 ? 
+          assignments.reduce((sum, a) => sum + a.averageScore, 0) / assignments.length : 0
+      };
+      
+      moduleAssignmentMap.set(module.id, {
+        module: moduleData,
+        assignments: assignments
+      });
+    });
+  }
+  
+  return { assignmentModuleMap, moduleAssignmentMap };
+}
+
+// New function to import courses with enhanced data
+async function importCoursesWithEnhancedData(csvData) {
+  console.log('Importing enhanced courses with assignment and module data...');
+  
+  const { assignmentModuleMap, moduleAssignmentMap } = await enhanceAssignmentModuleMapping(csvData);
+  
+  for (const courseRecord of csvData['courses.csv']) {
+    const courseId = courseRecord.id;
+    const parsedTeachers = parseArray(courseRecord.teachers);
+    const parsedStudents = parseArray(courseRecord.students);
+    const parsedModules = parseArray(courseRecord.modules);
+    
+    // Create enhanced course document
+    const courseDoc = {
+      courseName: courseRecord.name,
+      description: courseRecord.description,
+      schoolId: courseRecord.schoolId,
+      teacherIds: parsedTeachers,
+      studentIds: parsedStudents, // Add student IDs for efficient querying
+      subjectArea: courseRecord.subjectArea,
+      startDate: formatDate(courseRecord.startDate),
+      endDate: formatDate(courseRecord.endDate),
+      durationWeeks: parseInt(courseRecord.durationWeeks) || null,
+      published: courseRecord.published === 'true',
+      activeCode: courseRecord.accessCode,
+      moduleCount: parsedModules.length,
+      assignmentCount: 0, // Will be calculated
+      createdAt: formatDate(courseRecord.createdAt)
+    };
+    
+    let totalAssignments = 0;
+    
+    const courseRef = db.collection('courses').doc(courseId);
+    await courseRef.set(courseDoc);
+    
+    // Import modules with enhanced data
+    let courseModules = []; // Define courseModules variable here
+    if (csvData['modules.csv']) {
+      courseModules = csvData['modules.csv'].filter(m => m.courseId === courseId);
+      
+      for (const module of courseModules) {
+        const moduleData = moduleAssignmentMap.get(module.id);
+        const assignments = moduleData?.assignments || [];
+        totalAssignments += assignments.length;
+        
+        const moduleRef = courseRef.collection('modules').doc(module.id);
+        await moduleRef.set({
+          moduleTitle: module.name,
+          description: module.description,
+          sequenceNumber: parseInt(module.sequenceNumber) || 0,
+          isRequired: module.required === 'true',
+          startDate: formatDate(module.startDate),
+          endDate: formatDate(module.endDate),
+          durationDays: parseInt(module.durationDays) || null,
+          subject: module.subject,
+          assignmentCount: assignments.length,
+          totalWeight: assignments.reduce((sum, a) => sum + (a.weight || 0), 0),
+          averageScore: assignments.length > 0 ? 
+            assignments.reduce((sum, a) => sum + (a.averageScore || 0), 0) / assignments.length : 0,
+          createdAt: formatDate(module.createdAt)
+        });
+        
+        // Import assignments for this module
+        for (const assignment of assignments) {
+          const assignmentRef = courseRef.collection('assignments').doc(assignment.id);
+          await assignmentRef.set({
+            title: assignment.name,
+            description: assignment.description,
+            moduleId: assignment.moduleId,
+            assignmentType: assignment.assignmentType,
+            assignDate: formatDate(assignment.assignDate),
+            dueDate: formatDate(assignment.dueDate),
+            maxScore: parseFloat(assignment.maxScore) || 100,
+            weight: parseFloat(assignment.weight) || 0,
+            maxAttempts: assignment.maxAttempts ? parseInt(assignment.maxAttempts) : null,
+            averageScore: parseFloat(assignment.averageScore) || 0,
+            lateRate: parseFloat(assignment.lateRate) || 0,
+            submissionRate: parseInt(assignment.submissionRate) || 0,
+            createdAt: formatDate(assignment.createdAt)
+          });
+        }
+      }
+    }
+    
+    // Update course with total assignment count
+    await courseRef.update({ assignmentCount: totalAssignments });
+    
+    console.log(`Enhanced course ${courseId} with ${courseModules.length} modules and ${totalAssignments} assignments`);
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+}
+
 // Helper function to import a collection with batch processing
 async function importCollection(records, collectionName, formatFunction, getDocId = null) {
   const batchSize = 100;
@@ -412,14 +461,29 @@ async function importCollection(records, collectionName, formatFunction, getDocI
     const batch = db.batch();
     const currentBatch = records.slice(i, i + batchSize);
     
-    currentBatch.forEach((record) => {
-      const formattedRecord = formatFunction(record);
-      const docId = getDocId ? getDocId(record) : 
-                   formattedRecord.uid || formattedRecord.id || 
-                   db.collection(collectionName).doc().id;
-      
-      const docRef = db.collection(collectionName).doc(docId);
-      batch.set(docRef, formattedRecord);
+    currentBatch.forEach((record, index) => {
+      try {
+        const formattedRecord = formatFunction(record);
+        let docId = null;
+        
+        if (getDocId) {
+          docId = getDocId(record);
+        } else {
+          docId = formattedRecord.uid || formattedRecord.id;
+        }
+        
+        // Ensure docId is valid (non-empty string)
+        if (!docId || typeof docId !== 'string' || docId.trim() === '') {
+          docId = db.collection(collectionName).doc().id;
+          console.warn(`Generated new docId for record ${index} in ${collectionName}: ${docId}`);
+        }
+        
+        const docRef = db.collection(collectionName).doc(docId.trim());
+        batch.set(docRef, formattedRecord);
+      } catch (recordError) {
+        console.error(`Error processing record ${index} in ${collectionName}:`, recordError.message);
+        // Skip this record and continue with others
+      }
     });
     
     try {
@@ -427,7 +491,8 @@ async function importCollection(records, collectionName, formatFunction, getDocI
       console.log(`Imported batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(records.length/batchSize)} to ${collectionName}`);
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
-      console.error(`Error importing batch to ${collectionName}:`, error);
+      console.error(`Error importing batch to ${collectionName}:`, error.message);
+      // Continue with next batch
     }
   }
   

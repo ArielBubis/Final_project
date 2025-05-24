@@ -78,23 +78,31 @@ const CoursePerformanceCard = ({ course }) => {
               title: 'Score',
               dataIndex: 'progress',
               key: 'score',
-              render: (progress) => progress?.totalScore ? `${Math.round(progress.totalScore)}%` : 'Not submitted'
+              render: (progress) => {
+                if (!progress) return 'Not submitted';
+                // Check for both possible score fields
+                const score = progress.totalScore || progress.currentScore;
+                return score ? `${Math.round(score)}%` : 'Not submitted';
+              }
             },
             {
               title: 'Submitted',
               dataIndex: 'progress',
-              key: 'submitted',              render: (progress) => {
+              key: 'submitted',
+              render: (progress) => {
                 try {
-                  if (!progress?.submittedAt) {
-                    return 'Not submitted';
-                  }
+                  if (!progress) return 'Not submitted';
                   
-                  if (typeof progress.submittedAt.toDate === 'function') {
-                    return new Date(progress.submittedAt.toDate()).toLocaleDateString();
-                  } else if (typeof progress.submittedAt === 'string') {
-                    return new Date(progress.submittedAt).toLocaleDateString();
-                  } else if (progress.submittedAt instanceof Date) {
-                    return progress.submittedAt.toLocaleDateString();
+                  // Check for both possible submission date fields
+                  const submissionDate = progress.submittedAt || progress.submissionDate;
+                  if (!submissionDate) return 'Not submitted';
+                  
+                  if (typeof submissionDate.toDate === 'function') {
+                    return new Date(submissionDate.toDate()).toLocaleDateString();
+                  } else if (typeof submissionDate === 'string') {
+                    return new Date(submissionDate).toLocaleDateString();
+                  } else if (submissionDate instanceof Date) {
+                    return submissionDate.toLocaleDateString();
                   } else {
                     return 'Date format error';
                   }
@@ -108,7 +116,12 @@ const CoursePerformanceCard = ({ course }) => {
               title: 'Time Spent',
               dataIndex: 'progress',
               key: 'time',
-              render: (progress) => progress?.totalTime ? `${Math.round(progress.totalTime / 60)} minutes` : 'N/A'
+              render: (progress) => {
+                if (!progress) return 'N/A';
+                // Check for both possible time fields
+                const timeSpent = progress.totalTime || progress.timeSpentMinutes;
+                return timeSpent ? `${Math.round(timeSpent / 60)} minutes` : 'N/A';
+              }
             }
           ]}
           pagination={false}

@@ -37,11 +37,11 @@ const StudentPerformance = ({ student }) => {  // Generate radar chart data from
         if (!Array.isArray(course?.assignments) || course.assignments.length === 0) return sum;
         
         const completedAssignments = course.assignments.filter(a => 
-          a?.progress?.submittedAt
+          a?.progress?.submittedAt || a?.progress?.submissionDate
         ).length;
         
         return sum + (completedAssignments / course.assignments.length * 100);
-      }, 0) / student.courses.length : 0
+      }, 0) / student.courses.length : 0 
     }
   ] : [];
 

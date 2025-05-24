@@ -11,7 +11,6 @@ const CourseCard = ({ course }) => {
         name,
         description,
         studentCount,
-        progress,
         lastUpdated
     } = course;
 
@@ -22,15 +21,6 @@ const CourseCard = ({ course }) => {
                 <span className={styles.studentCount}>{studentCount} Students</span>
             </div>
             <p className={styles.description}>{description}</p>
-            <div className={styles.progressContainer}>
-                <div className={styles.progressBar}>
-                    <div
-                        className={styles.progressFill}
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-                <span className={styles.progressText}>{progress}% Complete</span>
-            </div>
             <div className={styles.footer}>
                 <span className={styles.lastUpdated}>
                     Last updated: {new Date(lastUpdated).toLocaleDateString()}

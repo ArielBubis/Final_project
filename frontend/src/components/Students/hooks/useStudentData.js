@@ -157,6 +157,14 @@ export const useStudentData = (studentId) => {
                     const progressDoc = await getDoc(doc(db, 'studentAssignments', `${studentId}_${assignment.id}`));
                     const progress = progressDoc.exists() ? progressDoc.data() : null;
                     
+                    // Debug logging for assignment progress
+                    console.log(`Assignment ${assignment.title || assignment.id}:`, {
+                      hasProgress: !!progress,
+                      submittedAt: progress?.submittedAt,
+                      submissionDate: progress?.submissionDate,
+                      score: progress?.totalScore || progress?.currentScore
+                    });
+                    
                     return {
                       ...assignment,
                       progress: progress
@@ -171,19 +179,41 @@ export const useStudentData = (studentId) => {
                 })
               );
               
+              // Get student module progress for this course
+              const moduleProgressData = await Promise.all(
+                modules.map(async (module) => {
+                  try {
+                    const moduleProgressDoc = await getDoc(doc(db, 'studentModuleProgress', `${studentId}_${module.id}`));
+                    const moduleProgress = moduleProgressDoc.exists() ? moduleProgressDoc.data() : {
+                      completion: 0,
+                      totalExpertiseRate: 0,
+                      lastAccessed: null
+                    };
+                    
+                    return {
+                      ...module,
+                      progress: moduleProgress
+                    };
+                  } catch (err) {
+                    console.error(`Error getting module progress for ${module.id}:`, err);
+                    return {
+                      ...module,
+                      progress: {
+                        completion: 0,
+                        totalExpertiseRate: 0,
+                        lastAccessed: null
+                      }
+                    };
+                  }
+                })
+              );
+
               return {
                 id: enrollment.courseId,
                 ...courseData,
                 enrollment: enrollment,
                 summary: courseSummary,
-                modules: modules.map(module => ({
-                  ...module,
-                  progress: {
-                    completion: 0, // Would need module progress tracking
-                    totalExpertiseRate: 0,
-                    lastAccessed: new Date()
-                  }
-                })),
+                modules: moduleProgressData, // Use actual progress data
                 assignments: assignmentsData
               };
             } catch (err) {
