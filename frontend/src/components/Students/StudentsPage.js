@@ -33,20 +33,42 @@ const StudentsPage = () => {
 
   // Helper function to calculate grade based on score
   const calculateGrade = (score) => {
-    return Math.round(score / 10) * 10; // Round to nearest 10
-  };  // Fetch students dynamically based on the logged-in teacher's UID
+    return Math.round(score / 10) * 10;
+  };
+
+  // Check if cached data is still valid (within 5 minutes)
+  const isCachedDataValid = () => {
+    const timestamp = sessionStorage.getItem('teacherDataTimestamp');
+    if (!timestamp) return false;
+    
+    const cacheTime = new Date(timestamp);
+    const now = new Date();
+    const fiveMinutes = 5 * 60 * 1000;
+    
+    return (now - cacheTime) < fiveMinutes;
+  };
+
   useEffect(() => {
     const fetchStudents = async () => {
       try {
         setLoading(true);
         setError(null);
         
+        // Try to use cached data first
+        const cachedStudents = sessionStorage.getItem('teacherStudents');
+        if (cachedStudents && isCachedDataValid()) {
+          console.log('StudentsPage: Using cached student data');
+          const parsedStudents = JSON.parse(cachedStudents);
+          setTeacherStudents(parsedStudents);
+          setLoading(false);
+          return;
+        }
+        
+        // If no valid cached data, fetch fresh data
+        console.log('StudentsPage: Fetching fresh student data');
         if (currentUser?.uid) {
-          console.log('StudentsPage: Fetching students for UID:', currentUser.uid);
           const studentsData = await fetchStudentsByTeacher(currentUser.uid);
-          console.log('StudentsPage: Received students data:', studentsData);
           
-          // Transform student data to match the required format
           const formattedStudents = studentsData.map(student => ({
             id: student.id || student.studentId,
             name: `${student.firstName} ${student.lastName}`,
@@ -59,18 +81,37 @@ const StudentsPage = () => {
             courseCount: student.courseCount || 0
           }));
           
-          console.log('StudentsPage: Formatted students:', formattedStudents);
           setTeacherStudents(formattedStudents);
+          
+          // Cache the fresh data
+          sessionStorage.setItem('teacherStudents', JSON.stringify(formattedStudents));
+          sessionStorage.setItem('teacherDataTimestamp', new Date().toISOString());
         }
       } catch (err) {
         console.error('StudentsPage: Error fetching students:', err);
         setError('Failed to load students data');
       } finally {
         setLoading(false);
-      }    };
+      }
+    };
 
     fetchStudents();
   }, [currentUser, fetchStudentsByTeacher]);
+
+  // Listen for storage changes (when MainPage updates the cache)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const cachedStudents = sessionStorage.getItem('teacherStudents');
+      if (cachedStudents && isCachedDataValid()) {
+        console.log('StudentsPage: Detected updated cached data');
+        const parsedStudents = JSON.parse(cachedStudents);
+        setTeacherStudents(parsedStudents);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Filter students by search term only
   const filteredStudents = useMemo(() => {

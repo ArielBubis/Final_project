@@ -55,7 +55,7 @@ const RadarChart = ({
       >
         <PolarGrid />
         <PolarAngleAxis dataKey="metric" />
-        <PolarRadiusAxis angle={30} domain={[0, 100]} />
+        <PolarRadiusAxis angle={18} domain={[0, 100]} />
         
         {/* Student performance radar */}
         <Radar 

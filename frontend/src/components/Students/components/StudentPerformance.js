@@ -21,18 +21,18 @@ const StudentPerformance = ({ student }) => {  // Generate radar chart data from
   student ? [
     { name: 'Overall Score', value: student.averageScore || 0 },
     { name: 'Course Completion', value: student.completionRate || 0 },
-    { name: 'Module Completion', value: student?.courses?.length ? 
-      student.courses.reduce((sum, course) => {
-        // Check if modules exist and have length
-        if (!Array.isArray(course?.modules) || course.modules.length === 0) return sum;
+    // { name: 'Module Completion', value: student?.courses?.length ? 
+    //   student.courses.reduce((sum, course) => {
+    //     // Check if modules exist and have length
+    //     if (!Array.isArray(course?.modules) || course.modules.length === 0) return sum;
         
-        const completedModules = course.modules.filter(m => 
-          m?.progress?.completion === 100
-        ).length;
+    //     const completedModules = course.modules.filter(m => 
+    //       m?.progress?.completion === 100
+    //     ).length;
         
-        return sum + (completedModules / course.modules.length * 100);
-      }, 0) / student.courses.length : 0 
-    },
+    //     return sum + (completedModules / course.modules.length * 100);
+    //   }, 0) / student.courses.length : 0 
+    // },
     { name: 'Assignment Completion', value: student?.courses?.length ? 
       student.courses.reduce((sum, course) => {
         // Check if assignments exist and have length
@@ -56,7 +56,7 @@ const StudentPerformance = ({ student }) => {  // Generate radar chart data from
               data={radarChartData}
               width={500}
               height={400}
-              showLegend={true}
+              showLegend={false}
               title="Performance Metrics"
             />
           </Col>
