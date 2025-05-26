@@ -17,12 +17,13 @@ async function importCsvToFirebase(csvFolder) {
     // Configure which parts of the import to run
     const importOptions = {
       users: true,
-      schools: false,
-      courses: false,
-      enrollments: false,
-      studentAssignments: false,
-      studentCourseSummaries: false,
-      teacherDashboards: false
+      schools: true,
+      courses: true,
+      enrollments: true,
+      studentAssignments: true,
+      studentCourseSummaries: true,
+      teacherDashboards: true,
+      studentModules: true // Add this new option
     };
     
     // Load all CSV data first
@@ -390,13 +391,30 @@ async function importCsvToFirebase(csvFolder) {
           }
         });
         
+        // Calculate upcoming assignments for teacher's courses
+        const now = new Date('2023-11-01'); // Use a fixed date for consistency
+        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+        
+        let upcomingAssignmentCount = 0;
+        courseIds.forEach(courseId => {
+          const courseAssignments = csvData['assignments.csv']?.filter(a => {
+            const module = csvData['modules.csv']?.find(m => m.id === a.moduleId);
+            if (!module || module.courseId !== courseId) return false;
+            
+            const dueDate = new Date(a.dueDate);
+            return dueDate >= now && dueDate <= nextWeek;
+          }) || [];
+          
+          upcomingAssignmentCount += courseAssignments.length;
+        });
+        
         const dashboardDoc = {
           teacherId: teacherId,
           totalCourses: teacherCourses.length,
           totalStudents: totalStudents,
           totalActiveStudents: totalActiveStudents,
           averageCompletionRate: Math.round(averageCompletionRate),
-          upcomingAssignmentCount: 5, // This could be calculated from future assignments
+          upcomingAssignmentCount: upcomingAssignmentCount,
           courseIds: courseIds,
           riskAnalysis: {
             lastRun: admin.firestore.Timestamp.now(),
@@ -408,6 +426,12 @@ async function importCsvToFirebase(csvFolder) {
         
         await db.collection('teacherDashboards').doc(teacherId).set(dashboardDoc);
       }
+    }
+
+    // 8. Import Student Module Progress - NEW
+    if (importOptions.studentModules && csvData['studentAssignments.csv'] && csvData['modules.csv']) {
+      console.log('Calculating and importing student module progress...');
+      await importStudentModuleProgress(csvData);
     }
 
     console.log('Import completed successfully!');
@@ -669,3 +693,157 @@ function extractLastName(fullName) {
 // Run the import
 const csvFolder = path.join(__dirname, '../data/csv');
 importCsvToFirebase(csvFolder);
+
+// Add this new function to calculate and import student module progress
+async function importStudentModuleProgress(csvData) {
+  const studentModuleMap = new Map();
+  
+  // Get all student enrollments to know which students are in which courses
+  const studentEnrollments = csvData['studentCourses.csv'] || [];
+  
+  // Process each student enrollment
+  for (const enrollment of studentEnrollments) {
+    const studentId = enrollment.studentId.toString();
+    const courseId = enrollment.courseId;
+    
+    // Get all modules for this course
+    const courseModules = csvData['modules.csv'].filter(m => m.courseId === courseId);
+    
+    for (const module of courseModules) {
+      const moduleId = module.id;
+      const mapKey = `${studentId}_${moduleId}`;
+      
+      // Get all assignments for this module
+      const moduleAssignments = csvData['assignments.csv'].filter(a => a.moduleId === moduleId);
+      const totalAssignments = moduleAssignments.length;
+      
+      if (totalAssignments === 0) continue; // Skip modules with no assignments
+      
+      // Get completed assignments for this student in this module
+      const completedAssignments = csvData['studentAssignments.csv'].filter(sa => 
+        sa.studentId == studentId && 
+        sa.status === 'completed' &&
+        sa.assessmentScore != null &&
+        moduleAssignments.some(ma => ma.id === sa.assignmentId)
+      );
+      
+      const completedCount = completedAssignments.length;
+      const completionRate = Math.round((completedCount / totalAssignments) * 100);
+      
+      // Calculate module score (weighted average of completed assignments)
+      let moduleScore = 0;
+      let totalWeight = 0;
+      
+      if (completedAssignments.length > 0) {
+        completedAssignments.forEach(sa => {
+          const assignment = moduleAssignments.find(ma => ma.id === sa.assignmentId);
+          const weight = parseFloat(assignment?.weight) || 1;
+          const score = parseFloat(sa.assessmentScore) || 0;
+          
+          moduleScore += score * weight;
+          totalWeight += weight;
+        });
+        
+        moduleScore = totalWeight > 0 ? Math.round((moduleScore / totalWeight) * 100) / 100 : 0;
+      }
+      
+      // Determine module status
+      let moduleStatus = 'not_started';
+      if (completedCount > 0 && completedCount < totalAssignments) {
+        moduleStatus = 'in_progress';
+      } else if (completedCount === totalAssignments) {
+        moduleStatus = 'completed';
+      }
+      
+      // Calculate time spent in this module
+      const totalTimeSpent = completedAssignments.reduce((sum, sa) => 
+        sum + (parseInt(sa.timeSpentMinutes) || 0), 0
+      );
+      
+      // Determine if student is at risk in this module
+      let riskLevel = 'low';
+      if (moduleScore < 60 || completionRate < 50) {
+        riskLevel = 'high';
+      } else if (moduleScore < 70 || completionRate < 75) {
+        riskLevel = 'medium';
+      }
+      
+      // Get the latest activity date
+      const latestSubmission = completedAssignments.length > 0 
+        ? completedAssignments.reduce((latest, sa) => 
+            new Date(sa.submissionDate) > new Date(latest.submissionDate) ? sa : latest
+          )
+        : null;
+      
+      // Calculate estimated time to completion based on remaining assignments and average time per assignment
+      const avgTimePerAssignment = completedCount > 0 ? totalTimeSpent / completedCount : 60; // Default 60 min
+      const estimatedTimeToCompletion = (totalAssignments - completedCount) * avgTimePerAssignment;
+      
+      const studentModuleProgress = {
+        studentId: studentId,
+        moduleId: moduleId,
+        courseId: courseId,
+        moduleName: module.name,
+        moduleSequence: parseInt(module.sequenceNumber) || 0,
+        isRequired: module.required === 'true',
+        
+        // Progress metrics
+        status: moduleStatus,
+        completionRate: completionRate,
+        completedAssignments: completedCount,
+        totalAssignments: totalAssignments,
+        moduleScore: moduleScore,
+        
+        // Time tracking
+        totalTimeSpentMinutes: totalTimeSpent,
+        estimatedTimeToCompletion: Math.round(estimatedTimeToCompletion),
+        
+        // Risk assessment
+        riskLevel: riskLevel,
+        riskScore: moduleScore < 60 ? 80 : moduleScore < 70 ? 50 : 20,
+        
+        // Dates
+        startDate: formatDate(module.startDate),
+        endDate: formatDate(module.endDate),
+        lastActivity: latestSubmission ? formatDate(latestSubmission.submissionDate) : null,
+        
+        // Assignment breakdown for detailed tracking
+        assignmentProgress: moduleAssignments.map(assignment => {
+          const studentAssignment = completedAssignments.find(sa => sa.assignmentId === assignment.id);
+          return {
+            assignmentId: assignment.id,
+            assignmentName: assignment.name,
+            assignmentType: assignment.assignmentType,
+            dueDate: formatDate(assignment.dueDate),
+            maxScore: parseFloat(assignment.maxScore) || 100,
+            weight: parseFloat(assignment.weight) || 0,
+            status: studentAssignment ? 'completed' : 'pending',
+            score: studentAssignment ? parseFloat(studentAssignment.assessmentScore) : null,
+            submissionDate: studentAssignment ? formatDate(studentAssignment.submissionDate) : null,
+            isLate: studentAssignment ? studentAssignment.isLate === 'true' : false,
+            timeSpentMinutes: studentAssignment ? parseInt(studentAssignment.timeSpentMinutes) || 0 : 0
+          };
+        }),
+        
+        createdAt: formatDate(enrollment.createdAt),
+        updatedAt: admin.firestore.Timestamp.now()
+      };
+      
+      studentModuleMap.set(mapKey, studentModuleProgress);
+    }
+  }
+  
+  // Import the student module progress data
+  const studentModuleProgressArray = Array.from(studentModuleMap.values());
+  
+  console.log(`Processing ${studentModuleProgressArray.length} student module progress records...`);
+  
+  await importCollection(
+    studentModuleProgressArray, 
+    'studentModules', 
+    record => record, 
+    record => `${record.studentId}_${record.moduleId}`
+  );
+  
+  console.log('Student module progress import completed!');
+}

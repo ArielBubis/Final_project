@@ -256,7 +256,8 @@ export const useStudentData = (studentId) => {
                 lastAccessed = accessDate;
               }
             }
-            courseCount++;
+            if(course.summary.overallScore !== 0)
+              courseCount++;
           }
           
           // Count assignments

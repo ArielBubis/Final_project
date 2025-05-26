@@ -16,7 +16,9 @@ const StudentPerformance = ({ student }) => {  // Generate radar chart data from
   });
   
   // Format metrics for the legend component with defensive checks
-  const performanceMetrics = student ? [
+  const performanceMetrics = 
+  
+  student ? [
     { name: 'Overall Score', value: student.averageScore || 0 },
     { name: 'Course Completion', value: student.completionRate || 0 },
     { name: 'Module Completion', value: student?.courses?.length ? 
@@ -48,11 +50,11 @@ const StudentPerformance = ({ student }) => {  // Generate radar chart data from
   return (
     <AntCard title="Performance Metrics" className={styles.chartCard}>
       {radarChartData.length > 0 ? (
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} md={12}>
+        <Row gutter={[16, 16]} align="middle" justify="center">
+          <Col xs={24} md={12} align="middle" justify="center">
             <RadarChart 
               data={radarChartData}
-              width={400}
+              width={500}
               height={400}
               showLegend={true}
               title="Performance Metrics"

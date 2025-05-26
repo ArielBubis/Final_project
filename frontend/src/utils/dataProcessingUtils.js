@@ -80,8 +80,9 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
       expertiseSum / totalModules : 0;
   }
   
-  // Calculate average time spent across courses
-  let timeSpent = studentData.timeSpent;
+  // Calculate average time spent across courses - FIXED to use totalTimeSpent
+  let timeSpent = studentData.timeSpent || studentData.totalTimeSpent;
+  console.log('Time spent before calculation:', timeSpent);
   if (timeSpent === undefined && Array.isArray(studentData.courses)) {
     let totalTime = 0;
     
@@ -135,7 +136,7 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
 export const normalizeTimeSpent = (timeInMinutes) => {
   // Define reasonable bounds for time spent (adjust based on your data)
   const minTimeSpent = 0;
-  const maxTimeSpent = 600; // 10 hours as reasonable maximum
+  const maxTimeSpent = 3000; // 10 hours as reasonable maximum
   
   return normalizeValue(timeInMinutes, minTimeSpent, maxTimeSpent);
 };

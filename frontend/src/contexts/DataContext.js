@@ -382,7 +382,7 @@ export const DataProvider = ({ children }) => {
         let lastAccessed = null;
         
         studentSummaries.forEach(summary => {
-          if (typeof summary.overallScore === 'number') {
+          if (typeof summary.overallScore === 'number' && summary.overallScore >= 0) {
             totalScore += summary.overallScore;
           }
           if (typeof summary.completionRate === 'number') {
@@ -592,7 +592,7 @@ export const DataProvider = ({ children }) => {
             } else if (progress?.submissionDate) {
               status = 'completed';
             } else if (dueDate && dueDate < now) {
-              status = 'overdue';
+              status = 'pending';
             } else if (assignDate && assignDate > now) {
               status = 'future';
             }

@@ -53,7 +53,7 @@ const MainPage = () => {
                 totalCourses: dashboardData.totalCourses || 0,
                 totalStudents: dashboardData.totalStudents || 0,
                 avgCompletion: Math.round(dashboardData.averageCompletionRate || 0),
-                avgPerformance: Math.round(dashboardData.averageScore || 0),
+                // avgPerformance: Math.round(dashboardData.averageScore || 0),
                 activeStudents: dashboardData.totalActiveStudents || 0,
                 activeStudentsPercentage: dashboardData.totalStudents > 0 ? 
                     Math.round((dashboardData.totalActiveStudents / dashboardData.totalStudents) * 100) : 0,
