@@ -5,13 +5,30 @@ import CourseCard from './CourseCard';
 import styles from '../../styles/modules/CourseList.module.css';
 
 const CourseList = ({ courses, title }) => {
-    const navigate = useNavigate();
+    const navigate = useNavigate();    // Filter out courses with 0 overall score
+    const filteredCourses = courses.filter(course => {
+        // Check if course has summary with overallScore
+        if (course.summary && typeof course.summary.overallScore === 'number') {
+            return course.summary.overallScore > 0;
+        }
+        // Check if course has averageScore (for course stats)
+        if (typeof course.averageScore === 'number') {
+            return course.averageScore > 0;
+        }
+        // If no score data, include the course
+        return true;
+    });
+
+    // Optional debug logging (can be disabled in production)
+    if (process.env.NODE_ENV === 'development' && courses.length !== filteredCourses.length) {
+        console.log(`CourseList: Filtered ${courses.length} courses down to ${filteredCourses.length} courses`);
+    }
 
     return (
         <div className={styles.courseListContainer}>
             <h2 className={styles.title}>{title}</h2>
             <div className={styles.courseGrid}>
-                {courses.map((course) => (
+                {filteredCourses.map((course) => (
                     <div key={course.id}>
                         <CourseCard course={course} />
                     </div>

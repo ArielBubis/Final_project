@@ -225,10 +225,21 @@ export const useStudentData = (studentId) => {
               return null;
             }
           })
-        );
+        );        // Filter out any null courses and courses with 0 overall score
+        const validCoursesData = coursesData.filter(course => {
+          const isValid = course && 
+            course.summary && 
+            typeof course.summary.overallScore === 'number' && 
+            course.summary.overallScore > 0;
+          
+          if (!isValid) {
+            console.log(`useStudentData: Filtering out course - valid: ${!!course}, hasValidScore: ${course?.summary?.overallScore}`);
+          }
+          
+          return isValid;
+        });
         
-        // Filter out any null courses
-        const validCoursesData = coursesData.filter(Boolean);
+        console.log(`useStudentData: Filtered ${coursesData.length} courses down to ${validCoursesData.length} valid courses`);
         setDebugInfo(prev => ({ ...prev, coursesData: validCoursesData }));
 
         // Calculate overall metrics
@@ -238,9 +249,7 @@ export const useStudentData = (studentId) => {
         let courseCount = 0;
         let lastAccessed = null;
         let submittedAssignments = 0;
-        let totalAssignments = 0;
-
-        validCoursesData.forEach(course => {
+        let totalAssignments = 0;        validCoursesData.forEach(course => {
           if (course.summary) {
             if (course.summary.overallScore !== undefined) {
               totalScore += course.summary.overallScore;
@@ -260,8 +269,8 @@ export const useStudentData = (studentId) => {
                 lastAccessed = accessDate;
               }
             }
-            if(course.summary.overallScore !== 0)
-              courseCount++;
+            // Since we already filtered courses with overallScore > 0, we can count all valid courses
+            courseCount++;
           }
           
           // Count assignments

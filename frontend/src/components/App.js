@@ -64,8 +64,7 @@ const AppContent = () => {
             <>
               {/* Common routes */}
               <Route path="/mainpage" element={<Mainpage />} />
-              {/* Removed Reports route */}
-              <Route path="/students" element={<StudentsPage />} />
+              {/* Removed Reports route */}              <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
               <Route path="/courses" element={<CoursesPage />} />
 

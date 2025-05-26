@@ -46,22 +46,51 @@ const Student = () => {
   const enrichedStudent = student ? { 
     ...student, 
     ...riskAssessment 
-  } : null;
-  // Filter courses based on selection
+  } : null;  // Filter courses based on selection and exclude courses with 0 overall score
   const filteredCourses = enrichedStudent?.courses ? 
-    selectedCourse === 'all' 
-      ? enrichedStudent.courses 
-      : enrichedStudent.courses.filter(course => course.id === selectedCourse)
+    enrichedStudent.courses.filter(course => {
+      // First filter out courses with 0 overall score
+      const hasValidScore = course.summary && 
+        typeof course.summary.overallScore === 'number' && 
+        course.summary.overallScore > 0;
+      
+      if (!hasValidScore) {
+        console.log(`Student: Filtering out course "${course.courseName || course.name}" - invalid score: ${course.summary?.overallScore}`);
+        return false;
+      }
+      
+      // Then apply course selection filter
+      const passesSelection = selectedCourse === 'all' || course.id === selectedCourse;
+      if (!passesSelection) {
+        console.log(`Student: Filtering out course "${course.courseName || course.name}" - not selected`);
+      }
+      return passesSelection;
+    })
     : [];
 
-  // Generate course filter options
-  const courseOptions = [
+  console.log(`Student: Filtered ${enrichedStudent?.courses?.length || 0} courses down to ${filteredCourses.length} courses`);
+
+  // Generate course filter options (only for courses with scores > 0)
+  const validCourses = (enrichedStudent?.courses || []).filter(course => 
+    course.summary && 
+    typeof course.summary.overallScore === 'number' && 
+    course.summary.overallScore > 0
+  );
+    const courseOptions = [
     { value: 'all', label: 'All Courses' },
-    ...(enrichedStudent?.courses || []).map(course => ({
+    ...validCourses.map(course => ({
       value: course.id,
       label: course.courseName || 'Unnamed Course'
     }))
   ];
+  
+  // Reset selected course if it's no longer valid after filtering
+  useEffect(() => {
+    if (selectedCourse !== 'all' && !validCourses.find(course => course.id === selectedCourse)) {
+      setSelectedCourse('all');
+    }
+  }, [selectedCourse, validCourses]);
+  
   if (loading || riskDataLoading) {
     return <Spin size="large" tip="Loading student details..." />;
   }

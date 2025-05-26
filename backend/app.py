@@ -28,14 +28,14 @@ class PredictionError(Exception):
 app = Flask(__name__)
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler('app.log'),
+#         logging.StreamHandler()
+#     ]
+# )
 logger = logging.getLogger(__name__)
 
 # Enable CORS with more specific settings
