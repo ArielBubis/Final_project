@@ -868,19 +868,43 @@ def get_at_risk_students():
                 'message': f'Could not read predictions file: {str(e)}'
             }), 500
         
+        # Load student and course lookup data
+        try:
+            # Read students CSV for name mapping
+            students_df = pd.read_csv('../data/csv/students.csv')
+            student_lookup = dict(zip(students_df['id'].astype(str), students_df['name']))
+            
+            # Read courses CSV for course name mapping
+            courses_df = pd.read_csv('../data/csv/courses.csv')
+            course_lookup = dict(zip(courses_df['id'], courses_df['name']))
+            
+            logger.info(f"Loaded {len(student_lookup)} student names and {len(course_lookup)} course names")
+        except Exception as e:
+            logger.warning(f"Could not load student/course lookup data: {str(e)}")
+            student_lookup = {}
+            course_lookup = {}
+        
         # Filter for at-risk students (either at_risk_prediction = 0 or risk_score >= 50)
         at_risk_df = df[
             (df['at_risk_prediction'] == 0) | 
             (df['risk_score'] >= 0.5)  # Assuming risk_score is probability (0-1)
         ].copy()
-        
-        # Convert to list of dictionaries for frontend consumption
+          # Convert to list of dictionaries for frontend consumption
         at_risk_students = []
         for _, row in at_risk_df.iterrows():
+            student_id = str(row.get('studentId', ''))
+            course_id = str(row.get('courseId', ''))
+            
+            # Get actual names from lookup tables
+            student_name = student_lookup.get(student_id, f'Student {student_id}')
+            course_name = course_lookup.get(course_id, f'Course {course_id}')
+            
             student = {
-                'id': str(row.get('studentId', '')),
-                'studentId': str(row.get('studentId', '')),
-                'courseId': str(row.get('courseId', '')),
+                'id': student_id,
+                'studentId': student_id,
+                'name': student_name,  # Add the actual student name
+                'courseId': course_id,
+                'courseName': course_name,  # Add the actual course name
                 'gradeLevel': int(row.get('gradeLevel', 12)),
                 'mlRiskScore': float(row.get('risk_score', 0) * 100),  # Convert to percentage
                 'mlRiskLevel': str(row.get('risk_status', 'Unknown')).lower(),

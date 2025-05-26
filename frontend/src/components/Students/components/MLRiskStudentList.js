@@ -211,111 +211,114 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
             </Col>
           </Row>
         </Card>
-      )}
-
-      {/* Student Risk Cards */}
+      )}      {/* Student Risk Cards */}
       <div className={styles.riskStudentList}>
-        {students.map((student, index) => (
-          <Card key={student.id || student.studentId || index} className={styles.riskStudentCard}>
-            <div className={styles.riskStudentHeader}>
-              <div>
-                <h3>{getStudentName(student)}</h3>
-                {student.courseId && (
-                  <Tag icon={<BookOutlined />} color="blue">
-                    {student.courseId}
+        {students.map((student, index) => {
+          // Create a unique key by combining multiple identifiers
+          const uniqueKey = `${student.id || 'no-id'}-${student.studentId || 'no-student-id'}-${index}`;
+          
+          return (
+            <Card key={uniqueKey} className={styles.riskStudentCard}>
+              <div className={styles.riskStudentHeader}>
+                <div>
+                  <h3>{getStudentName(student)}</h3>
+                  {student.courseId && (
+                    <Tag icon={<BookOutlined />} color="blue">
+                      {student.courseId}
+                    </Tag>
+                  )}
+                  {student.gradeLevel && (
+                    <Tag color="green">Grade {student.gradeLevel}</Tag>
+                  )}
+                </div>
+                <div className={styles.riskScore}>
+                  <Tag color={getRiskLevelColor(student.mlRiskLevel || student.risk_status)}>
+                    {getRiskLevelText(student.mlRiskLevel || student.risk_status, student.isAtRisk)}
                   </Tag>
-                )}
-                {student.gradeLevel && (
-                  <Tag color="green">Grade {student.gradeLevel}</Tag>
-                )}
-              </div>
-              <div className={styles.riskScore}>
-                <Tag color={getRiskLevelColor(student.mlRiskLevel || student.risk_status)}>
-                  {getRiskLevelText(student.mlRiskLevel || student.risk_status, student.isAtRisk)}
-                </Tag>
-                <span className={
-                  (student.mlRiskScore || 0) >= 70 ? styles.highRisk :
-                  (student.mlRiskScore || 0) >= 40 ? styles.mediumRisk :
-                  styles.lowRisk
-                }>
-                  {Math.round(student.mlRiskScore || 0)}%
-                </span>
-              </div>
-            </div>
-            
-            <div className={styles.riskStudentStats}>
-              <div className={styles.riskStat}>
-                <span>Academic Performance:</span>
-                <Progress
-                  percent={Math.round(student.performance || student.finalScore || 0)}
-                  size="small"
-                  status={(student.performance || student.finalScore || 0) < 60 ? "exception" : "normal"}
-                />
-              </div>
-              <div className={styles.riskStat}>
-                <span>Engagement Score:</span>
-                <Progress
-                  percent={Math.round(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0)}
-                  size="small"
-                  status={(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0) < 50 ? "exception" : "normal"}
-                />
-              </div>
-              {student.lateSubmissionRate !== undefined && (
-                <div className={styles.riskStat}>
-                  <span>Late Submissions:</span>
-                  <span style={{ color: student.lateSubmissionRate > 0.3 ? '#f5222d' : '#52c41a' }}>
-                    {Math.round(student.lateSubmissionRate * 100)}%
+                  <span className={
+                    (student.mlRiskScore || 0) >= 70 ? styles.highRisk :
+                    (student.mlRiskScore || 0) >= 40 ? styles.mediumRisk :
+                    styles.lowRisk
+                  }>
+                    {Math.round(student.mlRiskScore || 0)}%
                   </span>
                 </div>
-              )}
-              {student.confidence && (
-                <div className={styles.riskStat}>
-                  <span>Prediction Confidence:</span>
-                  <Tag color={
-                    student.confidence === 'High' ? 'green' :
-                    student.confidence === 'Medium' ? 'orange' : 'red'
-                  }>
-                    {student.confidence}
-                  </Tag>
-                </div>
-              )}
-              {student.lastActive && (
-                <div className={styles.riskStat}>
-                  <span>Last Active:</span>
-                  <span>{formatTimestampForDisplay(student.lastActive, 'date')}</span>
-                </div>
-              )}
-            </div>
-
-            {student.mlRiskFactors && student.mlRiskFactors.length > 0 && (
-              <div className={styles.riskFactors}>
-                <h4>Risk Factors:</h4>
-                <div>
-                  {student.mlRiskFactors.map((factor, factorIndex) => (
-                    <Tag key={factorIndex} color="volcano" style={{ marginBottom: 4 }}>
-                      {factor}
-                    </Tag>
-                  ))}
-                </div>
               </div>
-            )}
-            
-            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => window.location.href = `/students/${student.id || student.studentId}`}
-              >
-                View Details
-              </Button>
-              {student.probability && (
-                <Tag color="purple">
-                  Risk Probability: {Math.round(student.probability * 100)}%
-                </Tag>
+              
+              <div className={styles.riskStudentStats}>
+                <div className={styles.riskStat}>
+                  <span>Academic Performance:</span>
+                  <Progress
+                    percent={Math.round(student.performance || student.finalScore || 0)}
+                    size="small"
+                    status={(student.performance || student.finalScore || 0) < 60 ? "exception" : "normal"}
+                  />
+                </div>
+                <div className={styles.riskStat}>
+                  <span>Engagement Score:</span>
+                  <Progress
+                    percent={Math.round(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0)}
+                    size="small"
+                    status={(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0) < 50 ? "exception" : "normal"}
+                  />
+                </div>
+                {student.lateSubmissionRate !== undefined && (
+                  <div className={styles.riskStat}>
+                    <span>Late Submissions:</span>
+                    <span style={{ color: student.lateSubmissionRate > 0.3 ? '#f5222d' : '#52c41a' }}>
+                      {Math.round(student.lateSubmissionRate * 100)}%
+                    </span>
+                  </div>
+                )}
+                {student.confidence && (
+                  <div className={styles.riskStat}>
+                    <span>Prediction Confidence:</span>
+                    <Tag color={
+                      student.confidence === 'High' ? 'green' :
+                      student.confidence === 'Medium' ? 'orange' : 'red'
+                    }>
+                      {student.confidence}
+                    </Tag>
+                  </div>
+                )}
+                {student.lastActive && (
+                  <div className={styles.riskStat}>
+                    <span>Last Active:</span>
+                    <span>{formatTimestampForDisplay(student.lastActive, 'date')}</span>
+                  </div>
+                )}
+              </div>
+
+              {student.mlRiskFactors && student.mlRiskFactors.length > 0 && (
+                <div className={styles.riskFactors}>
+                  <h4>Risk Factors:</h4>
+                  <div>
+                    {student.mlRiskFactors.map((factor, factorIndex) => (
+                      <Tag key={factorIndex} color="volcano" style={{ marginBottom: 4 }}>
+                        {factor}
+                      </Tag>
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
-          </Card>
-        ))}
+              
+              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => window.location.href = `/students/${student.id || student.studentId}`}
+                >
+                  View Details
+                </Button>
+                {student.probability && (
+                  <Tag color="purple">
+                    Risk Probability: {Math.round(student.probability * 100)}%
+                  </Tag>
+                )}
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
