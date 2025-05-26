@@ -115,7 +115,8 @@ export const calculateOverallStudentRisk = (courseRisks) => {
  * @param {string} level - Risk level
  * @returns {string} Color hex code
  */
-export const getCourseRiskColor = (level) => {
+export const getCourseRiskColor = (level) => { //level between 0 and 100
+  if (!level) return '#1890ff'; // Default to blue if no level provided
   return getCourseRiskLevelColor(level);
 };
 
@@ -204,7 +205,7 @@ export const formatCourseRiskData = (courseRisk) => {
   return {
     courseId: courseRisk.courseId,
     studentId: courseRisk.studentId,
-    riskScore: Math.round(riskScore),
+    riskScore: riskScore *100,
     riskLevel: riskStatus.toLowerCase(),
     riskStatus: riskStatus,
     isAtRisk: isAtRisk,

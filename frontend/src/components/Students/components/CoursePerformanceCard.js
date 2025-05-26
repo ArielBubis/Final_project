@@ -15,15 +15,6 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
       title={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{course?.courseName || "Unnamed Course"}</span>
-          {courseRisk && (
-            <Badge 
-              count={formattedRiskData.riskStatus} 
-              style={{ 
-                backgroundColor: getCourseRiskColor(formattedRiskData.riskLevel),
-                color: 'white'
-              }}
-            />
-          )}
         </div>
       } 
       className={styles.courseCard}
@@ -32,21 +23,21 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
         <>
           <div style={{ marginBottom: 16 }}>
             <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
-              {getCourseRiskIcon(formattedRiskData.riskLevel)}
+              {/* {getCourseRiskIcon(formattedRiskData.riskLevel)} */}
               <span style={{ marginLeft: 8 }}>Risk Assessment</span>
             </h4>
             <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
-              <Col xs={12} md={6}>
+              {/* <Col xs={12} md={6}>
                 <Statistic
                   title="Risk Score"
                   value={formattedRiskData.riskScore || 0}
                   precision={1}
                   valueStyle={{ 
-                    color: getCourseRiskColor(formattedRiskData.riskLevel),
+                    // color: getCourseRiskColor(formattedRiskData.riskLevel),
                     fontSize: '16px'
                   }}
                 />
-              </Col>
+              </Col> */}
               <Col xs={12} md={6}>
                 <Statistic
                   title="Confidence"
@@ -55,7 +46,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
                   valueStyle={{ color: '#1890ff', fontSize: '16px' }}
                 />
               </Col>
-              <Col xs={12} md={6}>
+              {/* <Col xs={12} md={6}>
                 <Statistic
                   title="Late Submissions"
                   value={formattedRiskData.lateSubmissionRate || 0}
@@ -75,7 +66,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
                     fontSize: '16px'
                   }}
                 />
-              </Col>
+              </Col> */}
             </Row>{formattedRiskData?.riskFactors && formattedRiskData.riskFactors.length > 0 && (
               <Alert
                 message="Risk Factors"
