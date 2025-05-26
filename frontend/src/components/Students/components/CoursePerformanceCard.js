@@ -1,10 +1,101 @@
 import React from 'react';
-import { Card as AntCard, Row, Col, Statistic, Progress, Alert, Table } from 'antd';
+import { Card as AntCard, Row, Col, Statistic, Progress, Alert, Table, Badge, Divider } from 'antd';
+import { WarningOutlined, SafetyOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import styles from '../../../styles/modules/Students.module.css';
+import { getCourseRiskData, formatCourseRiskData, getCourseRiskColor, getCourseRiskIcon } from '../../../utils/courseRiskUtils';
 
-const CoursePerformanceCard = ({ course }) => {
+const CoursePerformanceCard = ({ course, studentId, riskData }) => {
+  // Get course-specific risk data
+  const courseRisk = getCourseRiskData(riskData, studentId, course?.id);
+  const formattedRiskData = courseRisk ? formatCourseRiskData(courseRisk) : null;
+
   return (
-    <AntCard key={course?.id} title={course?.courseName || "Unnamed Course"} className={styles.courseCard}>
+    <AntCard 
+      key={course?.id} 
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>{course?.courseName || "Unnamed Course"}</span>
+          {courseRisk && (
+            <Badge 
+              count={formattedRiskData.riskStatus} 
+              style={{ 
+                backgroundColor: getCourseRiskColor(formattedRiskData.riskLevel),
+                color: 'white'
+              }}
+            />
+          )}
+        </div>
+      } 
+      className={styles.courseCard}
+    >      {/* Course Risk Assessment Section */}
+      {courseRisk && formattedRiskData && (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+              {getCourseRiskIcon(formattedRiskData.riskLevel)}
+              <span style={{ marginLeft: 8 }}>Risk Assessment</span>
+            </h4>
+            <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="Risk Score"
+                  value={formattedRiskData.riskScore || 0}
+                  precision={1}
+                  valueStyle={{ 
+                    color: getCourseRiskColor(formattedRiskData.riskLevel),
+                    fontSize: '16px'
+                  }}
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="Confidence"
+                  value={formattedRiskData.confidence || 'Unknown'}
+                  suffix="%"
+                  valueStyle={{ color: '#1890ff', fontSize: '16px' }}
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="Late Submissions"
+                  value={formattedRiskData.lateSubmissionRate || 0}
+                  suffix="%"
+                  valueStyle={{ 
+                    color: (formattedRiskData.lateSubmissionRate || 0) > 20 ? '#cf1322' : '#3f8600',
+                    fontSize: '16px'
+                  }}
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="At Risk"
+                  value={formattedRiskData.atRiskPrediction ? 'Yes' : 'No'}
+                  valueStyle={{ 
+                    color: formattedRiskData.atRiskPrediction ? '#cf1322' : '#3f8600',
+                    fontSize: '16px'
+                  }}
+                />
+              </Col>
+            </Row>{formattedRiskData?.riskFactors && formattedRiskData.riskFactors.length > 0 && (
+              <Alert
+                message="Risk Factors"
+                description={
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {formattedRiskData.riskFactors.map((factor, index) => (
+                      <li key={index}>{factor}</li>
+                    ))}
+                  </ul>
+                }
+                type="warning"
+                icon={<WarningOutlined />}
+                style={{ marginTop: 8 }}
+              />
+            )}
+          </div>
+          <Divider />
+        </>
+      )}
+
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Statistic

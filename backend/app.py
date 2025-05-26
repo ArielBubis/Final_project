@@ -973,6 +973,60 @@ def get_at_risk_students():
             'message': 'An unexpected error occurred. Please try again later.'
         }), 500
 
+@app.route('/api/risk/course-data', methods=['GET'])
+def get_course_risk_data():
+    """
+    Get all course-specific risk data from the latest CSV predictions file
+    Returns raw course-risk data for student-course combinations
+    """
+    try:
+        # Find the latest CSV prediction file
+        csv_files = []
+        for file in os.listdir('.'):
+            if file.startswith('risk_predictions_') and file.endswith('.csv'):
+                csv_files.append(file)
+        
+        if not csv_files:
+            return jsonify([])  # Return empty array if no files found
+        
+        # Get the latest file (sorted by name which includes timestamp)
+        latest_file = sorted(csv_files, reverse=True)[0]
+        
+        # Read the CSV file
+        try:
+            df = pd.read_csv(latest_file)
+        except Exception as e:
+            logger.error(f"Error reading CSV file {latest_file}: {str(e)}")
+            return jsonify([])  # Return empty array on error
+        
+        # Convert to list of dictionaries for frontend consumption
+        course_risk_data = []
+        for _, row in df.iterrows():
+            risk_entry = {
+                'studentId': str(row.get('studentId', '')),
+                'courseId': str(row.get('courseId', '')),
+                'risk_score': float(row.get('risk_score', 0)),
+                'at_risk_prediction': int(row.get('at_risk_prediction', 1)),
+                'at_risk_probability': float(row.get('at_risk_probability', 0)),
+                'risk_status': str(row.get('risk_status', 'Unknown')),
+                'prediction_confidence': str(row.get('prediction_confidence', 'Unknown')),
+                'finalScore': float(row.get('finalScore', 0)),
+                'late_submission_rate': float(row.get('late_submission_rate', 0)),
+                'totalTimeSpentMinutes': float(row.get('totalTimeSpentMinutes', 0)),
+                'declining_performance': int(row.get('declining_performance', 0)),
+                'low_engagement': int(row.get('low_engagement', 0)),
+                'inconsistent_performance': int(row.get('inconsistent_performance', 0))
+            }
+            course_risk_data.append(risk_entry)
+        
+        logger.info(f"Course risk data query completed - {len(course_risk_data)} entries found")
+        return jsonify(course_risk_data)
+        
+    except Exception as e:
+        error_msg = f"Unexpected error in get_course_risk_data: {str(e)}"
+        logger.error(error_msg)
+        return jsonify([])  # Return empty array on error
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     try:

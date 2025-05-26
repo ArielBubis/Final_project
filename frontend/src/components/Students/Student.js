@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card as AntCard, Spin, Empty, Alert, Button, Select } from 'antd';
 import { useParams } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
 import { useStudentData } from './hooks/useStudentData';
 import { useRiskAssessment } from '../../hooks/useRiskAssessment';
+import { getCourseRiskData } from '../../services/riskPredictionService';
 import DebugCard from './components/DebugCard';
 import StudentInfo from './components/StudentInfo';
 import StudentPerformance from './components/StudentPerformance';
@@ -14,12 +15,32 @@ const Student = () => {
   const { id } = useParams();
   const [showDebug, setShowDebug] = useState(false); // Set to false in production
   const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
+  const [courseRiskData, setCourseRiskData] = useState([]);
+  const [riskDataLoading, setRiskDataLoading] = useState(true);
   
   // Simplified data fetching with broken circular dependencies
   const { student, loading, error, debugInfo } = useStudentData(id);
   
   // Separate risk assessment calculation - breaking circular dependencies
   const riskAssessment = useRiskAssessment(student);
+  
+  // Fetch course-specific risk data
+  useEffect(() => {
+    const fetchCourseRiskData = async () => {
+      try {
+        setRiskDataLoading(true);
+        const riskData = await getCourseRiskData();
+        setCourseRiskData(riskData);
+      } catch (error) {
+        console.error('Error fetching course risk data:', error);
+        setCourseRiskData([]);
+      } finally {
+        setRiskDataLoading(false);
+      }
+    };
+
+    fetchCourseRiskData();
+  }, []);
   
   // Combine student data with risk assessment
   const enrichedStudent = student ? { 
@@ -41,8 +62,7 @@ const Student = () => {
       label: course.courseName || 'Unnamed Course'
     }))
   ];
-
-  if (loading) {
+  if (loading || riskDataLoading) {
     return <Spin size="large" tip="Loading student details..." />;
   }
   
@@ -105,13 +125,13 @@ const Student = () => {
             placeholder="Select a course"
           />
         </div>
-      </AntCard>
-
-      {filteredCourses.length > 0 ? (
+      </AntCard>      {filteredCourses.length > 0 ? (
         filteredCourses.map((course, index) => (
           <CoursePerformanceCard 
             key={course?.id || index} 
-            course={course} 
+            course={course}
+            studentId={id}
+            riskData={courseRiskData}
           />
         ))
       ) : (

@@ -80,3 +80,28 @@ export const getAtRiskStudents = async () => {
     throw error;
   }
 };
+
+/**
+ * Get course-specific risk data for students
+ * @returns {Promise<Array>} Array of course-specific risk predictions
+ */
+export const getCourseRiskData = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/risk/course-data`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting course risk data:', error);
+    // Return empty array if service is unavailable
+    return [];
+  }
+};

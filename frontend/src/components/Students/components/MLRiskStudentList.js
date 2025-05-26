@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, Progress, Button, Empty, Tag, Spin, Alert, Badge, Statistic, Row, Col } from 'antd';
 import { ExclamationCircleOutlined, UserOutlined, BookOutlined, TrophyOutlined } from '@ant-design/icons';
 import { formatTimestampForDisplay } from '../../../utils/firebaseUtils';
-import { getAtRiskStudents } from '../../../services/riskPredictionService';
+import { getAtRiskStudents, getCourseRiskData } from '../../../services/riskPredictionService';
+import AtRiskStudentCard from '../../Students_At_Risk/AtRiskStudentCard';
 import styles from '../../../styles/modules/MainPage.module.css';
 import PropTypes from 'prop-types';
 
@@ -11,39 +12,66 @@ import PropTypes from 'prop-types';
  * Uses CSV prediction data when available, falls back to props
  */
 const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error: propError }) => {
-  const [students, setStudents] = useState(propStudents || []);
+  // Filter function to exclude "not at risk" students
+  const filterAtRiskStudents = (studentList) => {
+    if (!studentList || !Array.isArray(studentList)) return [];
+    
+    return studentList.filter(student => {
+      const riskLevel = (student.mlRiskLevel || student.risk_status || '').toLowerCase();
+      const isAtRisk = student.isAtRisk;
+      
+      // Exclude students who are explicitly "not at risk"
+      if (riskLevel === 'not at risk' || riskLevel === 'low risk' || isAtRisk === false) {
+        return false;
+      }
+      
+      // Include students with high, medium risk, or explicitly at risk
+      return riskLevel === 'high' || riskLevel === 'medium' || riskLevel === 'at risk' || isAtRisk === true;
+    });
+  };
+  const [students, setStudents] = useState(filterAtRiskStudents(propStudents) || []);
   const [loading, setLoading] = useState(propLoading || false);
   const [error, setError] = useState(propError || null);
   const [summary, setSummary] = useState(null);
   const [usingCsvData, setUsingCsvData] = useState(false);
-
+  const [courseRiskData, setCourseRiskData] = useState([]);
   // Fetch CSV data on component mount
   useEffect(() => {
     const fetchAtRiskStudents = async () => {
       setLoading(true);
       try {
-        const response = await getAtRiskStudents();
-        if (response.success) {
-          setStudents(response.students);
-          setSummary(response.summary);
+        // Fetch both at-risk students and course risk data in parallel
+        const [atRiskResponse, courseRiskResponse] = await Promise.all([
+          getAtRiskStudents(),
+          getCourseRiskData()
+        ]);
+        
+        if (atRiskResponse.success) {
+          setStudents(filterAtRiskStudents(atRiskResponse.students));
+          setSummary(atRiskResponse.summary);
           setUsingCsvData(true);
           setError(null);
         } else {
           // Fall back to prop data if available
           if (propStudents) {
-            setStudents(propStudents);
+            setStudents(filterAtRiskStudents(propStudents));
             setUsingCsvData(false);
           }
-          setError(response.message || 'Failed to load CSV predictions');
+          setError(atRiskResponse.message || 'Failed to load CSV predictions');
         }
+        
+        // Set course risk data
+        setCourseRiskData(courseRiskResponse);
+        
       } catch (err) {
         console.error('Error fetching at-risk students:', err);
         // Fall back to prop data if available
         if (propStudents) {
-          setStudents(propStudents);
+          setStudents(filterAtRiskStudents(propStudents));
           setUsingCsvData(false);
         }
         setError('Unable to load latest predictions. Using cached data if available.');
+        setCourseRiskData([]);
       } finally {
         setLoading(false);
       }
@@ -51,11 +79,10 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
 
     fetchAtRiskStudents();
   }, [propStudents]);
-
   // Use prop data if it changes and we're not using CSV data
   useEffect(() => {
     if (!usingCsvData && propStudents) {
-      setStudents(propStudents);
+      setStudents(filterAtRiskStudents(propStudents));
     }
   }, [propStudents, usingCsvData]);
 
@@ -218,105 +245,11 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
           const uniqueKey = `${student.id || 'no-id'}-${student.studentId || 'no-student-id'}-${index}`;
           
           return (
-            <Card key={uniqueKey} className={styles.riskStudentCard}>
-              <div className={styles.riskStudentHeader}>
-                <div>
-                  <h3>{getStudentName(student)}</h3>
-                  {student.courseId && (
-                    <Tag icon={<BookOutlined />} color="blue">
-                      {student.courseId}
-                    </Tag>
-                  )}
-                  {student.gradeLevel && (
-                    <Tag color="green">Grade {student.gradeLevel}</Tag>
-                  )}
-                </div>
-                <div className={styles.riskScore}>
-                  <Tag color={getRiskLevelColor(student.mlRiskLevel || student.risk_status)}>
-                    {getRiskLevelText(student.mlRiskLevel || student.risk_status, student.isAtRisk)}
-                  </Tag>
-                  <span className={
-                    (student.mlRiskScore || 0) >= 70 ? styles.highRisk :
-                    (student.mlRiskScore || 0) >= 40 ? styles.mediumRisk :
-                    styles.lowRisk
-                  }>
-                    {Math.round(student.mlRiskScore || 0)}%
-                  </span>
-                </div>
-              </div>
-              
-              <div className={styles.riskStudentStats}>
-                <div className={styles.riskStat}>
-                  <span>Academic Performance:</span>
-                  <Progress
-                    percent={Math.round(student.performance || student.finalScore || 0)}
-                    size="small"
-                    status={(student.performance || student.finalScore || 0) < 60 ? "exception" : "normal"}
-                  />
-                </div>
-                <div className={styles.riskStat}>
-                  <span>Engagement Score:</span>
-                  <Progress
-                    percent={Math.round(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0)}
-                    size="small"
-                    status={(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0) < 50 ? "exception" : "normal"}
-                  />
-                </div>
-                {student.lateSubmissionRate !== undefined && (
-                  <div className={styles.riskStat}>
-                    <span>Late Submissions:</span>
-                    <span style={{ color: student.lateSubmissionRate > 0.3 ? '#f5222d' : '#52c41a' }}>
-                      {Math.round(student.lateSubmissionRate * 100)}%
-                    </span>
-                  </div>
-                )}
-                {student.confidence && (
-                  <div className={styles.riskStat}>
-                    <span>Prediction Confidence:</span>
-                    <Tag color={
-                      student.confidence === 'High' ? 'green' :
-                      student.confidence === 'Medium' ? 'orange' : 'red'
-                    }>
-                      {student.confidence}
-                    </Tag>
-                  </div>
-                )}
-                {student.lastActive && (
-                  <div className={styles.riskStat}>
-                    <span>Last Active:</span>
-                    <span>{formatTimestampForDisplay(student.lastActive, 'date')}</span>
-                  </div>
-                )}
-              </div>
-
-              {student.mlRiskFactors && student.mlRiskFactors.length > 0 && (
-                <div className={styles.riskFactors}>
-                  <h4>Risk Factors:</h4>
-                  <div>
-                    {student.mlRiskFactors.map((factor, factorIndex) => (
-                      <Tag key={factorIndex} color="volcano" style={{ marginBottom: 4 }}>
-                        {factor}
-                      </Tag>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => window.location.href = `/students/${student.id || student.studentId}`}
-                >
-                  View Details
-                </Button>
-                {student.probability && (
-                  <Tag color="purple">
-                    Risk Probability: {Math.round(student.probability * 100)}%
-                  </Tag>
-                )}
-              </div>
-            </Card>
+            <AtRiskStudentCard 
+              key={uniqueKey} 
+              student={student}
+              courseRiskData={courseRiskData}
+            />
           );
         })}
       </div>
