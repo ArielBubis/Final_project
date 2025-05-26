@@ -15,12 +15,13 @@ const CoursePerformanceCard = ({ course }) => {
         </Col>
         <Col xs={24} md={8}>
           <Statistic
-            title="Completion Rate"
-            value={`${Math.round(course?.summary?.overallCompletion || 0)}%`}
+            title="Total Time Spent"
+            value={`${Math.round((course?.summary?.totalTimeSpent || 0) / 60)} Hours`}
             valueStyle={{ color: '#1890ff' }}
           />
         </Col>
-        <Col xs={24} md={8}>          <Statistic
+        <Col xs={24} md={8}>          
+        <Statistic
             title="Last Accessed"
             value={course?.summary?.lastAccessed ? 
               (typeof course.summary.lastAccessed.toDate === 'function' 
@@ -33,8 +34,7 @@ const CoursePerformanceCard = ({ course }) => {
           />
         </Col>
       </Row>
-      
-      <h3>Module Progress</h3>
+        <h3>Module Progress</h3>
       <Row gutter={[16, 16]}>
         {Array.isArray(course.modules) && course.modules.length > 0 ? (
           course.modules.map((module) => (
@@ -44,7 +44,8 @@ const CoursePerformanceCard = ({ course }) => {
                   percent={Math.round((module?.progress?.completion || 0))} 
                   status={(module?.progress?.completion || 0) === 100 ? "success" : "active"}
                 />
-                <p><strong>Expertise Rate:</strong> {Math.round((module?.progress?.totalExpertiseRate || 0))}%</p>                <p><strong>Last Accessed:</strong> {
+                <p><strong>Module Score:</strong> {Math.round((module?.progress?.totalExpertiseRate || 0))}%</p>
+                <p><strong>Last Activity:</strong> {
                   (module?.progress?.lastAccessed) ? 
                     (typeof module.progress.lastAccessed.toDate === 'function'
                       ? new Date(module.progress.lastAccessed.toDate()).toLocaleDateString()

@@ -178,21 +178,25 @@ export const useStudentData = (studentId) => {
                   }
                 })
               );
-              
-              // Get student module progress for this course
+                // Get student module progress for this course
               const moduleProgressData = await Promise.all(
                 modules.map(async (module) => {
                   try {
-                    const moduleProgressDoc = await getDoc(doc(db, 'studentModuleProgress', `${studentId}_${module.id}`));
+                    const moduleProgressDoc = await getDoc(doc(db, 'studentModules', `${studentId}_${module.id}`));
                     const moduleProgress = moduleProgressDoc.exists() ? moduleProgressDoc.data() : {
-                      completion: 0,
-                      totalExpertiseRate: 0,
-                      lastAccessed: null
+                      completionRate: 0,
+                      moduleScore: 0,
+                      lastActivity: null
                     };
                     
                     return {
                       ...module,
-                      progress: moduleProgress
+                      progress: {
+                        completion: moduleProgress.completionRate || 0,
+                        totalExpertiseRate: moduleProgress.moduleScore || 0,
+                        lastAccessed: moduleProgress.lastActivity || null,
+                        totalTimeSpent: moduleProgress.totalTimeSpent || 0
+                      }
                     };
                   } catch (err) {
                     console.error(`Error getting module progress for ${module.id}:`, err);

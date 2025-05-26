@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card as AntCard, Spin, Empty, Alert, Button } from 'antd';
+import { Card as AntCard, Spin, Empty, Alert, Button, Select } from 'antd';
 import { useParams } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
 import { useStudentData } from './hooks/useStudentData';
@@ -13,6 +13,7 @@ import debugLogger from '../../utils/debugLogger';
 const Student = () => {
   const { id } = useParams();
   const [showDebug, setShowDebug] = useState(false); // Set to false in production
+  const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
   
   // Simplified data fetching with broken circular dependencies
   const { student, loading, error, debugInfo } = useStudentData(id);
@@ -25,6 +26,21 @@ const Student = () => {
     ...student, 
     ...riskAssessment 
   } : null;
+  // Filter courses based on selection
+  const filteredCourses = enrichedStudent?.courses ? 
+    selectedCourse === 'all' 
+      ? enrichedStudent.courses 
+      : enrichedStudent.courses.filter(course => course.id === selectedCourse)
+    : [];
+
+  // Generate course filter options
+  const courseOptions = [
+    { value: 'all', label: 'All Courses' },
+    ...(enrichedStudent?.courses || []).map(course => ({
+      value: course.id,
+      label: course.courseName || 'Unnamed Course'
+    }))
+  ];
 
   if (loading) {
     return <Spin size="large" tip="Loading student details..." />;
@@ -75,17 +91,35 @@ const Student = () => {
       
       <h2 className={styles.title}>Student Progress Overview</h2>
       <StudentPerformance student={enrichedStudent} />
+        <h2 className={styles.title}>Course Performance</h2>
       
-      <h2 className={styles.title}>Course Performance</h2>
-      {enrichedStudent && Array.isArray(enrichedStudent.courses) && enrichedStudent.courses.length > 0 ? (
-        enrichedStudent.courses.map((course, index) => (
+      {/* Course Filter */}
+      <AntCard style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontWeight: 'bold' }}>Filter by Course:</span>
+          <Select
+            value={selectedCourse}
+            onChange={setSelectedCourse}
+            options={courseOptions}
+            style={{ minWidth: '200px' }}
+            placeholder="Select a course"
+          />
+        </div>
+      </AntCard>
+
+      {filteredCourses.length > 0 ? (
+        filteredCourses.map((course, index) => (
           <CoursePerformanceCard 
             key={course?.id || index} 
             course={course} 
           />
         ))
       ) : (
-        <Empty description={`No courses found${enrichedStudent?.courses ? '' : ' - courses array is missing'}`} />
+        <Empty description={
+          selectedCourse === 'all' 
+            ? `No courses found${enrichedStudent?.courses ? '' : ' - courses array is missing'}` 
+            : 'No course data found for the selected course'
+        } />
       )}
     </div>
   );

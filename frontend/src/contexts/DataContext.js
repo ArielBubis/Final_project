@@ -646,8 +646,7 @@ export const DataProvider = ({ children }) => {
       return [];
     }
   }, [getFromQueryCache, updateQueryCache]);
-  
-  // UPDATED: Get module progress using new structure
+    // UPDATED: Get module progress using new structure
   const fetchModuleProgress = useCallback(async (studentId, courseId) => {
     if (!studentId || !courseId) return [];
     
@@ -666,18 +665,49 @@ export const DataProvider = ({ children }) => {
         return [];
       }
       
-      // For now, return basic module data (progress tracking can be added later)
-      const moduleData = modules.map(module => ({
-        id: module.id,
-        title: module.moduleTitle || 'Unnamed Module',
-        description: module.description || '',
-        sequenceNumber: module.sequenceNumber || 0,
-        isRequired: module.isRequired || false,
-        completed: false, // Would need separate progress tracking
-        completion: 0, // Would need separate progress tracking
-        expertiseRate: 0, // Would need separate progress tracking
-        lastAccessed: null // Would need separate progress tracking
-      }));
+      // Get module progress data from studentModules collection
+      const moduleData = await Promise.all(
+        modules.map(async (module) => {
+          try {
+            // Fetch progress from studentModules collection
+            const progressDoc = await fetchDocumentById('studentModules', `${studentId}_${module.id}`);
+            
+            return {
+              id: module.id,
+              title: module.moduleTitle || 'Unnamed Module',
+              description: module.description || '',
+              sequenceNumber: module.sequenceNumber || 0,
+              isRequired: module.isRequired || false,
+              // Map new schema fields to expected format
+              completed: progressDoc?.status === 'completed',
+              completion: progressDoc?.completionRate || 0,
+              expertiseRate: progressDoc?.moduleScore || 0,
+              lastAccessed: progressDoc?.lastActivity || null,
+              // Include additional data from new schema
+              totalTimeSpent: progressDoc?.totalTimeSpentMinutes || 0,
+              riskLevel: progressDoc?.riskLevel || 'low',
+              assignmentProgress: progressDoc?.assignmentProgress || []
+            };
+          } catch (error) {
+            console.error(`Error fetching progress for module ${module.id}:`, error);
+            // Return module with default progress values
+            return {
+              id: module.id,
+              title: module.moduleTitle || 'Unnamed Module',
+              description: module.description || '',
+              sequenceNumber: module.sequenceNumber || 0,
+              isRequired: module.isRequired || false,
+              completed: false,
+              completion: 0,
+              expertiseRate: 0,
+              lastAccessed: null,
+              totalTimeSpent: 0,
+              riskLevel: 'low',
+              assignmentProgress: []
+            };
+          }
+        })
+      );
       
       // Sort by sequence number
       moduleData.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
