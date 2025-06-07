@@ -13,9 +13,9 @@
         "ML Risk analysis" : "ניתוח סיכונים מבוסס ML"
       },
       "SidebBar": {
-        "main page": "עמוד ראשי",
-        "courses": "קורסים",
-        "students": "תלמידים"
+      "main page": "עמוד ראשי",
+      "courses": "קורסים",
+      "students": "תלמידים"
       },
       "CoursesPage": {
           "My courses": "הקורסים שלי",
@@ -24,15 +24,19 @@
             "Last Updated": "עדכון אחרון",
             "View Details": "הצג פרטים"
           }
-      },
-      "StudentsPage" : {
+      },      "StudentsPage" : {
           "My Students": "התלמידים שלי",
           "Reset" : "איפוס",
           "Search students by name..." : "חפש תלמידים לפי שם...",
           "StudentCard": {
               "Last Active": "פעילות אחרונה",
               "View Details": "הצג פרטים"
-          }
+          },
+          "Loading student data...": "טוען נתוני תלמיד...",
+          "No students found": "לא נמצאו תלמידים",
+          "Select a student to view performance details": "בחר תלמיד להצגת פרטי ביצועים",
+          "Selected Student Details": "פרטי תלמיד נבחר",
+          "Name": "שם"
       },
       "Student" : {
           "Student Details": "פרטי תלמיד",

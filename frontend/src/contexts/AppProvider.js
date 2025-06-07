@@ -3,6 +3,7 @@ import { AuthProvider } from "./AuthContext";
 import { DataProvider } from "./DataContext";
 import { UIProvider } from "./UIContext";
 import { PerformanceProvider } from "./PerformanceContext";
+import { LanguageProvider } from "./LanguageContext";
 
 // Helper component to compose multiple providers
 const ComposeProviders = ({ providers = [], children }) => {
@@ -16,9 +17,10 @@ export const AppProvider = ({ children }) => {
   return (
     <ComposeProviders
       providers={[
-        AuthProvider,
-        DataProvider,
-        PerformanceProvider, // Add our new performance context provider
+        AuthProvider,      // Auth should be first as it's most fundamental
+        LanguageProvider,  // Language should be early as it's used by many components
+        DataProvider,      // Data depends on Auth
+        PerformanceProvider,
         UIProvider,
         // Add new providers here easily
       ]}

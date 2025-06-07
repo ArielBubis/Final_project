@@ -3,13 +3,11 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "r
 import Sidebar from "./SideBar";
 import Mainpage from "./Mainpage";
 import Login from "./login";
-// import Reports from "./Reports/Reports"; // Removed Reports import
 import AdminDashboard from "./Admin/AdminDashboard";
 import TeacherManagement from "./Admin/TeacherManagement";
 import StudentsPage from "./Students/StudentsPage";
 import Student from "./Students/Student";
 import CoursesPage from "./Courses/CoursesPage";
-import { LanguageProvider } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
@@ -64,7 +62,7 @@ const AppContent = () => {
             <>
               {/* Common routes */}
               <Route path="/mainpage" element={<Mainpage />} />
-              {/* Removed Reports route */}              <Route path="/students" element={<StudentsPage />} />
+              <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
               <Route path="/courses" element={<CoursesPage />} />
 
@@ -109,9 +107,7 @@ const App = () => {
   return (
     <Router>
       <AppProvider>
-        <LanguageProvider>
-          <AppContent />
-        </LanguageProvider>
+        <AppContent />
       </AppProvider>
     </Router>
   );

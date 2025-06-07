@@ -92,7 +92,10 @@ const CoursesPage = () => {
     return (
         <div className={styles.coursesPageContainer}>
             <h1 className={styles.title}>{t("CoursesPage", "My courses")}</h1>
-            <CourseList courses={courses} title="" />
+            <CourseList 
+                courses={courses} 
+                // title={t("CoursesPage", "My courses")} 
+            />
         </div>
     );
 };

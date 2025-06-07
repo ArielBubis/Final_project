@@ -1,9 +1,20 @@
 import React, { createContext, useContext, useState } from "react";
 import translate from "../utils/translate.json";
 
-const LanguageContext = createContext();
+// 1. Create the context
+const LanguageContext = createContext(null);
 
-export const LanguageProvider = ({ children }) => {
+// 2. Create the hook first
+const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error("useLanguage must be used within a LanguageProvider");
+  }
+  return context;
+};
+
+// 3. Create the provider component
+const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState(translate.language.options[0]); // default "EN"
 
   const toggleLanguage = () => {
@@ -21,11 +32,21 @@ export const LanguageProvider = ({ children }) => {
     return key; // English is default (keys are in English)
   };
 
+  const value = React.useMemo(
+    () => ({
+      language,
+      toggleLanguage,
+      t,
+    }),
+    [language]
+  );
+
   return (
-    <LanguageContext.Provider value={{ language, toggleLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
 };
 
-export const useLanguage = () => useContext(LanguageContext);
+// 4. Export everything at the end
+export { LanguageProvider, useLanguage };
