@@ -450,7 +450,7 @@ const MainPage = () => {
                     </Card>
                     <Card className={styles.metricCard}>
                         <Statistic
-                            title={t("Mainpage", "Actvive Atudents")}
+                            title={t("Mainpage", "Active Atudents")}
                             value={dashboardMetrics.activeStudents}
                             suffix={`/${dashboardMetrics.totalStudents}`}
                         />

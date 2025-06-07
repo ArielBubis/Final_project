@@ -7,16 +7,40 @@
         "Courses"  : "קורסים",
         "Students" : "תלמידים",
         "Avg. completion" : "אחוז השלמה",
-        "Actvive Atudents" : "תלמידים פעילים",
+        "Active Atudents" : "תלמידים פעילים",
         "Upcoming Assigments" : "משימות קרובות",
         "Overview" : "סקירה כללית",
         "ML Risk analysis" : "ניתוח סיכונים מבוסס ML"
-    },
-    "SidebBar": {
-    "main page": "עמוד ראשי",
-    "courses": "קורסים",
-    "students": "תלמידים"
-    }
+      },
+      "SidebBar": {
+        "main page": "עמוד ראשי",
+        "courses": "קורסים",
+        "students": "תלמידים"
+      },
+      "CoursesPage": {
+          "My courses": "הקורסים שלי",
+          "CourseCard": {
+            "Students": "תלמידים",
+            "Last Updated": "עדכון אחרון",
+            "View Details": "הצג פרטים"
+          }
+      },
+      "StudentsPage" : {
+          "My Students": "התלמידים שלי",
+          "Reset" : "איפוס",
+          "Search students by name..." : "חפש תלמידים לפי שם...",
+          "StudentCard": {
+              "Last Active": "פעילות אחרונה",
+              "View Details": "הצג פרטים"
+          }
+      },
+      "Student" : {
+          "Student Details": "פרטי תלמיד",
+          "Email": "מייל",
+          "Gender": "מגדר",
+          "Courses Enrolled": "קורסים נלמדים",
+          "Average Score": "ציון ממוצע"
+      }
   },
   "language": {
     "options": ["EN", "HE"]

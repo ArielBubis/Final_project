@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card as AntCard, Spin, Empty, Alert, Button, Select } from 'antd';
 import { useParams } from 'react-router-dom';
+import { useLanguage } from '../../contexts/LanguageContext';
 import styles from '../../styles/modules/Students.module.css';
 import { useStudentData } from './hooks/useStudentData';
 import { useRiskAssessment } from '../../hooks/useRiskAssessment';
@@ -13,8 +14,9 @@ import debugLogger from '../../utils/debugLogger';
 
 const Student = () => {
   const { id } = useParams();
-  const [showDebug, setShowDebug] = useState(false); // Set to false in production
-  const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
+  const { t } = useLanguage();
+  const [showDebug, setShowDebug] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState('all');
   const [courseRiskData, setCourseRiskData] = useState([]);
   const [riskDataLoading, setRiskDataLoading] = useState(true);
   
@@ -123,7 +125,7 @@ const Student = () => {
   
   return (
     <div className={styles.studentsPageContainer}>
-      <h1 className={styles.title}>Student Details</h1>
+      <h1 className={styles.title}>{t("Student", "Student Details")}</h1>
       
       <AntCard title="Debug Controls" style={{ marginBottom: 16 }}>
         <Button 
@@ -140,7 +142,8 @@ const Student = () => {
       
       <h2 className={styles.title}>Student Progress Overview</h2>
       <StudentPerformance student={enrichedStudent} />
-        <h2 className={styles.title}>Course Performance</h2>
+      
+      <h2 className={styles.title}>{t("Student", "Course Performance")}</h2>
       
       {/* Course Filter */}
       <AntCard style={{ marginBottom: 16 }}>

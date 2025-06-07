@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import CourseList from './CourseList';
 import styles from '../../styles/modules/CoursesPage.module.css';
 
@@ -8,6 +9,7 @@ const CoursesPage = () => {
     const { currentUser } = useAuth();
     const { fetchTeacherCourses } = useData();
     const { fetchCourseStats } = useData();
+    const { t } = useLanguage();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -89,8 +91,8 @@ const CoursesPage = () => {
 
     return (
         <div className={styles.coursesPageContainer}>
-            <h1 className={styles.title}>My Courses</h1>
-            <CourseList courses={courses} title="Courses You Teach" />
+            <h1 className={styles.title}>{t("CoursesPage", "My courses")}</h1>
+            <CourseList courses={courses} title="" />
         </div>
     );
 };
