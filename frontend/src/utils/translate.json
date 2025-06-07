@@ -1,23 +1,21 @@
 {
   "categories": {
-    "general": {
-      "welcome": "ברוך הבא",
-      "logout": "התנתקות",
-      "login": "התחברות",
-      "submit": "שליחה",
-      "cancel": "ביטול"
+     "Mainpage": {
+        "Welcome" : "ברוכים הבאים",
+        "Last updated": "עדכון אחרון",
+        "refresh": "רענון",
+        "Courses"  : "קורסים",
+        "Students" : "תלמידים",
+        "Avg. completion" : "אחוז השלמה",
+        "Actvive Atudents" : "תלמידים פעילים",
+        "Upcoming Assigments" : "משימות קרובות",
+        "Overview" : "סקירה כללית",
+        "ML Risk analysis" : "ניתוח סיכונים מבוסס ML"
     },
-    "menu": {
-    "dashboard": "סקירה כללית",
-    "report": "דוחות",
-    "anomaly": "חריגות",
+    "SidebBar": {
+    "main page": "עמוד ראשי",
     "courses": "קורסים",
-    "students": "תלמידים",
-    "performance": "ביצועים",
-    "admin dashboard": "לוח מנהל",
-    "teacher management": "ניהול מורים",
-    "system reports": "דוחות מערכת",
-    "settings": "הגדרות"
+    "students": "תלמידים"
     }
   },
   "language": {
