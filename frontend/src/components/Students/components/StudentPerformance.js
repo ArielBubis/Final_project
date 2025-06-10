@@ -6,36 +6,20 @@ import PerformanceMetricsLegend from '../../Visualization/PerformanceMetricsLege
 import { generateRadarChartData } from '../../../utils/dataProcessingUtils';
 import debugLogger from '../../../utils/debugLogger';
 
-const StudentPerformance = ({ student }) => {  // Generate radar chart data from student performance
+const StudentPerformance = ({ student, style }) => {
   const radarChartData = student ? generateRadarChartData(student) : [];
-    // Add debug logs for debugging
+  
   debugLogger.logDebug('StudentPerformance', 'Render with data', { 
     hasStudent: !!student,
     studentId: student?.id,
     radarChartDataLength: radarChartData.length 
   });
   
-  // Format metrics for the legend component with defensive checks
-  const performanceMetrics = 
-  
-  student ? [
+  const performanceMetrics = student ? [
     { name: 'Overall Score', value: student.averageScore || 0 },
     { name: 'Course Completion', value: student.completionRate || 0 },
-    // { name: 'Module Completion', value: student?.courses?.length ? 
-    //   student.courses.reduce((sum, course) => {
-    //     // Check if modules exist and have length
-    //     if (!Array.isArray(course?.modules) || course.modules.length === 0) return sum;
-        
-    //     const completedModules = course.modules.filter(m => 
-    //       m?.progress?.completion === 100
-    //     ).length;
-        
-    //     return sum + (completedModules / course.modules.length * 100);
-    //   }, 0) / student.courses.length : 0 
-    // },
     { name: 'Assignment Completion', value: student?.courses?.length ? 
       student.courses.reduce((sum, course) => {
-        // Check if assignments exist and have length
         if (!Array.isArray(course?.assignments) || course.assignments.length === 0) return sum;
         
         const completedAssignments = course.assignments.filter(a => 
@@ -48,22 +32,52 @@ const StudentPerformance = ({ student }) => {  // Generate radar chart data from
   ] : [];
 
   return (
-    <AntCard title="Performance Metrics" className={styles.chartCard}>
+    <AntCard 
+      title="Performance Metrics" 
+      className={styles.chartCard}
+      style={{ 
+        ...style,
+        height: '100%',
+        maxHeight: '600px',  // Set maximum height
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+      bodyStyle={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'auto'  // Enable scrolling if content overflows
+      }}
+    >
       {radarChartData.length > 0 ? (
-        <Row gutter={[16, 16]} align="middle" justify="center">
-          <Col xs={24} md={12} align="middle" justify="center">
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          flex: 1,
+          minHeight: 0  // Allow container to shrink
+        }}>
+          <div style={{ 
+            flex: '0 0 auto',  // Don't allow chart to shrink
+            height: 300, 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center' 
+          }}>
             <RadarChart 
               data={radarChartData}
-              width={500}
-              height={400}
+              width={400}
+              height={300}
               showLegend={false}
-              title="Performance Metrics"
+              studentColor="#722ed1"
             />
-          </Col>
-          <Col xs={24} md={12}>
+          </div>
+          <div style={{ 
+            marginTop: 16,
+            flex: '0 0 auto'  // Don't allow legend to shrink
+          }}>
             <PerformanceMetricsLegend metrics={performanceMetrics} />
-          </Col>
-        </Row>
+          </div>
+        </div>
       ) : (
         <Empty description="No performance data available" />
       )}
