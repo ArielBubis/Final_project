@@ -85,7 +85,7 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
           <Progress
             percent={Math.round(student.performance || student.finalScore || 0)}
             size="small"
-            status={(student.performance || student.finalScore || 0) < 60 ? "exception" : "normal"}
+            status={(student.performance || student.finalScore || 0) < 60}
           />
         </div>
         <div className={styles.riskStat}>
@@ -93,17 +93,17 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
           <Progress
             percent={Math.round(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0)}
             size="small"
-            status={(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0) < 50 ? "exception" : "normal"}
+            status={(student.completion || Math.min(100, (student.totalTimeSpentMinutes || 0) / 10) || 0)}
           />
         </div>
-        {student.lateSubmissionRate !== undefined && (
+        {/* {student.lateSubmissionRate !== undefined && (
           <div className={styles.riskStat}>
             <span>Late Submissions:</span>
             <span style={{ color: student.lateSubmissionRate > 0.3 ? '#f5222d' : '#52c41a' }}>
               {Math.round(student.lateSubmissionRate * 100)}%
             </span>
           </div>
-        )}
+        )} */}
         {student.confidence && (
           <div className={styles.riskStat}>
             <span>Prediction Confidence:</span>
@@ -135,7 +135,7 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
       )}
 
       {/* Course-specific risk information */}
-      {courseRiskData && (
+      {/* {courseRiskData && (
         <div style={{ marginTop: 16 }}>
           <Collapse size="small" ghost>
             <Panel 
@@ -196,7 +196,7 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
             </Panel>
           </Collapse>
         </div>
-      )}
+      )} */}
       
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
         <Button
@@ -206,11 +206,11 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
         >
           View Details
         </Button>
-        {student.probability && (
+        {/* {student.probability && (
           <Tag color="purple">
             Risk Probability: {Math.round(student.probability * 100)}%
           </Tag>
-        )}
+        )} */}
       </div>
     </Card>
   );

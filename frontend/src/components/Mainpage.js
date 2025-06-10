@@ -432,7 +432,7 @@ const MainPage = () => {
                             prefix={<UserOutlined />}
                         />
                     </Card>
-                    <Card className={styles.metricCard}>
+                    {/* <Card className={styles.metricCard}>
                         <Statistic
                             title="Avg. Completion"
                             value={dashboardMetrics.avgCompletion}
@@ -447,7 +447,7 @@ const MainPage = () => {
                                 '100%': '#87d068',
                             }}
                         />
-                    </Card>
+                    </Card> */}
                     <Card className={styles.metricCard}>
                         <Statistic
                             title="Active Students (7d)"

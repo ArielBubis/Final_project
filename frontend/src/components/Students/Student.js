@@ -123,16 +123,15 @@ const Student = () => {
   
   return (
     <div className={styles.studentsPageContainer}>
-      <h1 className={styles.title}>Student Details</h1>
       
-      <AntCard title="Debug Controls" style={{ marginBottom: 16 }}>
+      {/* <AntCard title="Debug Controls" style={{ marginBottom: 16 }}>
         <Button 
           type={showDebug ? "primary" : "default"} 
           onClick={() => setShowDebug(!showDebug)}
         >
           {showDebug ? "Hide Debug Info" : "Show Debug Info"}
         </Button>
-      </AntCard>
+      </AntCard> */}
       
       {showDebug && <DebugCard debugInfo={debugInfo} show={true} />}
       

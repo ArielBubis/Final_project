@@ -203,7 +203,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
                 if (!progress) return 'N/A';
                 // Check for both possible time fields
                 const timeSpent = progress.totalTime || progress.timeSpentMinutes;
-                return timeSpent ? `${Math.round(timeSpent / 60)} minutes` : 'N/A';
+                return timeSpent ? `${Math.round(timeSpent / 60)} hours` : 'N/A';
               }
             }
           ]}

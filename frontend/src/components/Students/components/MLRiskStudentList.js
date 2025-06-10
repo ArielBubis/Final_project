@@ -195,19 +195,19 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
             <Col span={4}>
               <Statistic 
                 title="Total Analyzed" 
-                value={summary.total_students_analyzed} 
+                value={summary.total_students_analyzed}
                 prefix={<UserOutlined />}
               />
             </Col>
-            <Col span={4}>
+            {/* <Col span={4}>
               <Statistic 
                 title="At Risk" 
                 value={summary.at_risk_count} 
                 valueStyle={{ color: '#f5222d' }}
                 prefix={<ExclamationCircleOutlined />}
               />
-            </Col>
-            <Col span={4}>
+            </Col> */}
+            {/* <Col span={4}>
               <Statistic 
                 title="Risk Rate" 
                 value={summary.at_risk_percentage} 
@@ -215,7 +215,7 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
                 suffix="%" 
                 valueStyle={{ color: summary.at_risk_percentage > 20 ? '#f5222d' : '#52c41a' }}
               />
-            </Col>
+            </Col> */}
             <Col span={4}>
               <Statistic 
                 title="High Risk" 
