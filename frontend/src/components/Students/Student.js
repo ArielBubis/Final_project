@@ -140,21 +140,26 @@ const Student = () => {
       {/* Main content row with two columns */}
       <Row 
         gutter={[16, 16]} 
-        align="stretch" 
         style={{ 
           marginBottom: 24,
-          minHeight: 600,  // Minimum height for the row
-          maxHeight: 600   // Maximum height for the row
+          display: 'flex'
         }}
       >
         {/* Left column: Student Info */}
-        <Col xs={24} lg={12} style={{ height: '100%' }}>
-          <StudentInfo student={enrichedStudent} debugInfo={debugInfo} />
+        <Col xs={24} lg={12} style={{ display: 'flex' }}>
+          <StudentInfo 
+            student={enrichedStudent} 
+            debugInfo={debugInfo} 
+            style={{ width: '100%' }}
+          />
         </Col>
         
         {/* Right column: Student Performance */}
-        <Col xs={24} lg={12} style={{ height: '100%' }}>
-          <StudentPerformance student={enrichedStudent} />
+        <Col xs={24} lg={12} style={{ display: 'flex' }}>
+          <StudentPerformance 
+            student={enrichedStudent} 
+            style={{ width: '100%' }}
+          />
         </Col>
       </Row>
 

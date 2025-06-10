@@ -42,165 +42,156 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
       style={{ 
         ...style,
         height: '100%',
-        maxHeight: '600px',  // Set maximum height
         display: 'flex',
         flexDirection: 'column'
       }}
       bodyStyle={{
-        flex: 1,
+        padding: '16px',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'auto'  // Enable scrolling if content overflows
+        gap: '16px'
       }}
     >
-      {/* Info and Risk Section - Fixed height */}
-      <div style={{ flex: '0 0 auto' }}>  {/* Don't allow this section to grow */}
-        <Row gutter={[24, 16]}>
-          {/* Student Details - Left Side */}
-          <Col xs={24} sm={12}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <div style={{ color: '#8c8c8c', marginBottom: '4px' }}>Email</div>
-                <div style={{ fontWeight: 'bold' }}>{student.email || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={{ color: '#8c8c8c', marginBottom: '4px' }}>Gender</div>
-                <div style={{ fontWeight: 'bold' }}>{student.gender || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={{ color: '#8c8c8c', marginBottom: '4px' }}>Courses Enrolled</div>
-                <div style={{ fontWeight: 'bold' }}>{student.courseCount || 0}</div>
-              </div>
+      {/* Info and Risk Section */}
+      <Row gutter={[16, 16]}>
+        {/* Student Details - Left Side */}
+        <Col xs={24} sm={12}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px',
+            fontSize: '13px'
+          }}>
+            <div>
+              <div style={{ color: '#8c8c8c', marginBottom: '2px', fontSize: '12px' }}>Email</div>
+              <div style={{ fontWeight: 500 }}>{student.email || 'N/A'}</div>
             </div>
-          </Col>
+            <div>
+              <div style={{ color: '#8c8c8c', marginBottom: '2px', fontSize: '12px' }}>Gender</div>
+              <div style={{ fontWeight: 500 }}>{student.gender || 'N/A'}</div>
+            </div>
+            <div>
+              <div style={{ color: '#8c8c8c', marginBottom: '2px', fontSize: '12px' }}>Courses Enrolled</div>
+              <div style={{ fontWeight: 500 }}>{student.courseCount || 0}</div>
+            </div>
+          </div>
+        </Col>
 
-          {/* Risk Status Section - Right Side */}
-          <Col xs={24} sm={12}>
-            {student.isAtRisk ? (
-              <div style={{ 
-                padding: '16px',
-                backgroundColor: '#fff2f0',
-                border: '1px solid #ffccc7',
-                borderRadius: '4px',
-                height: '100%'
-              }}>
-                <span style={{ color: '#cf1322', fontSize: '16px', fontWeight: 'bold' }}>Performance Risk</span>
-                {student.riskReasons && student.riskReasons.length > 0 && (
-                  <ul style={{ 
-                    margin: '12px 0 0 0',
-                    padding: '0 0 0 16px',
-                    fontSize: '13px',
-                    color: '#434343'
-                  }}>
-                    {student.riskReasons.map((reason, idx) => (
-                      <li key={idx} style={{ marginBottom: '8px' }}>{reason}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ) : (
-              <div style={{ 
-                padding: '16px',
-                backgroundColor: '#f6ffed',
-                border: '1px solid #b7eb8f',
-                borderRadius: '4px',
-                height: '100%'
-              }}>
-                <span style={{ color: '#52c41a', fontSize: '16px', fontWeight: 'bold' }}>On Track</span>
-                <p style={{ margin: '12px 0 0 0', color: '#434343', fontSize: '13px' }}>
-                  Student is performing well with no risk factors detected.
-                </p>
-              </div>
-            )}
-          </Col>
-        </Row>
+        {/* Risk Status Section - Right Side */}
+        <Col xs={24} sm={12}>
+          {student.isAtRisk ? (
+            <div style={{ 
+              padding: '12px',
+              backgroundColor: '#fff2f0',
+              border: '1px solid #ffccc7',
+              borderRadius: '4px'
+            }}>
+              <span style={{ color: '#cf1322', fontSize: '14px', fontWeight: 'bold' }}>Performance Risk</span>
+              {student.riskReasons && student.riskReasons.length > 0 && (
+                <ul style={{ 
+                  margin: '8px 0 0 0',
+                  padding: '0 0 0 16px',
+                  fontSize: '12px',
+                  color: '#434343',
+                  lineHeight: '1.4'
+                }}>
+                  {student.riskReasons.map((reason, idx) => (
+                    <li key={idx} style={{ marginBottom: '4px' }}>{reason}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div style={{ 
+              padding: '12px',
+              backgroundColor: '#f6ffed',
+              border: '1px solid #b7eb8f',
+              borderRadius: '4px'
+            }}>
+              <span style={{ color: '#52c41a', fontSize: '14px', fontWeight: 'bold' }}>On Track</span>
+              <p style={{ margin: '8px 0 0 0', color: '#434343', fontSize: '12px', lineHeight: '1.4' }}>
+                Student is performing well with no risk factors detected.
+              </p>
+            </div>
+          )}
+        </Col>
+      </Row>
 
-        <Divider style={{ margin: '24px 0' }} />
-      </div>
-
-      {/* Course Performance Chart Section - Scrollable if needed */}
+      {/* Course Performance Chart Section */}
       <div style={{ 
         backgroundColor: '#fafafa', 
-        padding: '20px', 
+        padding: '12px', 
         borderRadius: '4px',
         flex: 1,
-        minHeight: 0,  // Allow container to shrink
         display: 'flex',
-        flexDirection: 'column',
-        overflow: 'auto'  // Enable scrolling if content overflows
+        flexDirection: 'column'
       }}>
-        <Row justify="space-between" align="middle" style={{ marginBottom: '24px', flex: '0 0 auto' }}>
-          <Col>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-              <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#262626', lineHeight: 1 }}>
-                {student.averageScore !== undefined ? Math.round(student.averageScore) : 'N/A'}
-              </span>
-              <span style={{ fontSize: '16px', color: '#8c8c8c' }}>Course Average</span>
-            </div>
-          </Col>
-          <Col>
-            <Button 
-              size="small"
-              onClick={() => setSortAscending(!sortAscending)}
-              icon={sortAscending ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
-            >
-              Sort {sortAscending ? 'Descending' : 'Ascending'}
-            </Button>
-          </Col>
-        </Row>
-
         <div style={{ 
-          fontSize: '16px', 
-          fontWeight: 'bold', 
-          marginBottom: '16px',
-          color: '#262626'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '12px'
         }}>
-          Course Performance
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#262626', lineHeight: 1 }}>
+              {student.averageScore !== undefined ? Math.round(student.averageScore) : 'N/A'}
+            </span>
+            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Course Average</span>
+          </div>
+          <Button 
+            size="small"
+            onClick={() => setSortAscending(!sortAscending)}
+            icon={sortAscending ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
+          >
+            Sort {sortAscending ? 'Desc' : 'Asc'}
+          </Button>
         </div>
         
         <div style={{ 
           flex: 1,
-          minHeight: 300,  // Minimum height for the chart
-          overflow: 'hidden'  // Prevent chart overflow
+          minHeight: '240px',
+          maxHeight: '300px'
         }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={courseGradeData} margin={{ top: 5, right: 5, bottom: 50, left: 0 }}>
+            <BarChart 
+              data={courseGradeData} 
+              margin={{ top: 5, right: 5, bottom: 45, left: 0 }}
+              barSize={60}  // Increased bar thickness
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="name" 
                 angle={-45}
                 textAnchor="end"
-                height={80}
+                height={60}  // Increased height for better text spacing
                 interval={0}
                 tick={{ 
-                  fontSize: 11,
-                  fill: '#595959',
-                  width: 100,
-                  wordWrap: 'break-word'
+                  fontSize: 12,  // Slightly larger font
+                  fill: '#595959'
                 }}
                 tickFormatter={(value) => {
+                  // Improved text wrapping - show more characters
                   return value.length > 20 ? `${value.substring(0, 20)}...` : value;
                 }}
               />
               <YAxis 
                 domain={[0, 100]} 
                 tick={{ fontSize: 11, fill: '#595959' }}
-                tickFormatter={(value) => `${value}`}
+                tickCount={6}
               />
               <Tooltip 
-                formatter={(value) => [`${value}`, 'Grade']}
-                labelStyle={{ color: '#595959' }}
+                formatter={(value) => [`${value}%`, 'Grade']}
+                labelStyle={{ fontSize: '11px', color: '#595959' }}
                 contentStyle={{
+                  fontSize: '12px',
+                  padding: '8px',
                   borderRadius: '4px',
-                  border: '1px solid #f0f0f0',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                  border: '1px solid #f0f0f0'
                 }}
               />
               <Bar 
                 dataKey="grade" 
-                fill="#8884d8"
                 name="Grade"
-                isAnimationActive={true}
                 radius={[4, 4, 0, 0]}
               >
                 {courseGradeData.map((entry, index) => (

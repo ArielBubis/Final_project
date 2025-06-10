@@ -37,47 +37,37 @@ const StudentPerformance = ({ student, style }) => {
       className={styles.chartCard}
       style={{ 
         ...style,
-        height: '100%',
-        maxHeight: '600px',  // Set maximum height
+        height: 'auto',
         display: 'flex',
         flexDirection: 'column'
       }}
       bodyStyle={{
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'auto'  // Enable scrolling if content overflows
+        padding: '24px',
+        gap: '16px'
       }}
     >
       {radarChartData.length > 0 ? (
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          flex: 1,
-          minHeight: 0  // Allow container to shrink
-        }}>
+        <>
           <div style={{ 
-            flex: '0 0 auto',  // Don't allow chart to shrink
-            height: 300, 
+            height: '250px',
             display: 'flex', 
             justifyContent: 'center', 
-            alignItems: 'center' 
+            alignItems: 'center'
           }}>
             <RadarChart 
               data={radarChartData}
-              width={400}
+              width={300}
               height={300}
               showLegend={false}
               studentColor="#722ed1"
             />
           </div>
-          <div style={{ 
-            marginTop: 16,
-            flex: '0 0 auto'  // Don't allow legend to shrink
-          }}>
+          <div>
             <PerformanceMetricsLegend metrics={performanceMetrics} />
           </div>
-        </div>
+        </>
       ) : (
         <Empty description="No performance data available" />
       )}
