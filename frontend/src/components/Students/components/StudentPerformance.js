@@ -31,40 +31,23 @@ const StudentPerformance = ({ student, style }) => {
     }
   ] : [];
 
-  return (
-    <AntCard 
+  return (    <AntCard 
       title="Performance Metrics" 
-      className={styles.chartCard}
-      style={{ 
-        ...style,
-        height: 'auto',
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-      bodyStyle={{
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '24px',
-        gap: '16px'
-      }}
+      className={`${styles.chartCard} ${styles.cardContent}`}
+      style={style}
+      bodyStyle={{ padding: 24 }}
     >
       {radarChartData.length > 0 ? (
         <>
-          <div style={{ 
-            height: '250px',
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center'
-          }}>
+          <div className={styles.chartWrapper}>
             <RadarChart 
               data={radarChartData}
               width={300}
               height={300}
               showLegend={false}
               studentColor="#722ed1"
-            />
-          </div>
-          <div>
+            />          </div>
+          <div className={styles.legendWrapper}>
             <PerformanceMetricsLegend metrics={performanceMetrics} />
           </div>
         </>

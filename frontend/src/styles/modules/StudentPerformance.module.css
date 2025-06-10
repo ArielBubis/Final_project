@@ -1,0 +1,19 @@
+.cardContent {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  gap: 16px;
+}
+
+.chartContainer {
+  height: 250px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

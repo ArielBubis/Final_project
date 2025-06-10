@@ -34,82 +34,46 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
       <p>No student data available</p>
     </AntCard>;
   }
-
-  return (
-    <AntCard 
+  return (    <AntCard 
       title={`${student.firstName || 'Unknown'} ${student.lastName || 'Student'}`} 
+      style={style}
+      bodyStyle={{ padding: 0 }}
       className={styles.detailCard}
-      style={{ 
-        ...style,
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-      bodyStyle={{
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px'
-      }}
     >
       {/* Info and Risk Section */}
       <Row gutter={[16, 16]}>
         {/* Student Details - Left Side */}
-        <Col xs={24} sm={12}>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px',
-            fontSize: '13px'
-          }}>
+        <Col xs={24} sm={12}>          <div className={styles.studentInfoColumn}>
             <div>
-              <div style={{ color: '#8c8c8c', marginBottom: '2px', fontSize: '12px' }}>Email</div>
-              <div style={{ fontWeight: 500 }}>{student.email || 'N/A'}</div>
+              <div className={styles.infoField}>Email</div>
+              <div className={styles.infoValue}>{student.email || 'N/A'}</div>
             </div>
             <div>
-              <div style={{ color: '#8c8c8c', marginBottom: '2px', fontSize: '12px' }}>Gender</div>
-              <div style={{ fontWeight: 500 }}>{student.gender || 'N/A'}</div>
+              <div className={styles.infoField}>Gender</div>
+              <div className={styles.infoValue}>{student.gender || 'N/A'}</div>
             </div>
             <div>
-              <div style={{ color: '#8c8c8c', marginBottom: '2px', fontSize: '12px' }}>Courses Enrolled</div>
-              <div style={{ fontWeight: 500 }}>{student.courseCount || 0}</div>
+              <div className={styles.infoField}>Courses Enrolled</div>
+              <div className={styles.infoValue}>{student.courseCount || 0}</div>
             </div>
           </div>
         </Col>
 
         {/* Risk Status Section - Right Side */}
         <Col xs={24} sm={12}>
-          {student.isAtRisk ? (
-            <div style={{ 
-              padding: '12px',
-              backgroundColor: '#fff2f0',
-              border: '1px solid #ffccc7',
-              borderRadius: '4px'
-            }}>
-              <span style={{ color: '#cf1322', fontSize: '14px', fontWeight: 'bold' }}>Performance Risk</span>
+          {student.isAtRisk ? (            <div className={`${styles.riskAlert} ${styles.atRisk}`}>
+              <span className={`${styles.riskAlertTitle} ${styles.atRisk}`}>Performance Risk</span>
               {student.riskReasons && student.riskReasons.length > 0 && (
-                <ul style={{ 
-                  margin: '8px 0 0 0',
-                  padding: '0 0 0 16px',
-                  fontSize: '12px',
-                  color: '#434343',
-                  lineHeight: '1.4'
-                }}>
+                <ul className={styles.riskReasonsList}>
                   {student.riskReasons.map((reason, idx) => (
-                    <li key={idx} style={{ marginBottom: '4px' }}>{reason}</li>
+                    <li key={idx} className={styles.riskReason}>{reason}</li>
                   ))}
                 </ul>
               )}
             </div>
-          ) : (
-            <div style={{ 
-              padding: '12px',
-              backgroundColor: '#f6ffed',
-              border: '1px solid #b7eb8f',
-              borderRadius: '4px'
-            }}>
-              <span style={{ color: '#52c41a', fontSize: '14px', fontWeight: 'bold' }}>On Track</span>
-              <p style={{ margin: '8px 0 0 0', color: '#434343', fontSize: '12px', lineHeight: '1.4' }}>
+          ) : (            <div className={`${styles.riskAlert} ${styles.riskAlertSafe}`}>
+              <span className={`${styles.riskTitle} ${styles.riskTitleSafe}`}>On Track</span>
+              <p className={styles.safeMessage}>
                 Student is performing well with no risk factors detected.
               </p>
             </div>
@@ -117,26 +81,13 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
         </Col>
       </Row>
 
-      {/* Course Performance Chart Section */}
-      <div style={{ 
-        backgroundColor: '#fafafa', 
-        padding: '12px', 
-        borderRadius: '4px',
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div style={{ 
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#262626', lineHeight: 1 }}>
+      {/* Course Performance Chart Section */}      <div className={styles.chartSection}>
+        <div className={styles.chartHeader}>
+          <div className={styles.chartHeaderStats}>
+            <span className={styles.chartScore}>
               {student.averageScore !== undefined ? Math.round(student.averageScore) : 'N/A'}
             </span>
-            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Course Average</span>
+            <span className={styles.chartLabel}>Course Average</span>
           </div>
           <Button 
             size="small"
@@ -145,18 +96,12 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
           >
             Sort {sortAscending ? 'Desc' : 'Asc'}
           </Button>
-        </div>
-        
-        <div style={{ 
-          flex: 1,
-          minHeight: '240px',
-          maxHeight: '300px'
-        }}>
+        </div>          <div className={styles.chartContent}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
               data={courseGradeData} 
-              margin={{ top: 5, right: 5, bottom: 45, left: 0 }}
-              barSize={60}  // Increased bar thickness
+              margin={{ top: 20, right: 30, bottom: 60, left: 20 }}
+              barSize={60}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 

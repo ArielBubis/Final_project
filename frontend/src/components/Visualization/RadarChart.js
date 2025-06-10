@@ -8,6 +8,7 @@ import {
   Tooltip, 
   Legend 
 } from 'recharts';
+import styles from '../../styles/modules/RadarChart.module.css';
 
 /**
  * Reusable Radar Chart component for visualizing multi-dimensional performance data
@@ -42,9 +43,8 @@ const RadarChart = ({
   // Check if we have any class average data to determine if we should show that line
   const hasClassAverageData = formattedData.some(item => item.classAverage > 0);
   
-  return (
-    <div className="radar-chart-container" style={{ width: '100%', height: 'auto' }}>
-      {title && <h4 style={{ textAlign: 'center', marginBottom: '10px' }}>{title}</h4>}
+  return (    <div className={styles.container}>
+      {title && <h4 className={styles.title}>{title}</h4>}
       <RechartsRadarChart 
         width={width} 
         height={height} 

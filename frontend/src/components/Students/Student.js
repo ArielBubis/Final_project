@@ -137,45 +137,37 @@ const Student = () => {
       
       {showDebug && <DebugCard debugInfo={debugInfo} show={true} />}
       
-      {/* Main content row with two columns */}
-      <Row 
-        gutter={[16, 16]} 
-        style={{ 
-          marginBottom: 24,
-          display: 'flex'
-        }}
-      >
+      {/* Main content row with two columns */}      <Row gutter={[16, 16]} className={styles.mainContentRow}>
         {/* Left column: Student Info */}
-        <Col xs={24} lg={12} style={{ display: 'flex' }}>
+        <Col xs={24} lg={12} className={styles.columnFlex}>
           <StudentInfo 
             student={enrichedStudent} 
             debugInfo={debugInfo} 
-            style={{ width: '100%' }}
+            className={styles.fullWidth}
           />
         </Col>
         
         {/* Right column: Student Performance */}
-        <Col xs={24} lg={12} style={{ display: 'flex' }}>
+        <Col xs={24} lg={12} className={styles.columnFlex}>
           <StudentPerformance 
             student={enrichedStudent} 
-            style={{ width: '100%' }}
+            className={styles.fullWidth}
           />
         </Col>
       </Row>
 
-      {/* Course Performance section - full width */}
-      <div style={{ marginTop: 24 }}>
+      {/* Course Performance section - full width */}      <div className={styles.coursePerformanceSection}>
         <h2 className={styles.title}>Course Performance</h2>
         
         {/* Course Filter */}
-        <AntCard style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontWeight: 'bold' }}>Filter by Course:</span>
+        <AntCard className={styles.courseFilterCard}>
+          <div className={styles.courseFilterContainer}>
+            <span className={styles.courseFilterLabel}>Filter by Course:</span>
             <Select
               value={selectedCourse}
               onChange={setSelectedCourse}
               options={courseOptions}
-              style={{ minWidth: '200px' }}
+              className={styles.courseFilterSelect}
               placeholder="Select a course"
             />
           </div>

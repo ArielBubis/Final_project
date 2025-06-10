@@ -1,0 +1,15 @@
+.container {
+  width: 100%;
+  height: auto;
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.chartContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
