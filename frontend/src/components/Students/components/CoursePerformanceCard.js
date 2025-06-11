@@ -18,105 +18,68 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
         </div>
       } 
       className={styles.courseCard}
-    >      {/* Course Risk Assessment Section */}
-      {courseRisk && formattedRiskData && (
-        <>
-          <div style={{ marginBottom: 16 }}>
-            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
-              {/* {getCourseRiskIcon(formattedRiskData.riskLevel)} */}
-              <span style={{ marginLeft: 8 }}>Risk Assessment</span>
-            </h4>
-            <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
-              {/* <Col xs={12} md={6}>
-                <Statistic
-                  title="Risk Score"
-                  value={formattedRiskData.riskScore || 0}
-                  precision={1}
-                  valueStyle={{ 
-                    // color: getCourseRiskColor(formattedRiskData.riskLevel),
-                    fontSize: '16px'
-                  }}
-                />
-              </Col> */}
-              <Col xs={12} md={6}>
-                <Statistic
-                  title="Confidence"
-                  value={formattedRiskData.confidence || 'Unknown'}
-                  suffix="%"
-                  valueStyle={{ color: '#1890ff', fontSize: '16px' }}
-                />
-              </Col>
-              {/* <Col xs={12} md={6}>
-                <Statistic
-                  title="Late Submissions"
-                  value={formattedRiskData.lateSubmissionRate || 0}
-                  suffix="%"
-                  valueStyle={{ 
-                    color: (formattedRiskData.lateSubmissionRate || 0) > 20 ? '#cf1322' : '#3f8600',
-                    fontSize: '16px'
-                  }}
-                />
-              </Col>
-              <Col xs={12} md={6}>
-                <Statistic
-                  title="At Risk"
-                  value={formattedRiskData.atRiskPrediction ? 'Yes' : 'No'}
-                  valueStyle={{ 
-                    color: formattedRiskData.atRiskPrediction ? '#cf1322' : '#3f8600',
-                    fontSize: '16px'
-                  }}
-                />
-              </Col> */}
-            </Row>{formattedRiskData?.riskFactors && formattedRiskData.riskFactors.length > 0 && (
-              <Alert
-                message="Risk Factors"
-                description={
-                  <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    {formattedRiskData.riskFactors.map((factor, index) => (
-                      <li key={index}>{factor}</li>
-                    ))}
-                  </ul>
-                }
-                type="warning"
-                icon={<WarningOutlined />}
-                style={{ marginTop: 8 }}
-              />
-            )}
-          </div>
-          <Divider />
-        </>
-      )}
-
+    >
+      {/* Course Risk Assessment Section */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={8}>
-          <Statistic
-            title="Overall Score"
-            value={`${Math.round(course?.summary?.overallScore || 0)}%`}
-            valueStyle={{ color: (course?.summary?.overallScore || 0) > 70 ? '#3f8600' : ((course?.summary?.overallScore || 0) > 50 ? '#faad14' : '#cf1322') }}
-          />
+        <Col xs={24} md={12}>
+          {courseRisk && formattedRiskData && (
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+                <span style={{ marginLeft: 8 }}>Risk Assessment</span>
+              </h4>
+              <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
+                <Col xs={12}>
+                  <Statistic
+                    title="Confidence"
+                    value={formattedRiskData.confidence || 'Unknown'}
+                    suffix="%"
+                    valueStyle={{ color: '#1890ff', fontSize: '16px' }}
+                  />
+                </Col>
+              </Row>
+              {formattedRiskData?.riskFactors && formattedRiskData.riskFactors.length > 0 && (
+                <Alert
+                  message="Risk Factors"
+                  description={
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {formattedRiskData.riskFactors.map((factor, index) => (
+                        <li key={index}>{factor}</li>
+                      ))}
+                    </ul>
+                  }
+                  type="warning"
+                  icon={<WarningOutlined />}
+                  style={{ marginTop: 8 }}
+                />
+              )}
+            </div>
+          )}
         </Col>
-        <Col xs={24} md={8}>
-          <Statistic
-            title="Total Time Spent"
-            value={`${Math.round((course?.summary?.totalTimeSpent || 0) / 60)} Hours`}
-            valueStyle={{ color: '#1890ff' }}
-          />
-        </Col>
-        <Col xs={24} md={8}>          
-        <Statistic
-            title="Last Accessed"
-            value={course?.summary?.lastAccessed ? 
-              (typeof course.summary.lastAccessed.toDate === 'function' 
-                ? new Date(course.summary.lastAccessed.toDate()).toLocaleDateString() 
-                : typeof course.summary.lastAccessed === 'string' 
-                  ? new Date(course.summary.lastAccessed).toLocaleDateString()
-                  : 'Never') 
-              : 'Never'}
-            valueStyle={{ color: '#722ed1' }}
-          />
+        
+        <Col xs={24} md={12}>
+          <Row gutter={[16, 16]}>
+            <Col xs={12}>
+              <Statistic
+                title="Overall Score"
+                value={`${Math.round(course?.summary?.overallScore || 0)}%`}
+                valueStyle={{ color: (course?.summary?.overallScore || 0) > 70 ? '#3f8600' : ((course?.summary?.overallScore || 0) > 50 ? '#faad14' : '#cf1322') }}
+              />
+            </Col>
+            <Col xs={12}>
+              <Statistic
+                title="Total Time Spent"
+                value={`${Math.round((course?.summary?.totalTimeSpent || 0) / 60)} Hours`}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Col>
+          </Row>
         </Col>
       </Row>
-        <h3>Module Progress</h3>
+
+      <Divider />
+      
+      {/* Module Progress Section */}
+      <h3>Module Progress</h3>
       <Row gutter={[16, 16]}>
         {Array.isArray(course.modules) && course.modules.length > 0 ? (
           course.modules.map((module) => (

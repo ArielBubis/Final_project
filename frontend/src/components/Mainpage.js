@@ -25,7 +25,7 @@ const MainPage = () => {
         fetchTeacherCourses,
         fetchStudentsByTeacher,
         fetchCourseStats,
-        fetchTeacherDashboard, // NEW: Use pre-computed dashboard data
+        fetchTeacherDashboard,
         loading: dataLoading,
         error: dataError,
         clearCache
@@ -400,16 +400,16 @@ const MainPage = () => {
         <div className={styles.mainPage}>
             <div className={styles.dashboardHeader}>
                 <div className={styles.welcomeSection}>
-                    <h1>{t('general.welcome') || 'Welcome'}, {currentUser?.displayName || 'Teacher'}</h1>
+                    <h1>{t("Mainpage", "Welcome")}, {currentUser?.displayName || 'Teacher'}</h1>
                     <p className={styles.lastUpdated}>
-                        Last updated: {new Date().toLocaleString()}
+                        {t("Mainpage", "Last updated")}: {new Date().toLocaleString()}
                         <Button
                             type="text"
                             size="small"
                             onClick={handleRefresh}
                             className={styles.refreshButton}
                         >
-                            Refresh
+                            {t("Mainpage", "refresh")}
                         </Button>
                     </p>
                 </div>
@@ -420,21 +420,21 @@ const MainPage = () => {
                 <div className={styles.metricsContainer}>
                     <Card className={styles.metricCard}>
                         <Statistic
-                            title="Courses"
+                            title={t("Mainpage", "Courses")}
                             value={dashboardMetrics.totalCourses}
                             prefix={<BookOutlined />}
                         />
                     </Card>
                     <Card className={styles.metricCard}>
                         <Statistic
-                            title="Students"
+                            title={t("Mainpage", "Students")}
                             value={dashboardMetrics.totalStudents}
                             prefix={<UserOutlined />}
                         />
                     </Card>
                     {/* <Card className={styles.metricCard}>
                         <Statistic
-                            title="Avg. Completion"
+                            title={t("Mainpage", "Avg. completion")}
                             value={dashboardMetrics.avgCompletion}
                             suffix="%"
                         />
@@ -450,7 +450,7 @@ const MainPage = () => {
                     </Card> */}
                     <Card className={styles.metricCard}>
                         <Statistic
-                            title="Active Students (7d)"
+                            title={t("Mainpage", "Active Atudents")}
                             value={dashboardMetrics.activeStudents}
                             suffix={`/${dashboardMetrics.totalStudents}`}
                         />
@@ -461,7 +461,7 @@ const MainPage = () => {
                     </Card>
                     <Card className={styles.metricCard}>
                         <Statistic
-                            title="Upcoming Assignments"
+                            title={t("Mainpage", "Upcoming Assigments")}
                             value={dashboardMetrics.upcomingAssignments}
                             prefix={<ClockCircleOutlined />}
                         />
@@ -477,14 +477,14 @@ const MainPage = () => {
                     onChange={handleTabChange}
                     className={styles.dashboardTabs}
                 >
-                    <Tabs.TabPane tab="Overview" key="overview">
+                    <Tabs.TabPane tab={t("Mainpage", "Overview")} key="overview">
                         <div className={styles.tabContent}>
                             <div className={styles.mainSections}>
                                 {/* Courses Section */}
                                 <div className={styles.section}>
                                     <CourseList
                                         courses={courses}
-                                        title={t('menu.courses') || 'Courses'}
+                                        title={t("Mainpage", "Courses")}
                                     />
                                 </div>
 
@@ -492,83 +492,17 @@ const MainPage = () => {
                                 <div className={styles.section}>
                                     <StudentList
                                         students={students}
-                                        title={t('menu.students') || 'Students'}
+                                        title={t("Mainpage", "Students")}
                                     />
                                 </div>
                             </div>
                         </div>
                     </Tabs.TabPane>
                     
-                    {/* <Tabs.TabPane tab="At-Risk Students" key="risk">
-                        <div className={styles.tabContent}>
-                            <Card
-                                title={
-                                    <div className={styles.riskCardTitle}>
-                                        <WarningOutlined /> Students Requiring Attention
-                                    </div>
-                                }
-                                className={styles.riskCard}
-                            >
-                                {atRiskStudents.length > 0 ? (
-                                    <div className={styles.riskStudentList}>
-                                        {atRiskStudents.map(student => (
-                                            <Card key={student.id} className={styles.riskStudentCard}>
-                                                <div className={styles.riskStudentHeader}>
-                                                    <h3>{student.name}</h3>
-                                                    <div className={styles.riskScore}>
-                                                        Risk Score:
-                                                        <span className={
-                                                            student.riskScore >= 70 ? styles.highRisk :
-                                                            student.riskScore >= 40 ? styles.mediumRisk :
-                                                            styles.lowRisk
-                                                        }>
-                                                            {student.riskScore}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className={styles.riskStudentStats}>
-                                                    <div className={styles.riskStat}>
-                                                        <span>Performance:</span>
-                                                        <Progress
-                                                            percent={student.performance}
-                                                            size="small"
-                                                            status={student.performance < 60 ? "exception" : "normal"}
-                                                        />
-                                                    </div>
-                                                    <div className={styles.riskStat}>
-                                                        <span>Completion:</span>
-                                                        <Progress
-                                                            percent={student.completion}
-                                                            size="small"
-                                                            status={student.completion < 50 ? "exception" : "normal"}
-                                                        />
-                                                    </div>
-                                                    <div className={styles.riskStat}>
-                                                        <span>Last Active:</span>
-                                                        <span>{formatTimestampForDisplay(student.lastActive, 'date')}</span>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    type="primary"
-                                                    size="small"
-                                                    onClick={() => window.location.href = `/students/${student.id}`}
-                                                >
-                                                    View Details
-                                                </Button>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <Empty description="No at-risk students detected" />
-                                )}
-                            </Card>
-                        </div>
-                    </Tabs.TabPane> */}
-                    
                     <Tabs.TabPane 
                         tab={
                             <span>
-                                <RobotOutlined /> ML Risk Analysis
+                                <RobotOutlined /> {t("Mainpage", "ML Risk analysis")}
                                 {mlRiskStudents.length > 0 && (
                                     <Tag color="red" style={{ marginLeft: '8px' }}>
                                         {mlRiskStudents.length}
@@ -582,16 +516,7 @@ const MainPage = () => {
                             <Card
                                 title={
                                     <div className={styles.riskCardTitle}>
-                                        <RobotOutlined /> ML-Powered Risk Analysis
-                                        <Button 
-                                            size="small" 
-                                            type="primary"
-                                            onClick={() => getMlRiskPredictions(students)}
-                                            loading={mlLoading}
-                                            style={{ marginLeft: '12px' }}
-                                        >
-                                            Refresh Analysis
-                                        </Button>
+                                        <RobotOutlined /> {t("Mainpage", "ML Risk analysis")}
                                     </div>
                                 }
                                 className={styles.riskCard}

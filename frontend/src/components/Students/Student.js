@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card as AntCard, Spin, Empty, Alert, Button, Select } from 'antd';
+import { Card as AntCard, Spin, Empty, Alert, Button, Select, Row, Col } from 'antd';
 import { useParams } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
 import { useStudentData } from './hooks/useStudentData';
@@ -124,7 +124,7 @@ const Student = () => {
   return (
     <div className={styles.studentsPageContainer}>
       
-      {/* <AntCard title="Debug Controls" style={{ marginBottom: 16 }}>
+      <AntCard title="Debug Controls" style={{ marginBottom: 16 }}>
         <Button 
           type={showDebug ? "primary" : "default"} 
           onClick={() => setShowDebug(!showDebug)}
@@ -135,40 +135,65 @@ const Student = () => {
       
       {showDebug && <DebugCard debugInfo={debugInfo} show={true} />}
       
-      <StudentInfo student={enrichedStudent} debugInfo={debugInfo} />
-      
-      <h2 className={styles.title}>Student Progress Overview</h2>
-      <StudentPerformance student={enrichedStudent} />
+      {/* Main content row with two columns */}      <Row gutter={[16, 16]} className={styles.mainContentRow}>
+        {/* Left column: Student Info */}
+        <Col xs={24} lg={12} className={styles.columnFlex}>
+          <StudentInfo 
+            student={enrichedStudent} 
+            debugInfo={debugInfo} 
+            className={styles.fullWidth}
+          />
+        </Col>
+        
+        {/* Right column: Student Performance */}
+        <Col xs={24} lg={12} className={styles.columnFlex}>
+          <StudentPerformance 
+            student={enrichedStudent} 
+            className={styles.fullWidth}
+          />
+        </Col>
+      </Row>
+
+      {/* Course Performance section - full width */}      <div className={styles.coursePerformanceSection}>
         <h2 className={styles.title}>Course Performance</h2>
-      
-      {/* Course Filter */}
-      <AntCard style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontWeight: 'bold' }}>Filter by Course:</span>
-          <Select
-            value={selectedCourse}
-            onChange={setSelectedCourse}
-            options={courseOptions}
-            style={{ minWidth: '200px' }}
-            placeholder="Select a course"
-          />
-        </div>
-      </AntCard>      {filteredCourses.length > 0 ? (
-        filteredCourses.map((course, index) => (
-          <CoursePerformanceCard 
-            key={course?.id || index} 
-            course={course}
-            studentId={id}
-            riskData={courseRiskData}
-          />
-        ))
-      ) : (
-        <Empty description={
-          selectedCourse === 'all' 
-            ? `No courses found${enrichedStudent?.courses ? '' : ' - courses array is missing'}` 
-            : 'No course data found for the selected course'
-        } />
-      )}
+        
+        {/* Course Filter */}
+        <AntCard className={styles.courseFilterCard}>
+          <div className={styles.courseFilterContainer}>
+            <span className={styles.courseFilterLabel}>Filter by Course:</span>
+            <Select
+              value={selectedCourse}
+              onChange={setSelectedCourse}
+              options={courseOptions}
+              className={styles.courseFilterSelect}
+              placeholder="Select a course"
+            />
+          </div>
+        </AntCard>
+        
+        {/* Course Cards Grid */}
+        <Row gutter={[16, 16]}>
+          {filteredCourses.length > 0 ? (
+            filteredCourses.map((course, index) => (
+              <Col xs={24} key={course?.id || index}>
+                <CoursePerformanceCard 
+                  course={course}
+                  studentId={id}
+                  riskData={courseRiskData}
+                />
+              </Col>
+            ))
+          ) : (
+            <Col span={24}>
+              <Empty description={
+                selectedCourse === 'all' 
+                  ? `No courses found${enrichedStudent?.courses ? '' : ' - courses array is missing'}` 
+                  : 'No course data found for the selected course'
+              } />
+            </Col>
+          )}
+        </Row>
+      </div>
     </div>
   );
 };

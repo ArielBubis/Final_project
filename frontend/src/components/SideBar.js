@@ -10,8 +10,7 @@ import Button from "../components/Button";
 
 export const menuItems = {
     teacher: [
-        { nameKey: "Main page", path: "/mainpage" },
-        // Report path removed
+        { nameKey: "main page", path: "/mainpage" },
         { nameKey: "Courses", path: "/courses" },
         { nameKey: "Students", path: "/students" }
     ],
@@ -109,7 +108,7 @@ const Sidebar = React.memo(({ userRole }) => {
                     {roleBasedMenu.map((item) => (
                         <li key={item.path}>
                             <Link to={item.path} className={styles.navLink}>
-                                {t("menu", item.nameKey.toLowerCase())}
+                                {t("SidebBar", item.nameKey.toLowerCase())}
                             </Link>
                         </li>
                     ))}

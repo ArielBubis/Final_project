@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Card as AntCard, Row, Col, Spin, Empty, Alert, Button, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
 import StudentCard from './StudentCard';
 
 const IndividualStudentReport = ({ selectedStudent }) => {
+  const { t } = useLanguage();
+  
   if (!selectedStudent) {
-    return <Empty description="Select a student to view performance details" />;
+    return <Empty description={t("StudentsPage", "Select a student to view performance details")} />;
   }
 
   return (
-    <AntCard title="Selected Student Details" className={styles.detailCard}>
-      <p><strong>Name:</strong> {`${selectedStudent.firstName} ${selectedStudent.lastName}`}</p>
-      <p><strong>Email:</strong> {selectedStudent.email}</p>
-      <p><strong>Gender:</strong> {selectedStudent.gender || 'N/A'}</p>
-      <p><strong>Courses Enrolled:</strong> {selectedStudent.courseCount || 0}</p>
+    <AntCard title={t("StudentsPage", "Selected Student Details")} className={styles.detailCard}>
+      <p><strong>{t("Student", "Name")}:</strong> {`${selectedStudent.firstName} ${selectedStudent.lastName}`}</p>
+      <p><strong>{t("Student", "Email")}:</strong> {selectedStudent.email}</p>
+      <p><strong>{t("Student", "Gender")}:</strong> {selectedStudent.gender || 'N/A'}</p>
+      <p><strong>{t("Student", "Courses Enrolled")}:</strong> {selectedStudent.courseCount || 0}</p>
     </AntCard>
   );
 };
@@ -24,6 +27,7 @@ const IndividualStudentReport = ({ selectedStudent }) => {
 const StudentsPage = () => {
   const { fetchStudentsByTeacher } = useData();
   const { currentUser } = useAuth();
+  const { t } = useLanguage();
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [teacherStudents, setTeacherStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,19 +135,20 @@ const StudentsPage = () => {
   };
 
   if (loading) {
-    return <Spin size="large" tip="Loading student data..." />;
+    return <Spin size="large" tip={t("StudentsPage", "Loading student data...")} />;
   }
 
   if (error) {
     return <Alert message="Error" description={error} type="error" showIcon />;
   }
+
   return (
     <div className={styles.studentsPageContainer}>
-      <h1 className={styles.title}>Students</h1>
+      <h1 className={styles.title}>{t("StudentsPage", "My Students")}</h1>
       <Row gutter={[16, 16]} className={styles.filterControls}>
         <Col xs={24} md={12}>
           <Input.Search
-            placeholder="Search students by name..."
+            placeholder={t("StudentsPage", "Search students by name...")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             allowClear
@@ -152,7 +157,7 @@ const StudentsPage = () => {
         </Col>
         <Col xs={24} md={12} style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
           <Button onClick={handleReset} className={styles.resetButton}>
-            Reset
+            {t("StudentsPage", "Reset")}
           </Button>
         </Col>
       </Row>
@@ -168,10 +173,9 @@ const StudentsPage = () => {
             ))}
           </div>
         ) : (
-          <Empty description="No students found" />
+          <Empty description={t("StudentsPage", "No students found")} />
         )}
       </div>
-
       <IndividualStudentReport selectedStudent={selectedStudent} />
     </div>
   );

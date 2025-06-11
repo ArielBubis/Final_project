@@ -6,64 +6,60 @@ import PerformanceMetricsLegend from '../../Visualization/PerformanceMetricsLege
 import { generateRadarChartData } from '../../../utils/dataProcessingUtils';
 import debugLogger from '../../../utils/debugLogger';
 
-const StudentPerformance = ({ student }) => {  // Generate radar chart data from student performance
+const StudentPerformance = ({ student, style }) => {
   const radarChartData = student ? generateRadarChartData(student) : [];
-    // Add debug logs for debugging
+  
   debugLogger.logDebug('StudentPerformance', 'Render with data', { 
     hasStudent: !!student,
     studentId: student?.id,
     radarChartDataLength: radarChartData.length 
   });
-  
-  // Format metrics for the legend component with defensive checks
-  const performanceMetrics = 
-  
-  student ? [
-    { name: 'Overall Score', value: student.averageScore || 0 },
-    { name: 'Course Completion', value: student.completionRate || 0 },
-    // { name: 'Module Completion', value: student?.courses?.length ? 
-    //   student.courses.reduce((sum, course) => {
-    //     // Check if modules exist and have length
-    //     if (!Array.isArray(course?.modules) || course.modules.length === 0) return sum;
-        
-    //     const completedModules = course.modules.filter(m => 
-    //       m?.progress?.completion === 100
-    //     ).length;
-        
-    //     return sum + (completedModules / course.modules.length * 100);
-    //   }, 0) / student.courses.length : 0 
-    // },
-    { name: 'Assignment Completion', value: student?.courses?.length ? 
+    const performanceMetrics = student ? [
+    { 
+      name: 'Overall Score', 
+      value: student.averageScore || 0,
+      explanation: 'Average score across all courses weighted by course credits'
+    },
+    { 
+      name: 'Course Completion', 
+      value: student.completionRate || 0,
+      explanation: 'Percentage of course material accessed and completed'
+    },
+    { 
+      name: 'Assignment Completion', 
+      value: student?.courses?.length ? 
       student.courses.reduce((sum, course) => {
-        // Check if assignments exist and have length
         if (!Array.isArray(course?.assignments) || course.assignments.length === 0) return sum;
         
         const completedAssignments = course.assignments.filter(a => 
           a?.progress?.submittedAt || a?.progress?.submissionDate
         ).length;
-        
-        return sum + (completedAssignments / course.assignments.length * 100);
-      }, 0) / student.courses.length : 0 
+          return sum + (completedAssignments / course.assignments.length * 100);
+      }, 0) / student.courses.length : 0,
+      explanation: 'Percentage of assignments submitted across all enrolled courses'
     }
   ] : [];
 
-  return (
-    <AntCard title="Performance Metrics" className={styles.chartCard}>
+  return (    <AntCard 
+      title="Performance Metrics" 
+      className={`${styles.chartCard} ${styles.cardContent}`}
+      style={style}
+      bodyStyle={{ padding: 24 }}
+    >
       {radarChartData.length > 0 ? (
-        <Row gutter={[16, 16]} align="middle" justify="center">
-          <Col xs={24} md={12} align="middle" justify="center">
+        <>
+          <div className={styles.chartWrapper}>
             <RadarChart 
               data={radarChartData}
-              width={500}
-              height={400}
+              width={300}
+              height={300}
               showLegend={false}
-              title="Performance Metrics"
-            />
-          </Col>
-          <Col xs={24} md={12}>
+              studentColor="#722ed1"
+            />          </div>
+          <div className={styles.legendWrapper}>
             <PerformanceMetricsLegend metrics={performanceMetrics} />
-          </Col>
-        </Row>
+          </div>
+        </>
       ) : (
         <Empty description="No performance data available" />
       )}

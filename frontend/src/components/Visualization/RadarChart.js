@@ -8,6 +8,7 @@ import {
   Tooltip, 
   Legend 
 } from 'recharts';
+import styles from '../../styles/modules/RadarChart.module.css';
 
 /**
  * Reusable Radar Chart component for visualizing multi-dimensional performance data
@@ -42,20 +43,32 @@ const RadarChart = ({
   // Check if we have any class average data to determine if we should show that line
   const hasClassAverageData = formattedData.some(item => item.classAverage > 0);
   
-  return (
-    <div className="radar-chart-container" style={{ width: '100%', height: 'auto' }}>
-      {title && <h4 style={{ textAlign: 'center', marginBottom: '10px' }}>{title}</h4>}
+  return (    <div className={styles.container}>
+      {title && <h4 className={styles.title}>{title}</h4>}
       <RechartsRadarChart 
         width={width} 
         height={height} 
         data={formattedData}
         cx="50%" 
         cy="50%"
-        outerRadius="80%"
+        outerRadius="85%"  // Increased from 80%
       >
-        <PolarGrid />
-        <PolarAngleAxis dataKey="metric" />
-        <PolarRadiusAxis angle={18} domain={[0, 100]} />
+        <PolarGrid gridType="metric" />
+        <PolarAngleAxis 
+          dataKey="metric"
+          tick={{ 
+            fill: '#595959',
+            fontSize: 12
+          }} 
+        />
+        <PolarRadiusAxis 
+          angle={18} 
+          domain={[0, 100]}
+          tick={{ 
+            fill: '#595959',
+            fontSize: 11 
+          }}
+        />
         
         {/* Student performance radar */}
         <Radar 
@@ -63,7 +76,8 @@ const RadarChart = ({
           dataKey="student" 
           stroke={studentColor} 
           fill={studentColor} 
-          fillOpacity={0.6} 
+          fillOpacity={0.6}
+          strokeWidth={2}  // Added for better visibility
         />
         
         {/* Class average radar (only shown if data exists and showLegend is true) */}
