@@ -8,6 +8,7 @@ import TeacherManagement from "./Admin/TeacherManagement";
 import StudentsPage from "./Students/StudentsPage";
 import Student from "./Students/Student";
 import CoursesPage from "./Courses/CoursesPage";
+import CoursePage from "./Courses/CoursePage";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
@@ -60,11 +61,11 @@ const AppContent = () => {
         <Routes>
           {currentUser ? (
             <>
-              {/* Common routes */}
-              <Route path="/mainpage" element={<Mainpage />} />
+              {/* Common routes */}              <Route path="/mainpage" element={<Mainpage />} />
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
               <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/courses/:courseId" element={<CoursePage />} />
 
               {/* Admin-specific routes */}
               <Route

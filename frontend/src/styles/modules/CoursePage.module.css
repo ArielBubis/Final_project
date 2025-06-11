@@ -1,0 +1,159 @@
+.coursePage {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #f9f9f9;
+}
+
+/* Breadcrumb Navigation */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.breadcrumb a {
+    color: #1890ff;
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbSeparator {
+    margin: 0 0.5rem;
+    color: #ccc;
+}
+
+.currentPage {
+    color: #333;
+    font-weight: 500;
+}
+
+/* Course Header */
+.courseHeader {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.courseTitle {
+    font-size: 2rem;
+    color: #2c3e50;
+    margin: 0 0 1rem;
+}
+
+.courseDescription {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.courseMetadata {
+    display: flex;
+    gap: 2rem;
+    color: #666;
+}
+
+.metadataItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Statistics Section */
+.statsSection,
+.studentsSection,
+.contentSection {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sectionTitle {
+    font-size: 1.5rem;
+    color: #2c3e50;
+    margin: 0 0 1.5rem;
+}
+
+.statsGrid,
+.contentGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.statCard,
+.contentCard {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.statCard h3,
+.contentCard h3 {
+    font-size: 1rem;
+    color: #666;
+    margin: 0 0 0.5rem;
+}
+
+.statValue,
+.contentValue {
+    font-size: 2rem;
+    color: #1890ff;
+    font-weight: 500;
+}
+
+/* Loading and Error States */
+.loading,
+.error {
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.2rem;
+}
+
+.loading {
+    color: #666;
+}
+
+.error {
+    color: #ff4d4f;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coursePage {
+        padding: 1rem;
+    }
+
+    .statsGrid,
+    .contentGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .courseMetadata {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .courseTitle {
+        font-size: 1.5rem;
+    }
+
+    .sectionTitle {
+        font-size: 1.25rem;
+    }
+
+    .statValue,
+    .contentValue {
+        font-size: 1.5rem;
+    }
+}
