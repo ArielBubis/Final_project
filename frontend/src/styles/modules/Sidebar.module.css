@@ -88,6 +88,142 @@
   cursor: pointer;
 }
 
+.logoContainer {
+  padding: 20px 0;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.logo {
+  width: 180px;
+  height: auto;
+  transition: transform 0.2s ease-in-out;
+}
+
+.logo:hover {
+  transform: scale(1.05);
+}
+
+.profileSection {
+  padding: 15px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+}
+
+.userName {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 5px;
+}
+
+.userRole {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+
+/* Navigation section styles */
+.navSection {
+  margin-top: 20px;
+  padding: 0 8px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.navItem:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.navItem.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-left: 3px solid #3498db;
+}
+
+.navIcon {
+  margin-right: 12px;
+  width: 20px;
+  height: 20px;
+}
+
+.bottomSection {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.bottomMenuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 200ms ease;
+  text-align: center;
+  height: 100%; /* Ensure consistent height */
+}
+
+.bottomMenuItem:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.bottomMenuItem.logout:hover {
+  color: #e74c3c;
+}
+
+.menuIcon {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 6px;
+  opacity: 0.9;
+  stroke-width: 1.5px; /* Standardize stroke width */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menuLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.languageIndicator {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
 /* Add margin to main content to account for fixed sidebar */
 @media screen and (min-width: 768px) {
   .sidebar {
