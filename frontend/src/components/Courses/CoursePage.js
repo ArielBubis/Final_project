@@ -5,9 +5,11 @@ import { usePerformance } from '../../contexts/PerformanceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import StudentList from '../Students/StudentList';
+import StatisticCard from './components/StatisticCard';
 import styles from '../../styles/modules/CoursePage.module.css';
 
-const CoursePage = () => {    const { courseId } = useParams();
+const CoursePage = () => {
+    const { courseId } = useParams();
     const { t } = useLanguage();
     const { currentUser } = useAuth();
     const { 
@@ -126,25 +128,23 @@ const CoursePage = () => {    const { courseId } = useParams();
             </section>
 
             {/* Course Statistics Dashboard */}
-            <section className={styles.statsSection}>
-                <h2 className={styles.sectionTitle}>{t('CoursePage.statistics', 'Course Statistics')}</h2>
+            <section className={styles.statsSection}>                <h2 className={styles.sectionTitle}>{t('CoursePage.statistics', 'Course Statistics')}</h2>
                 <div className={styles.statsGrid}>
-                    <div className={styles.statCard}>
-                        <h3>{t('CoursePage.enrolledStudents', 'Enrolled Students')}</h3>
-                        <span className={styles.statValue}>{courseData.studentCount}</span>
-                    </div>
-                    <div className={styles.statCard}>
-                        <h3>{t('CoursePage.averageCompletion', 'Average Completion')}</h3>
-                        <span className={styles.statValue}>{courseData.averageCompletion}%</span>
-                    </div>
-                    <div className={styles.statCard}>
-                        <h3>{t('CoursePage.averageScore', 'Average Score')}</h3>
-                        <span className={styles.statValue}>{courseData.averageScore}%</span>
-                    </div>
-                    <div className={styles.statCard}>
-                        <h3>{t('CoursePage.activeStudents', 'Active Students (7 days)')}</h3>
-                        <span className={styles.statValue}>{courseData.activeStudentsLast7Days}</span>
-                    </div>
+                    <StatisticCard
+                        title={t('CoursePage.averageCompletion', 'Average Completion')}
+                        value={courseData.averageCompletion}
+                        metricType="completion"
+                    />
+                    <StatisticCard
+                        title={t('CoursePage.averageScore', 'Average Score')}
+                        value={courseData.averageScore}
+                        metricType="averageScore"
+                    />
+                    <StatisticCard
+                        title={t('CoursePage.activeStudents', 'Active Students (7 days)')}
+                        value={courseData.activeStudentsLast7Days}
+                        metricType="activeStudents"
+                    />
                 </div>
             </section>
 
@@ -161,14 +161,16 @@ const CoursePage = () => {    const { courseId } = useParams();
             <section className={styles.contentSection}>
                 <h2 className={styles.sectionTitle}>{t('CoursePage.courseContent', 'Course Content')}</h2>
                 <div className={styles.contentGrid}>
-                    <div className={styles.contentCard}>
-                        <h3>{t('CoursePage.modules', 'Modules')}</h3>
-                        <span className={styles.contentValue}>{courseData.moduleCount}</span>
-                    </div>
-                    <div className={styles.contentCard}>
-                        <h3>{t('CoursePage.assignments', 'Assignments')}</h3>
-                        <span className={styles.contentValue}>{courseData.assignmentCount}</span>
-                    </div>
+                    <StatisticCard
+                        title={t('CoursePage.modules', 'Modules')}
+                        value={courseData.moduleCount}
+                        metricType="moduleCount"
+                    />
+                    <StatisticCard
+                        title={t('CoursePage.assignments', 'Assignments')}
+                        value={courseData.assignmentCount}
+                        metricType="assignmentCount"
+                    />
                 </div>
             </section>
         </div>
