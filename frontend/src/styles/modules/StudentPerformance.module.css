@@ -17,3 +17,10 @@
   justify-content: center;
   align-items: center;
 }
+
+.metricExplanation {
+  color: #8c8c8c;
+  font-size: 11px;
+  margin-top: 4px;
+  font-style: italic;
+}

@@ -14,20 +14,29 @@ const StudentPerformance = ({ student, style }) => {
     studentId: student?.id,
     radarChartDataLength: radarChartData.length 
   });
-  
-  const performanceMetrics = student ? [
-    { name: 'Overall Score', value: student.averageScore || 0 },
-    { name: 'Course Completion', value: student.completionRate || 0 },
-    { name: 'Assignment Completion', value: student?.courses?.length ? 
+    const performanceMetrics = student ? [
+    { 
+      name: 'Overall Score', 
+      value: student.averageScore || 0,
+      explanation: 'Average score across all courses weighted by course credits'
+    },
+    { 
+      name: 'Course Completion', 
+      value: student.completionRate || 0,
+      explanation: 'Percentage of course material accessed and completed'
+    },
+    { 
+      name: 'Assignment Completion', 
+      value: student?.courses?.length ? 
       student.courses.reduce((sum, course) => {
         if (!Array.isArray(course?.assignments) || course.assignments.length === 0) return sum;
         
         const completedAssignments = course.assignments.filter(a => 
           a?.progress?.submittedAt || a?.progress?.submissionDate
         ).length;
-        
-        return sum + (completedAssignments / course.assignments.length * 100);
-      }, 0) / student.courses.length : 0 
+          return sum + (completedAssignments / course.assignments.length * 100);
+      }, 0) / student.courses.length : 0,
+      explanation: 'Percentage of assignments submitted across all enrolled courses'
     }
   ] : [];
 

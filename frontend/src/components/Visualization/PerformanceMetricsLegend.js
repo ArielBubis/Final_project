@@ -36,21 +36,32 @@ const PerformanceMetricsLegend = ({
       {title && <h4 style={{ marginBottom: '10px' }}>{title}</h4>}
       
       <div className="metrics-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {metrics.map((metric, index) => (
-          <div 
+        {metrics.map((metric, index) => (          <div 
             key={`metric-${index}`}
             className="metric-item"
             style={{ 
               display: 'flex', 
-              alignItems: 'center', 
+              alignItems: 'flex-start', 
               justifyContent: 'space-between',
               padding: '8px 0',
               borderBottom: '1px solid #f0f0f0'
             }}
           >
-            <span className="metric-name" style={{ fontWeight: 500 }}>
-              {metric.name}:
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="metric-name" style={{ fontWeight: 500 }}>
+                {metric.name}
+              </span>
+              {metric.explanation && (
+                <span style={{ 
+                  fontSize: '11px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                  marginTop: '2px'
+                }}>
+                  {metric.explanation}
+                </span>
+              )}
+            </div>
             
             <div className="metric-value-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {/* Main metric value */}
@@ -136,6 +147,7 @@ PerformanceMetricsLegend.propTypes = {
   metrics: PropTypes.arrayOf(PropTypes.shape({
     name: PropTypes.string.isRequired,
     value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+    explanation: PropTypes.string,
     comparisonValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
   })),
   showComparison: PropTypes.bool,
