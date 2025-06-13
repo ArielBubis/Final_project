@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import StudentList from '../Students/StudentList';
 import StatisticCard from './components/StatisticCard';
+import BarChart from '../Visualization/BarChart';
 import styles from '../../styles/modules/CoursePage.module.css';
 
 const CoursePage = () => {
@@ -26,7 +27,10 @@ const CoursePage = () => {
     const [students, setStudents] = useState([]);
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);    useEffect(() => {
+    const [error, setError] = useState(null);    
+    const [scoreDistribution, setScoreDistribution] = useState([]);
+
+    useEffect(() => {
         const loadCourseData = async () => {
             if (!currentUser?.uid || !courseId) {
                 setLoading(false);
@@ -44,20 +48,22 @@ const CoursePage = () => {
                 
                 if (!currentCourse) {
                     throw new Error('Course not found');
-                }
-
-                // Load detailed course stats
+                }                // Load detailed course stats
                 const stats = await fetchCourseStats(courseId);
                 console.log('Course stats:', stats); // Debug log
                 
-                // Load course analytics
-                const analyticsData = await getCourseAnalytics(courseId);
-                
-                // Load enrolled students
-                const enrolledStudents = await fetchStudentsByTeacher(currentUser.uid);
-                const courseStudents = enrolledStudents?.filter(
-                    student => student.courseIds?.includes(courseId)
-                );
+                // Load enrolled students and course analytics in parallel
+                const [enrolledStudents, analyticsData] = await Promise.all([
+                    fetchStudentsByTeacher(currentUser.uid),
+                    getCourseAnalytics(courseId)
+                ]);
+
+                // Get students enrolled in this course with their performance data
+                const courseStudents = enrolledStudents?.filter(student => {
+                    const hasEnrollment = student.courseIds?.includes(courseId);
+                    const hasPerformanceData = analyticsData?.studentPerformance?.[student.id];
+                    return hasEnrollment && hasPerformanceData;
+                });
 
                 // Ensure all required fields are present with fallbacks
                 const courseDataWithDefaults = {
@@ -85,8 +91,40 @@ const CoursePage = () => {
             } finally {
                 setLoading(false);
             }
-        };        loadCourseData();
+        };        
+        loadCourseData();
     }, [courseId, currentUser, fetchCourseStats, fetchTeacherCourses, fetchStudentsByTeacher, getCourseAnalytics, t]);
+
+    useEffect(() => {
+        const calculateScoreDistribution = () => {
+            if (!students || !Array.isArray(students)) return;
+
+            const ranges = [
+                { label: '0-50', min: 0, max: 50, count: 0 },
+                { label: '51-60', min: 51, max: 60, count: 0 },
+                { label: '61-70', min: 61, max: 70, count: 0 },
+                { label: '71-80', min: 71, max: 80, count: 0 },
+                { label: '81-90', min: 81, max: 90, count: 0 },
+                { label: '91-100', min: 91, max: 100, count: 0 }
+            ];            students.forEach(student => {
+                if (!analytics?.studentPerformance?.[student.id]) return;
+                
+                const score = analytics.studentPerformance[student.id].overallScore;
+                if (typeof score !== 'number') return;
+
+                const range = ranges.find(r => score >= r.min && score <= r.max);
+                if (range) {
+                    range.count++;
+                }
+            });
+
+            setScoreDistribution(ranges);
+        };
+
+        if (students.length > 0) {
+            calculateScoreDistribution();
+        }
+    }, [students, courseId]);
 
     if (loading || performanceLoading) {
         return <div className={styles.loading}>{t('CoursePage.loading', 'Loading course data...')}</div>;
@@ -128,7 +166,8 @@ const CoursePage = () => {
             </section>
 
             {/* Course Statistics Dashboard */}
-            <section className={styles.statsSection}>                <h2 className={styles.sectionTitle}>{t('CoursePage.statistics', 'Course Statistics')}</h2>
+            <section className={styles.statsSection}>
+                <h2 className={styles.sectionTitle}>{t('CoursePage.statistics', 'Course Statistics')}</h2>
                 <div className={styles.statsGrid}>
                     <StatisticCard
                         title={t('CoursePage.averageCompletion', 'Average Completion')}
@@ -144,6 +183,13 @@ const CoursePage = () => {
                         title={t('CoursePage.activeStudents', 'Active Students (7 days)')}
                         value={courseData.activeStudentsLast7Days}
                         metricType="activeStudents"
+                    />
+                </div>
+
+                <div className={styles.chartSection}>
+                    <BarChart 
+                        data={scoreDistribution}
+                        title={t('CoursePage.scoreDistribution', 'Student Score Distribution')}
                     />
                 </div>
             </section>
