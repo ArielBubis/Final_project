@@ -27,11 +27,10 @@ async function importCsvToFirebase(csvFolder) {
     };
     
     // Load all CSV data first
-    const csvData = {};
-    const csvFiles = [
+    const csvData = {};    const csvFiles = [
       'schools.csv', 'students.csv', 'teachers.csv', 'courses.csv', 
       'modules.csv', 'assignments.csv', 'studentAssignments.csv',
-      'studentCourses.csv'
+      'studentCourses.csv', 'futureAssignments.csv', 'pendingAssignments.csv'
     ];
 
     for (const fileName of csvFiles) {
@@ -234,11 +233,10 @@ async function importCsvToFirebase(csvFolder) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
-      
-      // Process future assignments separately
-      if (csvData['future_assignments_df']) {
-        console.log('Processing future assignments...');
-        for (const futureAssignment of csvData['future_assignments_df']) {
+        // Process future assignments from CSV
+      if (csvData['futureAssignments.csv']) {
+        console.log('Processing future assignments from CSV...');
+        for (const futureAssignment of csvData['futureAssignments.csv']) {
           const docId = `${futureAssignment.studentId}_${futureAssignment.assignmentId}`;
           
           // Find course ID through assignment -> module relationship
@@ -251,15 +249,43 @@ async function importCsvToFirebase(csvFolder) {
           const futureDoc = {
             studentId: futureAssignment.studentId.toString(),
             assignmentId: futureAssignment.assignmentId,
-            courseId: module.courseId,
-            moduleId: assignment.moduleId,
+            courseId: futureAssignment.courseId || module.courseId,
+            moduleId: futureAssignment.moduleId || assignment.moduleId,
             status: 'future',
-            isAvailable: futureAssignment.isAvailable || false,
+            isAvailable: futureAssignment.isAvailable === 'True' || futureAssignment.isAvailable === true,
             createdAt: formatDate(futureAssignment.createdAt),
             updatedAt: formatDate(futureAssignment.updatedAt)
           };
           
           await db.collection('futureAssignments').doc(docId).set(futureDoc);
+        }
+      }
+      
+      // Process pending assignments from CSV
+      if (csvData['pendingAssignments.csv']) {
+        console.log('Processing pending assignments from CSV...');
+        for (const pendingAssignment of csvData['pendingAssignments.csv']) {
+          const docId = `${pendingAssignment.studentId}_${pendingAssignment.assignmentId}`;
+          
+          // Find course ID through assignment -> module relationship
+          const assignment = csvData['assignments.csv']?.find(a => a.id === pendingAssignment.assignmentId);
+          if (!assignment) continue;
+          
+          const module = csvData['modules.csv']?.find(m => m.id === assignment.moduleId);
+          if (!module) continue;
+          
+          const pendingDoc = {
+            studentId: pendingAssignment.studentId.toString(),
+            assignmentId: pendingAssignment.assignmentId,
+            courseId: pendingAssignment.courseId || module.courseId,
+            moduleId: pendingAssignment.moduleId || assignment.moduleId,
+            status: 'pending',
+            isAvailable: pendingAssignment.isAvailable === 'True' || pendingAssignment.isAvailable === true,
+            createdAt: formatDate(pendingAssignment.createdAt),
+            updatedAt: formatDate(pendingAssignment.updatedAt)
+          };
+          
+          await db.collection('pendingAssignments').doc(docId).set(pendingDoc);
         }
       }
     }
@@ -558,11 +584,37 @@ async function importCoursesWithEnhancedData(csvData) {
           averageScore: assignments.length > 0 ? 
             assignments.reduce((sum, a) => sum + (a.averageScore || 0), 0) / assignments.length : 0,
           createdAt: formatDate(module.createdAt)
-        });
-        
-        // Import assignments for this module
+        });        // Import assignments for this module
         for (const assignment of assignments) {
           const assignmentRef = courseRef.collection('assignments').doc(assignment.id);
+          
+          // Determine assignment status based on future and pending assignments
+          let assignmentStatus = 'active'; // default status
+          
+          // Count students who have this assignment in different states
+          const futureStudentCount = csvData['futureAssignments.csv']?.filter(fa => 
+            fa.assignmentId === assignment.id
+          ).length || 0;
+          
+          const pendingStudentCount = csvData['pendingAssignments.csv']?.filter(pa => 
+            pa.assignmentId === assignment.id
+          ).length || 0;
+          
+          const completedStudentCount = csvData['studentAssignments.csv']?.filter(sa => 
+            sa.assignmentId === assignment.id && sa.status === 'completed'
+          ).length || 0;
+          
+          // Set status based on assignment distribution
+          if (futureStudentCount > 0 && pendingStudentCount > 0) {
+            assignmentStatus = 'mixed'; // Some students have it as future, others as pending
+          } else if (futureStudentCount > 0 && completedStudentCount === 0) {
+            assignmentStatus = 'future'; // All students have it as future
+          } else if (pendingStudentCount > 0 && completedStudentCount === 0) {
+            assignmentStatus = 'pending'; // All students have it as pending
+          } else if (completedStudentCount > 0) {
+            assignmentStatus = 'active'; // Some students have completed it
+          }
+          
           await assignmentRef.set({
             title: assignment.name,
             description: assignment.description,
@@ -576,6 +628,10 @@ async function importCoursesWithEnhancedData(csvData) {
             averageScore: parseFloat(assignment.averageScore) || 0,
             lateRate: parseFloat(assignment.lateRate) || 0,
             submissionRate: parseInt(assignment.submissionRate) || 0,
+            status: assignmentStatus, // Add status field
+            futureStudentCount: futureStudentCount, // Count of students with future status
+            pendingStudentCount: pendingStudentCount, // Count of students with pending status
+            completedStudentCount: completedStudentCount, // Count of students who completed
             createdAt: formatDate(assignment.createdAt)
           });
         }
