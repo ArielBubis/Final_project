@@ -56,7 +56,7 @@ const AppContent = () => {
       {currentUser && userRole && <Sidebar userRole={userRole} />}
 
       {/* Main Content */}
-      <div className={styles.mainContent}>
+      <div className={`${styles.mainContent} ${currentUser && userRole ? styles.mainContentWithSidebar : ''}`}>
         <Routes>
           {currentUser ? (
             <>

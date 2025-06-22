@@ -11,9 +11,12 @@
   background-color: #ecf0f1;
   min-height: 100vh;
   overflow-y: auto;
-  margin-left: 250px; /* Match sidebar width */
   box-sizing: border-box;
   padding: 20px;
+}
+
+.mainContentWithSidebar {
+  margin-left: 250px; /* Match sidebar width */
 }
 
 .loading {

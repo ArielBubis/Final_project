@@ -15,8 +15,7 @@ const Login = () => {
         e.preventDefault();
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            alert("Login Successful!");
-            navigate("/report"); // Redirect after login (Change route if needed)
+            navigate("/mainpage");
         } catch (err) {
             setError("Invalid email or password");
         }
@@ -26,11 +25,17 @@ const Login = () => {
         <div className={styles.appContainer}>
             <div className={styles.loginContainer}>
                 <div className={styles.loginBox}>
-                    {/* Left Column */}
                     <div className={styles.loginLeft}>
-                        <h1>Login</h1>
+                        <div className={styles.loginLogo}>
+                            <img
+                                src="/REVODUCATE-LOGO.png"
+                                alt="Revoducate"
+                                className={styles.brandLogo}
+                            />
+                        </div>
 
-                        {/* Login Form */}
+                        <h1 className={styles.loginTitle}>Welcome Back</h1>
+
                         <form onSubmit={handleLogin} className={styles.loginForm}>
                             <div className={styles.inputGroup}>
                                 <label>Email address</label>
@@ -39,6 +44,7 @@ const Login = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
+                                    placeholder="Enter your email"
                                 />
                             </div>
 
@@ -49,6 +55,7 @@ const Login = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
+                                    placeholder="Enter your password"
                                 />
                             </div>
 
@@ -56,28 +63,24 @@ const Login = () => {
                                 <a href="#!">Forgot password?</a>
                             </div>
 
-                            <Button
-                                label="Login"
-                                onClick={handleLogin}
-                                type="submit"
-                                variant="primary"
-                                size="wide"
-                            />
+                            <div className={styles.loginButtonWrapper}>
+                                <Button
+                                    label="Sign In"
+                                    onClick={handleLogin}
+                                    type="submit"
+                                    variant="primary"
+                                    size="wide"
+                                />
+                            </div>
 
                             {error && <p className={styles.errorMessage}>{error}</p>}
                         </form>
                     </div>
 
-                    {/* Right Column */}
                     <div className={styles.loginRight}>
                         <div className={styles.infoBox}>
-                            <div className={styles.loginLogo}>
-                                <img
-                                    src="https://icons.veryicon.com/png/o/business/colorful-office-icons/book-52.png"
-                                    alt="Logo"
-                                />
-                                <h4>ClassInsight</h4>
-                            </div>
+                            <h2>Welcome to Revoducate</h2>
+                            <p>Access your dashboard to manage courses and track student performance.</p>
                         </div>
                     </div>
                 </div>
