@@ -60,7 +60,7 @@ const Login = () => {
                             </div>
 
                             <div className={styles.forgotPassword}>
-                                <a href="#!">Forgot password?</a>
+                                <a href="#" onClick={e => { e.preventDefault(); navigate('/reset-password'); }}>Forgot password?</a>
                             </div>
 
                             <div className={styles.loginButtonWrapper}>

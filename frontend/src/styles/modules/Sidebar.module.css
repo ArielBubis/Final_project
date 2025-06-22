@@ -140,7 +140,8 @@
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: background-color 200ms ease, color 200ms ease;
+  transition: background-color 200ms ease, color 200ms ease, border-left 200ms cubic-bezier(0.4,0,0.2,1), font-weight 200ms;
+  position: relative;
 }
 
 .navItem:hover {
@@ -149,15 +150,19 @@
 }
 
 .navItem.active {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(52, 152, 219, 0.18); /* #3498db with opacity */
   color: #fff;
-  border-left: 3px solid #3498db;
+  border-left: 4px solid #3498db;
+  font-weight: bold;
+  transition: background-color 200ms, border-left 200ms, color 200ms, font-weight 200ms;
+  z-index: 1;
 }
 
 .navIcon {
   margin-right: 12px;
   width: 20px;
   height: 20px;
+  transition: color 200ms;
 }
 
 .bottomSection {

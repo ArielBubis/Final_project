@@ -12,6 +12,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
 import styles from "../styles/modules/App.module.css";
+import ResetPassword from "./resetPassword";
 
 // Role-based route guard component
 const RoleBasedRoute = ({ element, requiredRole }) => {
@@ -94,6 +95,7 @@ const AppContent = () => {
           ) : (
             <>
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
           )}

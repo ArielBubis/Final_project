@@ -98,7 +98,10 @@ const Sidebar = React.memo(({ userRole }) => {
     console.log("Sidebar rendered with userRole:", userRole);    const location = useLocation();
     const roleBasedMenu = useMemo(() => menuItems[userRole] || menuItems.teacher, [userRole]);
 
-    const isActive = (path) => location.pathname === path;
+    const isActive = (path) => {
+        // Support nested routes and parameters
+        return location.pathname === path || location.pathname.startsWith(path + "/");
+    };
 
     return (
         <div className={styles.sidebar}>
@@ -123,14 +126,19 @@ const Sidebar = React.memo(({ userRole }) => {
             <nav className={styles.navSection}>
                 {roleBasedMenu.map((item) => {
                     const Icon = item.icon;
+                    const active = isActive(item.path);
                     return (
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`${styles.navItem} ${isActive(item.path) ? styles.active : ''}`}
+                            className={`${styles.navItem} ${active ? styles.active : ''}`}
+                            aria-current={active ? "page" : undefined}
+                            tabIndex={0}
                         >
-                            <Icon className={styles.navIcon} />
-                            {t("SidebBar", item.nameKey.toLowerCase())}
+                            <Icon className={styles.navIcon} style={active ? { color: '#3498db' } : {}} />
+                            <span style={active ? { fontWeight: 'bold' } : {}}>
+                                {t("SidebBar", item.nameKey.toLowerCase())}
+                            </span>
                         </Link>
                     );
                 })}
