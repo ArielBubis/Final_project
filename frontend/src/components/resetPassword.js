@@ -4,6 +4,8 @@ import { auth } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
 import Button from "./Button";
 import styles from "../styles/modules/Login.module.css";
+import { useLanguage } from "../contexts/LanguageContext";
+import { GlobeIcon } from 'lucide-react';
 
 const ResetPassword = () => {
     const [email, setEmail] = useState("");
@@ -11,6 +13,7 @@ const ResetPassword = () => {
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { language, toggleLanguage, t } = useLanguage();
 
     const validateEmail = (email) => {
         // Simple email regex
@@ -22,35 +25,38 @@ const ResetPassword = () => {
         setError("");
         setSuccess("");
         if (!validateEmail(email)) {
-            setError("Please enter a valid email address.");
+            setError(t("ResetPassword", "Enter your email address and we'll send you a link to reset your password."));
             return;
         }
         setLoading(true);
         try {
             await sendPasswordResetEmail(auth, email);
-            setSuccess("A password reset email has been sent. Please check your inbox.");
+            setSuccess(t("ResetPassword", "A password reset email has been sent. Please check your inbox."));
         } catch (err) {
             // Firebase error codes
             if (err.code === "auth/user-not-found") {
-                setError("No user found with this email address.");
+                setError(t("ResetPassword", "No user found with this email address."));
             } else if (err.code === "auth/invalid-email") {
-                setError("Invalid email address.");
+                setError(t("ResetPassword", "Invalid email address."));
             } else if (err.code === "auth/too-many-requests") {
-                setError("Too many requests. Please try again later.");
+                setError(t("ResetPassword", "Too many requests. Please try again later."));
             } else if (err.code === "auth/network-request-failed") {
-                setError("Network error. Please check your connection.");
+                setError(t("ResetPassword", "Network error. Please check your connection."));
             } else {
-                setError("Failed to send reset email. Please try again.");
+                setError(t("ResetPassword", "Failed to send reset email. Please try again."));
             }
         } finally {
             setLoading(false);
         }
     };
 
+    // Set direction for reset password box
+    const dir = language === "HE" ? "rtl" : "ltr";
+
     return (
         <div className={styles.appContainer}>
             <div className={styles.loginContainer}>
-                <div className={styles.loginBox}>
+                <div className={styles.loginBox} dir={dir}>
                     <div className={styles.loginLeft}>
                         <div className={styles.loginLogo}>
                             <img
@@ -59,16 +65,16 @@ const ResetPassword = () => {
                                 className={styles.brandLogo}
                             />
                         </div>
-                        <h1 className={styles.loginTitle}>Reset Password</h1>
+                        <h1 className={styles.loginTitle}>{t("ResetPassword", "Reset Password")}</h1>
                         <form onSubmit={handleSubmit} className={styles.loginForm}>
                             <div className={styles.inputGroup}>
-                                <label>Email address</label>
+                                <label>{t("LoginPage", "Email address")}</label>
                                 <input
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    placeholder="Enter your email"
+                                    placeholder={t("Placeholders", "Enter your email")}
                                     disabled={loading || !!success}
                                 />
                             </div>
@@ -76,7 +82,7 @@ const ResetPassword = () => {
                             {success && <p style={{ color: '#27ae60', textAlign: 'center', marginTop: 10 }}>{success}</p>}
                             <div className={styles.loginButtonWrapper}>
                                 <Button
-                                    label={loading ? "Sending..." : "Send Reset Email"}
+                                    label={loading ? t("ResetPassword", "Sending...") : t("ResetPassword", "Send Reset Link")}
                                     type="submit"
                                     variant="primary"
                                     size="wide"
@@ -86,18 +92,30 @@ const ResetPassword = () => {
                         </form>
                         <div style={{ textAlign: 'center', marginTop: 20 }}>
                             <Button
-                                label="Back to Login"
+                                label={t("ResetPassword", "Back to Login")}
                                 variant="secondary"
                                 size="wide"
                                 onClick={() => navigate("/login")}
                                 disabled={loading}
                             />
                         </div>
+                        <div style={{ textAlign: 'center', marginTop: 24 }}>
+                            <button
+                                className={styles.languageButton}
+                                onClick={toggleLanguage}
+                                aria-label="Change language"
+                                type="button"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', marginTop: 12 }}
+                            >
+                                <GlobeIcon style={{ marginRight: 6 }} size={20} strokeWidth={1.5} />
+                                <span style={{ fontWeight: 600 }}>{language}</span>
+                            </button>
+                        </div>
                     </div>
                     <div className={styles.loginRight}>
                         <div className={styles.infoBox}>
-                            <h2>Forgot your password?</h2>
-                            <p>Enter your email address and we'll send you a link to reset your password.</p>
+                            <h2>{t("ResetPassword", "Forgot your password?")}</h2>
+                            <p>{t("ResetPassword", "Enter your email address and we'll send you a link to reset your password.")}</p>
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import translate from "../utils/translate.json";
 
 // 1. Create the context
@@ -15,7 +15,19 @@ const useLanguage = () => {
 
 // 3. Create the provider component
 const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState(translate.language.options[0]); // default "EN"
+  // Load language from localStorage or default to EN
+  const getInitialLanguage = () => {
+    const stored = localStorage.getItem("language");
+    if (stored && translate.language.options.includes(stored)) return stored;
+    return translate.language.options[0];
+  };
+  const [language, setLanguage] = useState(getInitialLanguage);
+
+  useEffect(() => {
+    localStorage.setItem("language", language);
+    // Set dir attribute on body for RTL/LTR
+    document.body.setAttribute("dir", language === "HE" ? "rtl" : "ltr");
+  }, [language]);
 
   const toggleLanguage = () => {
     setLanguage((prev) =>
@@ -27,7 +39,11 @@ const LanguageProvider = ({ children }) => {
 
   const t = (category, key) => {
     if (language === "HE") {
-      return translate.categories?.[category]?.[key] || key;
+      return (
+        translate.categories?.[category]?.[key] ||
+        translate.categories?.LoginPage?.[key] ||
+        key
+      );
     }
     return key; // English is default (keys are in English)
   };

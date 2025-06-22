@@ -44,6 +44,33 @@
           "Gender": "מגדר",
           "Courses Enrolled": "קורסים נלמדים",
           "Average Score": "ציון ממוצע"
+      },
+      "LoginPage": {
+        "Login": "התחברות",
+        "Email address": "כתובת אימייל",
+        "Password": "סיסמה",
+        "Forgot password?": "שכחת סיסמה?",
+        "Placeholders": {
+          "Enter your email": "הכנס כתובת מייל",
+          "Enter your password": "הכנס סיסמה"
+        }
+      },
+      "ResetPassword": {
+        "Reset Password": "איפוס סיסמה",
+        "Send Reset Link": "שלח לינק איפוס",
+        "Back to Login": "חזור להתחברות",
+        "Forgot your password?": "שכחת סיסמה?",
+        "Enter your email address and we'll send you a link to reset your password.": "הקלידו את כתובת המייל שלכם ואנחנו נשלח לכם לינק לאיפוס הסיסמה",
+        "A password reset email has been sent. Please check your inbox.": "אימייל לאיפוס סיסמה נשלח. בדקו את תיבת הדואר שלכם.",
+        "No user found with this email address.": "לא נמצא משתמש עם כתובת מייל זו.",
+        "Invalid email address.": "כתובת מייל לא תקינה.",
+        "Too many requests. Please try again later.": "יותר מדי בקשות. נסו שוב מאוחר יותר.",
+        "Network error. Please check your connection.": "שגיאת רשת. בדקו את החיבור לאינטרנט.",
+        "Failed to send reset email. Please try again.": "שליחת האימייל נכשלה. נסו שוב."
+      },
+      "Welcome": {
+        "Welcome to Revoducate": "ברוכים הבאים לRevoducate",
+        "Access your dashboard to manage courses and track student performance.": "גשו לדשבורד שלכם כדי לעקוב אחרי קורסים וביצועי סטודנטים"
       }
   },
   "language": {
