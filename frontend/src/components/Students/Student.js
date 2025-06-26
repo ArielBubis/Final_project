@@ -131,7 +131,7 @@ const Student = () => {
         >
           {showDebug ? "Hide Debug Info" : "Show Debug Info"}
         </Button>
-      </AntCard> */}
+      </AntCard> 
       
       {showDebug && <DebugCard debugInfo={debugInfo} show={true} />}
       

@@ -5,8 +5,10 @@ import RadarChart from '../../Visualization/RadarChart';
 import PerformanceMetricsLegend from '../../Visualization/PerformanceMetricsLegend';
 import { generateRadarChartData } from '../../../utils/dataProcessingUtils';
 import debugLogger from '../../../utils/debugLogger';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const StudentPerformance = ({ student, style }) => {
+  const { t } = useLanguage();
   const radarChartData = student ? generateRadarChartData(student) : [];
   
   debugLogger.logDebug('StudentPerformance', 'Render with data', { 
@@ -16,32 +18,31 @@ const StudentPerformance = ({ student, style }) => {
   });
     const performanceMetrics = student ? [
     { 
-      name: 'Overall Score', 
+      name: t('PerformanceMetrics', 'Overall Score'), 
       value: student.averageScore || 0,
-      explanation: 'Average score across all courses weighted by course credits'
+      explanation: t('PerformanceMetrics', 'Average score across all courses weighted by course credits')
     },
     { 
-      name: 'Course Completion', 
+      name: t('PerformanceMetrics', 'Course Completion'), 
       value: student.completionRate || 0,
-      explanation: 'Percentage of course material accessed and completed'
+      explanation: t('PerformanceMetrics', 'Percentage of course material accessed and completed')
     },
     { 
-      name: 'Assignment Completion', 
+      name: t('PerformanceMetrics', 'Assignment Completion'), 
       value: student?.courses?.length ? 
       student.courses.reduce((sum, course) => {
         if (!Array.isArray(course?.assignments) || course.assignments.length === 0) return sum;
-        
         const completedAssignments = course.assignments.filter(a => 
           a?.progress?.submittedAt || a?.progress?.submissionDate
         ).length;
-          return sum + (completedAssignments / course.assignments.length * 100);
+        return sum + (completedAssignments / course.assignments.length * 100);
       }, 0) / student.courses.length : 0,
-      explanation: 'Percentage of assignments submitted across all enrolled courses'
+      explanation: t('PerformanceMetrics', 'Percentage of assignments submitted across all enrolled courses')
     }
   ] : [];
 
   return (    <AntCard 
-      title="Performance Metrics" 
+      title={t('PerformanceMetrics', 'Performance Metrics')} 
       className={`${styles.chartCard} ${styles.cardContent}`}
       style={style}
       bodyStyle={{ padding: 24 }}
@@ -61,7 +62,7 @@ const StudentPerformance = ({ student, style }) => {
           </div>
         </>
       ) : (
-        <Empty description="No performance data available" />
+        <Empty description={t('PerformanceMetrics', 'No performance data available')} />
       )}
     </AntCard>
   );

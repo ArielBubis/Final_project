@@ -3,8 +3,10 @@ import { Card as AntCard, Row, Col, Statistic, Progress, Alert, Table, Badge, Di
 import { WarningOutlined, SafetyOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import styles from '../../../styles/modules/Students.module.css';
 import { getCourseRiskData, formatCourseRiskData, getCourseRiskColor, getCourseRiskIcon } from '../../../utils/courseRiskUtils';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const CoursePerformanceCard = ({ course, studentId, riskData }) => {
+  const { t } = useLanguage();
   // Get course-specific risk data
   const courseRisk = getCourseRiskData(riskData, studentId, course?.id);
   const formattedRiskData = courseRisk ? formatCourseRiskData(courseRisk) : null;
@@ -14,7 +16,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
       key={course?.id} 
       title={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>{course?.courseName || "Unnamed Course"}</span>
+          <span>{course?.courseName || t('PerformanceMetrics', 'Unnamed Course')}</span>
         </div>
       } 
       className={styles.courseCard}
@@ -25,21 +27,21 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
           {courseRisk && formattedRiskData && (
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
-                <span style={{ marginLeft: 8 }}>Risk Assessment</span>
+                <span style={{ marginLeft: 8 }}>{t('PerformanceMetrics', 'Risk Assessment')}</span>
               </h4>
               <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
                 <Col xs={12}>
                   <Statistic
-                    title="Confidence"
+                    title={t('PerformanceMetrics', 'Confidence')}
                     value={formattedRiskData.confidence || 'Unknown'}
-                    suffix="%"
+                    suffix=""
                     valueStyle={{ color: '#1890ff', fontSize: '16px' }}
                   />
                 </Col>
               </Row>
               {formattedRiskData?.riskFactors && formattedRiskData.riskFactors.length > 0 && (
                 <Alert
-                  message="Risk Factors"
+                  message={t('PerformanceMetrics', 'Risk Factors')}
                   description={
                     <ul style={{ margin: 0, paddingLeft: 20 }}>
                       {formattedRiskData.riskFactors.map((factor, index) => (
@@ -60,15 +62,15 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
           <Row gutter={[16, 16]}>
             <Col xs={12}>
               <Statistic
-                title="Overall Score"
-                value={`${Math.round(course?.summary?.overallScore || 0)}%`}
+                title={t('PerformanceMetrics', 'Overall Score')}
+                value={`${Math.round(course?.summary?.overallScore || 0)}`}
                 valueStyle={{ color: (course?.summary?.overallScore || 0) > 70 ? '#3f8600' : ((course?.summary?.overallScore || 0) > 50 ? '#faad14' : '#cf1322') }}
               />
             </Col>
             <Col xs={12}>
               <Statistic
-                title="Total Time Spent"
-                value={`${Math.round((course?.summary?.totalTimeSpent || 0) / 60)} Hours`}
+                title={t('PerformanceMetrics', 'Time spent')}
+                value={`${Math.round((course?.summary?.totalTimeSpent || 0) / 60)} ${t('PerformanceMetrics', 'Hours')}`}
                 valueStyle={{ color: '#1890ff' }}
               />
             </Col>
@@ -79,18 +81,18 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
       <Divider />
       
       {/* Module Progress Section */}
-      <h3>Module Progress</h3>
+      <h3>{t('PerformanceMetrics', 'Module Progress')}</h3>
       <Row gutter={[16, 16]}>
         {Array.isArray(course.modules) && course.modules.length > 0 ? (
           course.modules.map((module) => (
             <Col xs={24} md={8} key={module?.id || Math.random()}>
-              <AntCard title={module?.moduleTitle || "Unnamed Module"} size="small">
+              <AntCard title={module?.moduleTitle || t('PerformanceMetrics', 'Unnamed Module')} size="small">
                 <Progress 
                   percent={Math.round((module?.progress?.completion || 0))} 
                   status={(module?.progress?.completion || 0) === 100 ? "success" : "active"}
                 />
-                <p><strong>Module Score:</strong> {Math.round((module?.progress?.totalExpertiseRate || 0))}%</p>
-                <p><strong>Last Activity:</strong> {
+                <p><strong>{t('PerformanceMetrics', 'Module Score')}:</strong> {Math.round((module?.progress?.totalExpertiseRate || 0))}</p>
+                <p><strong>{t('PerformanceMetrics', 'Last Activity')}:</strong> {
                   (module?.progress?.lastAccessed) ? 
                     (typeof module.progress.lastAccessed.toDate === 'function'
                       ? new Date(module.progress.lastAccessed.toDate()).toLocaleDateString()
@@ -104,45 +106,43 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
           ))
         ) : (
           <Col span={24}>
-            <Alert message="No module data available" type="info" />
+            <Alert message={t('PerformanceMetrics', 'No module data available')} type="info" />
           </Col>
         )}
       </Row>
       
-      <h3>Assignment Progress</h3>
+      <h3>{t('PerformanceMetrics', 'Assignment Progress')}</h3>
       {Array.isArray(course.assignments) && course.assignments.length > 0 ? (
         <Table
           dataSource={course.assignments.map(a => ({...a, key: a?.id || Math.random()}))}
           columns={[
             {
-              title: 'Assignment',
+              title: t('PerformanceMetrics', 'Assignment'),
               dataIndex: 'title',
               key: 'title',
-              render: (text) => text || 'Unnamed Assignment'
+              render: (text) => text || t('PerformanceMetrics', 'Unnamed Assignment')
             },
             {
-              title: 'Score',
+              title: t('PerformanceMetrics', 'Score'),
               dataIndex: 'progress',
               key: 'score',
               render: (progress) => {
-                if (!progress) return 'Not submitted';
+                if (!progress) return t('PerformanceMetrics', 'Not submitted');
                 // Check for both possible score fields
                 const score = progress.totalScore || progress.currentScore;
-                return score ? `${Math.round(score)}%` : 'Not submitted';
+                return score ? `${Math.round(score)}` : t('PerformanceMetrics', 'Not submitted');
               }
             },
             {
-              title: 'Submitted',
+              title: t('PerformanceMetrics', 'Submitted'),
               dataIndex: 'progress',
               key: 'submitted',
               render: (progress) => {
                 try {
-                  if (!progress) return 'Not submitted';
-                  
+                  if (!progress) return t('PerformanceMetrics', 'Not submitted');
                   // Check for both possible submission date fields
                   const submissionDate = progress.submittedAt || progress.submissionDate;
-                  if (!submissionDate) return 'Not submitted';
-                  
+                  if (!submissionDate) return t('PerformanceMetrics', 'Not submitted');
                   if (typeof submissionDate.toDate === 'function') {
                     return new Date(submissionDate.toDate()).toLocaleDateString();
                   } else if (typeof submissionDate === 'string') {
@@ -150,23 +150,23 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
                   } else if (submissionDate instanceof Date) {
                     return submissionDate.toLocaleDateString();
                   } else {
-                    return 'Date format error';
+                    return t('PerformanceMetrics', 'Date format error');
                   }
                 } catch (e) {
                   console.error('Error rendering submission date:', e, progress);
-                  return 'Date error';
+                  return t('PerformanceMetrics', 'Date error');
                 }
               }
             },
             {
-              title: 'Time Spent',
+              title: t('PerformanceMetrics', 'Time Spent'),
               dataIndex: 'progress',
               key: 'time',
               render: (progress) => {
                 if (!progress) return 'N/A';
                 // Check for both possible time fields
                 const timeSpent = progress.totalTime || progress.timeSpentMinutes;
-                return timeSpent ? `${Math.round(timeSpent / 60)} hours` : 'N/A';
+                return timeSpent ? `${Math.round(timeSpent / 60)} ${t('PerformanceMetrics', 'Hours')}` : 'N/A';
               }
             }
           ]}
@@ -174,7 +174,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
           size="small"
         />
       ) : (
-        <Alert message="No assignment data available" type="info" />
+        <Alert message={t('PerformanceMetrics', 'No assignment data available')} type="info" />
       )}
     </AntCard>
   );

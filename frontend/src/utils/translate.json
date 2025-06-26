@@ -71,6 +71,29 @@
       "Welcome": {
         "Welcome to Revoducate": "ברוכים הבאים לRevoducate",
         "Access your dashboard to manage courses and track student performance.": "גשו לדשבורד שלכם כדי לעקוב אחרי קורסים וביצועי סטודנטים"
+      },
+      "SidebarBottom": {
+        "Logout": "התנתקות",
+        "Settings": "הגדרות"
+      },
+      "PerformanceMetrics": {
+        "Performance Metrics": "מדדי ביצועים",
+        "Risk Assessment": "הערכת סיכונים",
+        "Module Progress": "התקדמות ביחידות",
+        "Completion Rate": "אחוז השלמה",
+        "Overall Score": "ציון כולל",
+        "Submission Rate": "אחוז הגשות",
+        "Expertise Rate": "מומחיות",
+        "Time spent": "זמן כולל",
+        "Average score across all courses weighted by course credits": "הציון הממוצע בכל הקורסים בחישוב משוקלל לפי הנקודות בקורס",
+        "Percentage of course material accessed and completed": "אחוז חומרי הלמידה בקורס שנצפו והושלמו",
+        "Percentage of assignments submitted across all enrolled courses": "אחוז המטלות שהוגשו בכל הקורסים שנלמדים",
+        "Course Completion": "התקדמות בקורס",
+        "Assignment Completion": "התקדמות במטלות",
+        "Needs Improvement": "דרוש שיפור",
+        "Average": "ממוצע",
+        "Good": "טוב",
+        "Excellent": "מעולה"
       }
   },
   "language": {

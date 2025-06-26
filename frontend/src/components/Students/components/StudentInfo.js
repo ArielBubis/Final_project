@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Card as AntCard, Button, Row, Col, Divider } from 'antd';
+import { Card as AntCard, Button, Row, Col } from 'antd';
 import { SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import styles from '../../../styles/modules/Students.module.css';
+import infoStyles from '../../../styles/modules/StudentInfo.module.css';
 
 const StudentInfo = ({ student, debugInfo = {}, style }) => {
   const [sortAscending, setSortAscending] = useState(true);
@@ -34,54 +35,35 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
       <p>No student data available</p>
     </AntCard>;
   }
-  return (    <AntCard 
+  return (
+    <AntCard 
       title={`${student.firstName || 'Unknown'} ${student.lastName || 'Student'}`} 
       style={style}
       bodyStyle={{ padding: 0 }}
       className={styles.detailCard}
     >
-      {/* Info and Risk Section */}
+      {/* Info Section (no risk factors) */}
       <Row gutter={[16, 16]}>
-        {/* Student Details - Left Side */}
-        <Col xs={24} sm={12}>          <div className={styles.studentInfoColumn}>
-            <div>
-              <div className={styles.infoField}>Email</div>
-              <div className={styles.infoValue}>{student.email || 'N/A'}</div>
+        <Col xs={24} sm={24}>
+          <div className={infoStyles.infoSection}>
+            <div className={infoStyles.infoFieldRow}>
+              <span className={infoStyles.infoField}>Email</span>
+              <span className={infoStyles.infoValue}>{student.email || 'N/A'}</span>
             </div>
-            <div>
-              <div className={styles.infoField}>Gender</div>
-              <div className={styles.infoValue}>{student.gender || 'N/A'}</div>
+            <div className={infoStyles.infoFieldRow}>
+              <span className={infoStyles.infoField}>Gender</span>
+              <span className={infoStyles.infoValue}>{student.gender || 'N/A'}</span>
             </div>
-            <div>
-              <div className={styles.infoField}>Courses Enrolled</div>
-              <div className={styles.infoValue}>{student.courseCount || 0}</div>
+            <div className={infoStyles.infoFieldRow}>
+              <span className={infoStyles.infoField}>Courses Enrolled</span>
+              <span className={infoStyles.infoValue}>{student.courseCount || 0}</span>
             </div>
           </div>
         </Col>
-
-        {/* Risk Status Section - Right Side */}
-        <Col xs={24} sm={12}>
-          {student.isAtRisk ? (            <div className={`${styles.riskAlert} ${styles.atRisk}`}>
-              <span className={`${styles.riskAlertTitle} ${styles.atRisk}`}>Performance Risk</span>
-              {student.riskReasons && student.riskReasons.length > 0 && (
-                <ul className={styles.riskReasonsList}>
-                  {student.riskReasons.map((reason, idx) => (
-                    <li key={idx} className={styles.riskReason}>{reason}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : (            <div className={`${styles.riskAlert} ${styles.riskAlertSafe}`}>
-              <span className={`${styles.riskTitle} ${styles.riskTitleSafe}`}>On Track</span>
-              <p className={styles.safeMessage}>
-                Student is performing well with no risk factors detected.
-              </p>
-            </div>
-          )}
-        </Col>
       </Row>
 
-      {/* Course Performance Chart Section */}      <div className={styles.chartSection}>
+      {/* Course Performance Chart Section */}
+      <div className={styles.chartSection}>
         <div className={styles.chartHeader}>
           <div className={styles.chartHeaderStats}>
             <span className={styles.chartScore}>
@@ -96,8 +78,9 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
           >
             Sort {sortAscending ? 'Desc' : 'Asc'}
           </Button>
-        </div>          <div className={styles.chartContent}>
-          <ResponsiveContainer width="100%" height="100%">
+        </div>
+        <div className={styles.chartContent}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart 
               data={courseGradeData} 
               margin={{ top: 20, right: 30, bottom: 60, left: 20 }}
@@ -108,24 +91,19 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
                 dataKey="name" 
                 angle={-45}
                 textAnchor="end"
-                height={60}  // Increased height for better text spacing
+                height={60}
                 interval={0}
-                tick={{ 
-                  fontSize: 12,  // Slightly larger font
-                  fill: '#595959'
-                }}
-                tickFormatter={(value) => {
-                  // Improved text wrapping - show more characters
-                  return value.length > 20 ? `${value.substring(0, 20)}...` : value;
-                }}
+                tick={{ fontSize: 12, fill: '#595959' }}
+                tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
               />
               <YAxis 
                 domain={[0, 100]} 
                 tick={{ fontSize: 11, fill: '#595959' }}
                 tickCount={6}
+                tickFormatter={val => val}
               />
               <Tooltip 
-                formatter={(value) => [`${value}%`, 'Grade']}
+                formatter={(value) => [value, 'Grade']}
                 labelStyle={{ fontSize: '11px', color: '#595959' }}
                 contentStyle={{
                   fontSize: '12px',

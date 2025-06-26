@@ -159,7 +159,7 @@ const Sidebar = React.memo(({ userRole }) => {
                 <button 
                     className={styles.bottomMenuItem}
                     onClick={() => navigate("/settings")}
-                    aria-label="Open settings"
+                    aria-label={t("SidebarBottom", "Settings")}
                 >
                     <SettingsIcon 
                         className={styles.menuIcon} 
@@ -167,13 +167,13 @@ const Sidebar = React.memo(({ userRole }) => {
                         size={20}
                         strokeWidth={1.5}
                     />
-                    <span className={styles.menuLabel}>Settings</span>
+                    <span className={styles.menuLabel}>{t("SidebarBottom", "Settings")}</span>
                 </button>
 
                 <button 
                     className={`${styles.bottomMenuItem} ${styles.logout}`}
                     onClick={handleLogout}
-                    aria-label="Sign out"
+                    aria-label={t("SidebarBottom", "Logout")}
                 >
                     <LogOutIcon 
                         className={styles.menuIcon} 
@@ -181,7 +181,7 @@ const Sidebar = React.memo(({ userRole }) => {
                         size={20}
                         strokeWidth={1.5}
                     />
-                    <span className={styles.menuLabel}>Logout</span>
+                    <span className={styles.menuLabel}>{t("SidebarBottom", "Logout")}</span>
                 </button>
             </div>
         </div>
