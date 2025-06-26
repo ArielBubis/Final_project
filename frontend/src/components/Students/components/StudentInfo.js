@@ -62,67 +62,70 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
         </Col>
       </Row>
 
-      {/* Course Performance Chart Section */}
-      <div className={styles.chartSection}>
-        <div className={styles.chartHeader}>
-          <div className={styles.chartHeaderStats}>
-            <span className={styles.chartScore}>
-              {student.averageScore !== undefined ? Math.round(student.averageScore) : 'N/A'}
-            </span>
-            <span className={styles.chartLabel}>Course Average</span>
-          </div>
-          <Button 
-            size="small"
-            onClick={() => setSortAscending(!sortAscending)}
-            icon={sortAscending ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
-          >
-            Sort {sortAscending ? 'Desc' : 'Asc'}
-          </Button>
-        </div>
-        <div className={styles.chartContent}>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart 
-              data={courseGradeData} 
-              margin={{ top: 20, right: 30, bottom: 60, left: 20 }}
-              barSize={60}
+      {/* Course Grades Bar Chart Section */}
+      <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end'}}>
+        <h3 style={{margin: '1.5rem 0 0.5rem 0', fontWeight: 600, fontSize: '1.08rem'}}>Course Grades</h3>
+        <div className={styles.chartSection} style={{padding: 0, background: 'none', boxShadow: 'none', marginTop: 0}}>
+          <div className={styles.chartHeader} style={{marginBottom: 0}}>
+            <div className={styles.chartHeaderStats}>
+              <span className={styles.chartScore}>
+                {student.averageScore !== undefined ? Math.round(student.averageScore) : 'N/A'}
+              </span>
+              <span className={styles.chartLabel}>Course Average</span>
+            </div>
+            <Button 
+              size="small"
+              onClick={() => setSortAscending(!sortAscending)}
+              icon={sortAscending ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name" 
-                angle={-45}
-                textAnchor="end"
-                height={60}
-                interval={0}
-                tick={{ fontSize: 12, fill: '#595959' }}
-                tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
-              />
-              <YAxis 
-                domain={[0, 100]} 
-                tick={{ fontSize: 11, fill: '#595959' }}
-                tickCount={6}
-                tickFormatter={val => val}
-              />
-              <Tooltip 
-                formatter={(value) => [value, 'Grade']}
-                labelStyle={{ fontSize: '11px', color: '#595959' }}
-                contentStyle={{
-                  fontSize: '12px',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #f0f0f0'
-                }}
-              />
-              <Bar 
-                dataKey="grade" 
-                name="Grade"
-                radius={[4, 4, 0, 0]}
+              Sort {sortAscending ? 'Desc' : 'Asc'}
+            </Button>
+          </div>
+          <div className={styles.chartContent} style={{height: 250, minHeight: 250}}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart 
+                data={courseGradeData} 
+                margin={{ top: 20, right: 30, bottom: 60, left: 20 }}
+                barSize={60}
               >
-                {courseGradeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getBarColor(entry.grade)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                  interval={0}
+                  tick={{ fontSize: 12, fill: '#595959' }}
+                  tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                />
+                <YAxis 
+                  domain={[0, 100]} 
+                  tick={{ fontSize: 11, fill: '#595959' }}
+                  tickCount={6}
+                  tickFormatter={val => val}
+                />
+                <Tooltip 
+                  formatter={(value) => [value, 'Grade']}
+                  labelStyle={{ fontSize: '11px', color: '#595959' }}
+                  contentStyle={{
+                    fontSize: '12px',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #f0f0f0'
+                  }}
+                />
+                <Bar 
+                  dataKey="grade" 
+                  name="Grade"
+                  radius={[4, 4, 0, 0]}
+                >
+                  {courseGradeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getBarColor(entry.grade)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </AntCard>
