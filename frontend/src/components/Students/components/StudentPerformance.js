@@ -41,7 +41,8 @@ const StudentPerformance = ({ student, style }) => {
     }
   ] : [];
 
-  return (    <AntCard 
+  return (
+    <AntCard 
       title={t('PerformanceMetrics', 'Performance Metrics')} 
       className={`${styles.chartCard} ${styles.cardContent}`}
       style={style}

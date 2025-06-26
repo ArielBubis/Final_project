@@ -137,7 +137,7 @@ const Student = () => {
       
       {/* Main content row with two columns */}      <Row gutter={[16, 16]} className={styles.mainContentRow}>
         {/* Left column: Student Info */}
-        <Col xs={24} lg={12} className={styles.columnFlex}>
+        <Col xs={24} lg={12} className={styles.columnFlex} style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
           <StudentInfo 
             student={enrichedStudent} 
             debugInfo={debugInfo} 
@@ -146,7 +146,7 @@ const Student = () => {
         </Col>
         
         {/* Right column: Student Performance */}
-        <Col xs={24} lg={12} className={styles.columnFlex}>
+        <Col xs={24} lg={12} className={styles.columnFlex} style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
           <StudentPerformance 
             student={enrichedStudent} 
             className={styles.fullWidth}

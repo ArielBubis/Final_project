@@ -37,15 +37,19 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
   }
   return (
     <AntCard 
-      title={`${student.firstName || 'Unknown'} ${student.lastName || 'Student'}`} 
+      title={null} // Remove card header here
       style={style}
       bodyStyle={{ padding: 0 }}
-      className={styles.detailCard}
+      className={`${styles.detailCard} ${styles.fullHeight}`}
     >
       {/* Info Section (no risk factors) */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={24}>
           <div className={infoStyles.infoSection}>
+            <div className={infoStyles.infoFieldRow}>
+              <span className={infoStyles.infoField}>Name</span>
+              <span className={infoStyles.infoValue}>{(student.firstName || 'Unknown') + ' ' + (student.lastName || 'Student')}</span>
+            </div>
             <div className={infoStyles.infoFieldRow}>
               <span className={infoStyles.infoField}>Email</span>
               <span className={infoStyles.infoValue}>{student.email || 'N/A'}</span>
@@ -64,9 +68,9 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
 
       {/* Course Grades Bar Chart Section */}
       <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end'}}>
-        <h3 style={{margin: '1.5rem 0 0.5rem 0', fontWeight: 600, fontSize: '1.08rem'}}>Course Grades</h3>
-        <div className={styles.chartSection} style={{padding: 0, background: 'none', boxShadow: 'none', marginTop: 0}}>
-          <div className={styles.chartHeader} style={{marginBottom: 0}}>
+        <h3 style={{margin: '1.5rem 0rem 0.5rem 2rem', fontWeight: 600, fontSize: '1.08rem'}}>Course Grades</h3>
+        <div className={styles.chartSection} style={{padding: 0, background: 'none', boxShadow: 'none', margin: '0rem 0rem 0.5rem 2rem'}}>
+          <div className={styles.chartHeader} style={{marginBottom: 0, marginRight: 10}}>
             <div className={styles.chartHeaderStats}>
               <span className={styles.chartScore}>
                 {student.averageScore !== undefined ? Math.round(student.averageScore) : 'N/A'}
@@ -85,7 +89,7 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart 
                 data={courseGradeData} 
-                margin={{ top: 20, right: 30, bottom: 60, left: 20 }}
+                margin={{ top: 5, right: 30, bottom: 60, left: 20 }}
                 barSize={60}
               >
                 <CartesianGrid strokeDasharray="3 3" />
