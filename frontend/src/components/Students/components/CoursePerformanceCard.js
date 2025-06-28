@@ -22,7 +22,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
       {/* Course Risk Assessment Section */}
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>
-          {courseRisk && formattedRiskData && (
+          {courseRisk && formattedRiskData && (course?.summary?.overallScore || 0) <= 70 && (
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
                 <span style={{ marginLeft: 8 }}>Risk Assessment</span>
