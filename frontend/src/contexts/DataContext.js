@@ -38,7 +38,8 @@ export const DataProvider = ({ children }) => {
     studentAssignments: new Map(),
     moduleProgress: new Map(),
     teacherDashboard: new Map(),
-    studentCourseSummaries: new Map()
+    studentCourseSummaries: new Map(),
+    schools: new Map()
   });
   
   // Use ref to store cache expiration constants
@@ -130,7 +131,8 @@ export const DataProvider = ({ children }) => {
           studentAssignments: new Map(),
           moduleProgress: new Map(),
           teacherDashboard: new Map(),
-          studentCourseSummaries: new Map()
+          studentCourseSummaries: new Map(),
+          schools: new Map()
         });
       } else if (cacheType in cacheTimestamps) {
         // Clear specific main cache
@@ -265,6 +267,29 @@ export const DataProvider = ({ children }) => {
       return [];
     }
   }, [getFromQueryCache, updateQueryCache]);
+  
+  // Helper function to fetch school information
+  const fetchSchoolInfo = useCallback(async (schoolId) => {
+    if (!schoolId) return null;
+    
+    // Check cache first
+    const cachedData = getFromQueryCache('schools', schoolId);
+    if (cachedData) {
+      return cachedData;
+    }
+    
+    try {
+      const school = await fetchDocumentById('schools', schoolId);
+      if (school) {
+        updateQueryCache('schools', schoolId, school);
+      }
+      return school;
+    } catch (error) {
+      console.error(`Error fetching school ${schoolId}:`, error);
+      return null;
+    }
+  }, [getFromQueryCache, updateQueryCache]);
+
   // UPDATED: Get students by teacher using new normalized structure
   const fetchStudentsByTeacher = useCallback(async (teacherUidOrId) => {
     if (!teacherUidOrId) return [];
@@ -370,63 +395,75 @@ export const DataProvider = ({ children }) => {
       });
       
       // Process students with their performance data
-      const students = studentIds.map(studentId => {
-        const userData = userDataMap.get(studentId) || {}; // Use studentId as document ID
-        const studentSummaries = summaryMap.get(studentId) || [];
-        
-        // Calculate aggregated metrics across all courses
-        let totalScore = 0;
-        let totalCompletion = 0;
-        let totalTimeSpent = 0;
-        let courseCount = studentSummaries.length;
-        let lastAccessed = null;
-        
-        studentSummaries.forEach(summary => {
-          if (typeof summary.overallScore === 'number' && summary.overallScore >= 0) {
-            totalScore += summary.overallScore;
+      const studentsWithSchools = await Promise.all(
+        studentIds.map(async (studentId) => {
+          const userData = userDataMap.get(studentId) || {}; // Use studentId as document ID
+          const studentSummaries = summaryMap.get(studentId) || [];
+          
+          // Fetch school information if schoolId exists
+          let schoolName = 'N/A';
+          if (userData.schoolId) {
+            const schoolInfo = await fetchSchoolInfo(userData.schoolId);
+            schoolName = schoolInfo?.name || 'N/A';
           }
-          if (typeof summary.completionRate === 'number') {
-            totalCompletion += summary.completionRate;
-          }
-          if (typeof summary.totalTimeSpent === 'number') {
-            totalTimeSpent += summary.totalTimeSpent;
-          }
-          if (summary.lastAccessed) {
-            const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
-            if (!lastAccessed || accessDate > lastAccessed) {
-              lastAccessed = accessDate;
+          
+          // Calculate aggregated metrics across all courses
+          let totalScore = 0;
+          let totalCompletion = 0;
+          let totalTimeSpent = 0;
+          let courseCount = studentSummaries.length;
+          let lastAccessed = null;
+          
+          studentSummaries.forEach(summary => {
+            if (typeof summary.overallScore === 'number' && summary.overallScore >= 0) {
+              totalScore += summary.overallScore;
             }
-          }
-        });
-        
-        return {
-          id: studentId,
-          studentId: studentId,
-          firstName: userData.firstName || 'Unknown',
-          lastName: userData.lastName || 'Student',
-          email: userData.email || '',
-          gradeLevel: userData.gradeLevel || null,
-          scores: {
-            average: courseCount > 0 ? totalScore / courseCount : 0
-          },
-          completion: courseCount > 0 ? totalCompletion / courseCount : 0,
-          totalTimeSpent: totalTimeSpent,
-          lastAccessed: lastAccessed,
-          courseCount: courseCount
-        };
-      });
+            if (typeof summary.completionRate === 'number') {
+              totalCompletion += summary.completionRate;
+            }
+            if (typeof summary.totalTimeSpent === 'number') {
+              totalTimeSpent += summary.totalTimeSpent;
+            }
+            if (summary.lastAccessed) {
+              const accessDate = formatFirebaseTimestamp(summary.lastAccessed);
+              if (!lastAccessed || accessDate > lastAccessed) {
+                lastAccessed = accessDate;
+              }
+            }
+          });
+          
+          return {
+            id: studentId,
+            studentId: studentId,
+            firstName: userData.firstName || 'Unknown',
+            lastName: userData.lastName || 'Student',
+            email: userData.email || '',
+            gender: userData.gender || null,
+            gradeLevel: userData.gradeLevel || null,
+            schoolId: userData.schoolId || null,
+            schoolName: schoolName,
+            scores: {
+              average: courseCount > 0 ? totalScore / courseCount : 0
+            },
+            completion: courseCount > 0 ? totalCompletion / courseCount : 0,
+            totalTimeSpent: totalTimeSpent,
+            lastAccessed: lastAccessed,
+            courseCount: courseCount
+          };
+        })
+      );
       
       // Cache the result
-      updateQueryCache('studentsByTeacher', cacheKey, students);
+      updateQueryCache('studentsByTeacher', cacheKey, studentsWithSchools);
       
       console.timeEnd('fetchStudentsByTeacher');
-      console.log(`Returning ${students.length} students`);
-      return students;
+      console.log(`Returning ${studentsWithSchools.length} students`);
+      return studentsWithSchools;
     } catch (error) {
       console.error("Error fetching students by teacher:", error);
       return [];
     }
-  }, [fetchTeacherCourses, getFromQueryCache, updateQueryCache]);
+  }, [fetchTeacherCourses, fetchSchoolInfo, getFromQueryCache, updateQueryCache]);
   
   // UPDATED: Get course statistics using new structure
   const fetchCourseStats = useCallback(async (courseId) => {

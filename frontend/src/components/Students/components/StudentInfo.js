@@ -37,7 +37,7 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
   }
   return (
     <AntCard 
-      title={null} // Remove card header here
+      title="Student Information"
       style={style}
       bodyStyle={{ padding: 0 }}
       className={`${styles.detailCard} ${styles.fullHeight}`}
@@ -55,8 +55,12 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
               <span className={infoStyles.infoValue}>{student.email || 'N/A'}</span>
             </div>
             <div className={infoStyles.infoFieldRow}>
-              <span className={infoStyles.infoField}>Gender</span>
-              <span className={infoStyles.infoValue}>{student.gender || 'N/A'}</span>
+              <span className={infoStyles.infoField}>School</span>
+              <span className={infoStyles.infoValue}>{student.schoolName || 'N/A'}</span>
+            </div>
+            <div className={infoStyles.infoFieldRow}>
+              <span className={infoStyles.infoField}>Grade Level</span>
+              <span className={infoStyles.infoValue}>{student.gradeLevel ? `Grade ${student.gradeLevel}` : 'N/A'}</span>
             </div>
             <div className={infoStyles.infoFieldRow}>
               <span className={infoStyles.infoField}>Courses Enrolled</span>

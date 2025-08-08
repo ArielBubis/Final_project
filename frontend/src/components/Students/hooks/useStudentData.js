@@ -87,6 +87,27 @@ export const useStudentData = (studentId) => {
         
         if (enrollments.length === 0) {
           console.log(`No enrollments found for student ${studentId}`);
+          
+          // Fetch school information if schoolId exists
+          let schoolName = 'N/A';
+          if (userData.schoolId) {
+            try {
+              console.log(`Fetching school info for schoolId: ${userData.schoolId}`);
+              const schoolDoc = await getDoc(doc(db, 'schools', userData.schoolId));
+              if (schoolDoc.exists()) {
+                const schoolData = schoolDoc.data();
+                schoolName = schoolData.name || 'N/A';
+                console.log(`School name found: ${schoolName}`);
+              } else {
+                console.log(`School document not found for ID: ${userData.schoolId}`);
+              }
+            } catch (error) {
+              console.error(`Error fetching school data for ${userData.schoolId}:`, error);
+            }
+          } else {
+            console.log(`No schoolId found in userData for student ${studentId}`);
+          }
+          
           // Still create a basic student object
           const basicStudentData = {
             id: studentId,
@@ -96,6 +117,8 @@ export const useStudentData = (studentId) => {
             email: userData.email || '',
             gender: userData.gender || 'Not specified',
             gradeLevel: userData.gradeLevel || null,
+            schoolId: userData.schoolId || null,
+            schoolName: schoolName,
             courses: [],
             averageScore: 0,
             completionRate: 0,
@@ -309,6 +332,26 @@ export const useStudentData = (studentId) => {
         // Get risk assessment
         const riskAssessment = await getEnhancedRiskAssessment(studentDataForRisk, true);
         
+        // Fetch school information if schoolId exists
+        let schoolName = 'N/A';
+        if (userData.schoolId) {
+          try {
+            console.log(`Fetching school info for schoolId: ${userData.schoolId}`);
+            const schoolDoc = await getDoc(doc(db, 'schools', userData.schoolId));
+            if (schoolDoc.exists()) {
+              const schoolData = schoolDoc.data();
+              schoolName = schoolData.name || 'N/A';
+              console.log(`School name found: ${schoolName}`);
+            } else {
+              console.log(`School document not found for ID: ${userData.schoolId}`);
+            }
+          } catch (error) {
+            console.error(`Error fetching school data for ${userData.schoolId}:`, error);
+          }
+        } else {
+          console.log(`No schoolId found in userData for student ${studentId}`);
+        }
+        
         // Final student object
         const enrichedStudentData = {
           id: studentId,
@@ -318,6 +361,8 @@ export const useStudentData = (studentId) => {
           email: userData.email || '',
           gender: userData.gender || 'Not specified',
           gradeLevel: userData.gradeLevel || null,
+          schoolId: userData.schoolId || null,
+          schoolName: schoolName,
           courses: validCoursesData,
           averageScore,
           completionRate,

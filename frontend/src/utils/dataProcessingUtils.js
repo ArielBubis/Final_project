@@ -42,6 +42,8 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
       hasData: true,
       hasCourses: Array.isArray(studentData.courses) && studentData.courses.length > 0
     } : 'No student data');
+    
+  console.log('generateRadarChartData classAverage:', classAverage);
   
   // Calculate submission rate from courses if not directly available
   let submissionRate = studentData.submissionRate;
@@ -105,8 +107,8 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
     },
     {
       metric: 'Overall Score',
-      value: studentData.score || studentData.averageScore || 0,
-      classAverage: classAverage?.score || 0
+      value: studentData.averageScore || 0,
+      classAverage: classAverage?.averageScore || 0
     },
     {
       metric: 'Submission Rate',
@@ -162,7 +164,7 @@ export const generateGradeDistribution = (studentsData) => {
   
   // Count students in each grade range
   studentsData.forEach(student => {
-    const score = student.score || student.averageScore || 0;
+    const score = student.averageScore || 0;
     
     if (score >= 90) gradeDistribution[0].count++;
     else if (score >= 80) gradeDistribution[1].count++;
@@ -224,5 +226,89 @@ export const createPerformanceSummary = (studentData) => {
     riskLevel: risk.level,
     riskFactors: risk.factors,
     lastAccessed: studentData.lastAccessed
+  };
+};
+
+/**
+ * Calculates class averages for comparison purposes
+ * @param {Array} allStudentsData - Array of all students' data for the class
+ * @param {Array} courseIds - Array of course IDs to calculate averages for (optional, defaults to all courses)
+ * @returns {Object} - Class average metrics
+ */
+export const calculateClassAverages = (allStudentsData, courseIds = null) => {
+  if (!allStudentsData || allStudentsData.length === 0) {
+    return {
+      averageScore: 0,
+      completion: 0,
+      submissionRate: 0,
+      expertiseRate: 0,
+      timeSpent: 0
+    };
+  }
+  
+  let totalScore = 0;
+  let totalCompletion = 0;
+  let totalTimeSpent = 0;
+  let studentCount = 0;
+  
+  allStudentsData.forEach(student => {
+    if (!student) return;
+    
+    // Handle both detailed student data (with courses) and aggregated student data
+    if (student.courses && Array.isArray(student.courses)) {
+      // Detailed student data with course structure
+      let coursesToConsider = student.courses || [];
+      if (courseIds && Array.isArray(courseIds)) {
+        coursesToConsider = coursesToConsider.filter(course => 
+          courseIds.includes(course.id)
+        );
+      }
+      
+      // Calculate metrics for this student from course data
+      let studentScore = 0;
+      let studentCompletion = 0;
+      let studentTimeSpent = 0;
+      let validCourses = 0;
+      
+      coursesToConsider.forEach(course => {
+        if (course.summary && typeof course.summary.overallScore === 'number' && course.summary.overallScore > 0) {
+          studentScore += course.summary.overallScore;
+          studentCompletion += course.summary.completionRate || 0;
+          studentTimeSpent += course.summary.totalTimeSpent || 0;
+          validCourses++;
+        }
+      });
+      
+      // Average the student's metrics across their valid courses
+      if (validCourses > 0) {
+        totalScore += studentScore / validCourses;
+        totalCompletion += studentCompletion / validCourses;
+        totalTimeSpent += studentTimeSpent;
+        studentCount++;
+      }
+    } else {
+      // Aggregated student data (from fetchStudentsByTeacher)
+      const studentScore = student.scores?.average || student.averageScore || 0;
+      const studentCompletion = student.completion || student.completionRate || 0;
+      const studentTimeSpent = student.totalTimeSpent || student.timeSpent || 0;
+      
+      if (studentScore > 0) {
+        totalScore += studentScore;
+        totalCompletion += studentCompletion;
+        totalTimeSpent += studentTimeSpent;
+        studentCount++;
+      }
+    }
+  });
+  
+  // Calculate class averages
+  const averageTimeSpent = studentCount > 0 ? totalTimeSpent / studentCount : 0;
+  
+  return {
+    averageScore: studentCount > 0 ? totalScore / studentCount : 0,
+    completion: studentCount > 0 ? totalCompletion / studentCount : 0,
+    submissionRate: 75, // Default reasonable value since we don't have detailed assignment data
+    expertiseRate: 75, // Default reasonable value since we don't have detailed module data
+    timeSpent: averageTimeSpent
   };
 };
