@@ -10,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from pre_processing import create_risk_prediction_dataset, load_csv_data
+from sklearn.pipeline import Pipeline
 
 def train_risk_model():
     """
@@ -33,54 +34,48 @@ def train_risk_model():
     id_cols = ['studentId', 'courseId']
     X = features_df.drop(columns=id_cols)
     y = target_series
-    
+
+    # Build pipeline (avoid pre-scaling leakage in CV)
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('rf', RandomForestClassifier(
+            n_estimators=100,
+            max_depth=10,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            class_weight='balanced'
+        ))
+    ])
+
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    
-    print(f"Training set: {len(X_train)} samples")
-    print(f"Test set: {len(X_test)} samples")
-    
-    # Scale features
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    
-    # Train model
-    print("Training Random Forest model...")
-    model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=10,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        random_state=42,
-        class_weight='balanced'
-    )
-    
-    model.fit(X_train_scaled, y_train)
-    
-    # Evaluate model
-    print("\n" + "="*50)
-    print("MODEL EVALUATION")
-    print("="*50)
-    
-    # Cross-validation
-    cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=5, scoring='roc_auc')
+
+    # Cross-validation BEFORE fitting final model
+    print("Running cross-validation (pipeline with internal scaling)...")
+    cv_scores = cross_val_score(pipeline, X_train, y_train, cv=5, scoring='roc_auc')
     print(f"Cross-validation AUC: {cv_scores.mean():.3f} (+/- {cv_scores.std() * 2:.3f})")
-    
-    # Test set evaluation
-    y_pred = model.predict(X_test_scaled)
-    y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
-    
+
+    # Fit pipeline on full training split
+    pipeline.fit(X_train, y_train)
+
+    # Evaluate on test split
+    y_pred = pipeline.predict(X_test)
+    y_pred_proba = pipeline.predict_proba(X_test)[:, list(pipeline.named_steps['rf'].classes_).index(1)]
+
     print(f"Test AUC: {roc_auc_score(y_test, y_pred_proba):.3f}")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
-    
+
     print("\nConfusion Matrix:")
     print(confusion_matrix(y_test, y_pred))
-    
-    # Feature importance
+
+    # Access trained RF for feature importances
+    model = pipeline.named_steps['rf']
+    scaler = pipeline.named_steps['scaler']
+
     feature_importance = pd.DataFrame({
         'feature': X.columns,
         'importance': model.feature_importances_
@@ -93,17 +88,17 @@ def train_risk_model():
     model_dir = os.path.join(os.path.dirname(__file__), 'models')
     os.makedirs(model_dir, exist_ok=True)
     
-    # Save model
+    # Save model (entire pipeline for consistency)
     model_path = os.path.join(model_dir, 'at_risk_rf_model.pkl')
-    joblib.dump(model, model_path)
-    print(f"\nModel saved to: {model_path}")
-    
-    # Save scaler
+    joblib.dump(pipeline, model_path)
+    print(f"\nPipeline (model + scaler) saved to: {model_path}")
+
+    # Save scaler separately if needed elsewhere
     scaler_path = os.path.join(model_dir, 'scaler.pkl')
     joblib.dump(scaler, scaler_path)
     print(f"Scaler saved to: {scaler_path}")
-    
-    # Save feature names
+
+    # Save feature names (post leakage removal)
     features_path = os.path.join(model_dir, 'features.pkl')
     joblib.dump(list(X.columns), features_path)
     print(f"Feature names saved to: {features_path}")

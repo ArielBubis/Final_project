@@ -171,10 +171,14 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     # Load model components
     try:
         print("Loading model components...")
-        model = joblib.load(model_path)
-        scaler = joblib.load(scaler_path)
+        model = joblib.load(model_path)  # This is now a Pipeline
+        # If pipeline, scaler is inside; still load external scaler for backward compatibility
+        if os.path.exists(scaler_path):
+            scaler = joblib.load(scaler_path)
+        else:
+            scaler = getattr(model, 'named_steps', {}).get('scaler', None)
         model_features = joblib.load(features_path)
-        print(f"Model loaded successfully. Requires {len(model_features)} features.")
+        print(f"Model (pipeline) loaded successfully. Requires {len(model_features)} features.")
     except Exception as e:
         print(f"Error loading model components: {str(e)}")
         print(f"Make sure model files exist at:")
@@ -204,34 +208,43 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
         print(f"Warning: Found {missing_values.sum()} missing values. Filling with feature means.")
         X = X.fillna(X.mean())
     
-    # Scale the features
+    # Scale the features (only if external scaler needed)
     try:
-        X_scaled = scaler.transform(X)
+        if hasattr(model, 'predict_proba') and hasattr(model, 'named_steps') and 'scaler' in model.named_steps:
+            X_scaled = model.named_steps['scaler'].transform(X)
+        elif scaler is not None:
+            X_scaled = scaler.transform(X)
+        else:
+            X_scaled = X.values
     except Exception as e:
         print(f"Error scaling features: {str(e)}")
         return None
-    
+
     # Make predictions
     print("Making predictions...")
     try:
-        predictions = model.predict(X_scaled)
-        probabilities = model.predict_proba(X_scaled)
-        
-        # Get probability of being at risk (class 0) and not at risk (class 1)
-        at_risk_prob = probabilities[:, 0]  # Probability of being at risk
-        not_at_risk_prob = probabilities[:, 1]  # Probability of not being at risk
-        
+        # If pipeline, feed raw X so internal scaler applies; else use scaled
+        if hasattr(model, 'named_steps') and 'rf' in model.named_steps:
+            predictions = model.predict(X)
+            proba = model.predict_proba(X)
+        else:
+            predictions = model.predict(X_scaled)
+            proba = model.predict_proba(X_scaled)
+        classes = list(model.classes_) if hasattr(model, 'classes_') else list(model.named_steps['rf'].classes_)
+        at_risk_index = classes.index(1)
+        not_at_risk_index = classes.index(0)
+        at_risk_prob = proba[:, at_risk_index]
+        not_at_risk_prob = proba[:, not_at_risk_index]
     except Exception as e:
         print(f"Error making predictions: {str(e)}")
         return None
-    
-    # Add predictions to the dataframe
-    df['at_risk_prediction'] = predictions
+
+    df['at_risk_prediction'] = predictions  # prediction already class label (1=at_risk)
     df['at_risk_probability'] = at_risk_prob
     df['not_at_risk_probability'] = not_at_risk_prob
-    
-    # Create human-readable risk labels
-    df['risk_status'] = df['at_risk_prediction'].map({0: 'At Risk', 1: 'Not At Risk'})
+    # Provide unified risk_score (0-1) == probability of being at risk (class 1)
+    df['risk_score'] = at_risk_prob
+    df['risk_status'] = df['at_risk_prediction'].map({1: 'At Risk', 0: 'Not At Risk'})
     
     # Create confidence level categories
     def get_confidence_category(row):
@@ -253,8 +266,8 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     df['prediction_confidence'] = df.apply(get_confidence_category, axis=1)
     
     # Generate summary statistics
-    at_risk_count = (df['at_risk_prediction'] == 0).sum()
-    not_at_risk_count = (df['at_risk_prediction'] == 1).sum()
+    at_risk_count = (df['at_risk_prediction'] == 1).sum()
+    not_at_risk_count = (df['at_risk_prediction'] == 0).sum()
     total_count = len(df)
     
     print(f"\n{'='*50}")

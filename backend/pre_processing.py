@@ -466,6 +466,9 @@ def create_risk_prediction_dataset():
     # Get feature columns (exclude ID columns and target)
     id_cols = ['studentId', 'courseId']
     feature_cols = [col for col in ml_data.columns if col not in id_cols + [target_col]]
+    # Remove known leakage / target-construction components (risk_score and its direct components)
+    leakage_cols = {'risk_score', 'avg_monthly_score', 'avg_monthly_time', 'score_std'}
+    feature_cols = [c for c in feature_cols if c not in leakage_cols]
     
     features_df = ml_data[id_cols + feature_cols]
     target_series = ml_data[target_col]

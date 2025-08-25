@@ -45,6 +45,7 @@ CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "http://12
 # Global variables for model and features
 model = None
 feature_names = None
+scaler = None
 
 def load_model_and_features():
     """Load model and feature names with comprehensive error handling"""
@@ -57,6 +58,7 @@ def load_model_and_features():
         # Define paths
         model_path = os.path.join(script_dir, 'models', 'at_risk_rf_model.pkl')
         feature_names_path = os.path.join(script_dir, 'models', 'features.pkl')
+        scaler_path = os.path.join(script_dir, 'models', 'scaler.pkl')
         
         # Check if files exist
         if not os.path.exists(model_path):
@@ -76,6 +78,9 @@ def load_model_and_features():
         logger.info(f"Loading feature names from: {feature_names_path}")
         with open(feature_names_path, 'rb') as f:
             feature_names = joblib.load(f)
+        if os.path.exists(scaler_path):
+            global scaler
+            scaler = joblib.load(scaler_path)
         
         if feature_names is None or len(feature_names) == 0:
             raise ModelLoadError("Feature names loaded but are empty")
@@ -516,21 +521,18 @@ def predict():
         
         # Make prediction
         try:
-            prediction = model.predict(processed_data)[0]
-            probabilities = model.predict_proba(processed_data)[0]
-            
-            # Validate prediction results
-            if not isinstance(prediction, (int, np.integer)):
-                raise PredictionError(f"Invalid prediction type: {type(prediction)}")
-            
-            if not isinstance(probabilities, np.ndarray) or len(probabilities) != 2:
-                raise PredictionError("Invalid probabilities array")
-            
-            if not np.all(np.isfinite(probabilities)):
-                raise PredictionError("Non-finite values in probabilities")
-            
-            probabilities = probabilities.tolist()
-            
+            prediction = model.predict(processed_data)[0] if not hasattr(model, 'named_steps') else model.predict(pd.DataFrame(processed_data, columns=feature_names))[0]
+            if hasattr(model, 'predict_proba'):
+                if hasattr(model, 'named_steps'):
+                    proba = model.predict_proba(pd.DataFrame(processed_data, columns=feature_names))[0]
+                    classes = list(model.classes_)
+                else:
+                    proba = model.predict_proba(processed_data)[0]
+                    classes = list(model.classes_)
+            else:
+                raise PredictionError("Model lacks predict_proba")
+            at_risk_index = classes.index(1)
+            not_at_risk_index = classes.index(0)
         except Exception as e:
             error_msg = f"Model prediction failed: {str(e)}"
             logger.error(error_msg)
@@ -541,7 +543,7 @@ def predict():
         
         # Calculate risk score (probability of being at risk * 100)
         try:
-            risk_score = int(probabilities[0] * 100)  # probabilities[0] is probability of being at risk (class 0)
+            risk_score = int(proba[at_risk_index] * 100)
             if not 0 <= risk_score <= 100:
                 risk_score = max(0, min(100, risk_score))
         except Exception as e:
@@ -570,8 +572,8 @@ def predict():
             }
           # Build response
         response = {
-            'is_at_risk': bool(prediction == 0),  # Class 0 = at risk, Class 1 = not at risk
-            'probability': float(probabilities[0]),  # Probability of being at risk
+            'is_at_risk': bool(prediction == 1),
+            'probability': float(proba[at_risk_index]),
             'risk_score': risk_score,
             'risk_level': interventions['level'],
             'intervention': interventions
@@ -581,7 +583,7 @@ def predict():
         if feature_importances:
             response['risk_factors'] = [{'name': factor[0], 'importance': float(factor[1])} for factor in feature_importances]
         
-        logger.info(f"Prediction successful - Risk Score: {risk_score}, At Risk: {prediction == 0}")
+        logger.info(f"Prediction successful - Risk Score: {risk_score}, At Risk: {prediction == 1}")
         return jsonify(response)
         
     except Exception as e:
@@ -669,12 +671,11 @@ def predict_batch():
                 processed_data = preprocess_student_data_for_prediction(validated_data, feature_names)
                 
                 # Make prediction
-                prediction = model.predict(processed_data)[0]
-                probabilities = model.predict_proba(processed_data)[0]
-                
-                # Calculate risk score
-                risk_score = int(probabilities[0] * 100)
-                risk_score = max(0, min(100, risk_score))
+                prediction = model.predict(processed_data)[0] if not hasattr(model, 'named_steps') else model.predict(pd.DataFrame(processed_data, columns=feature_names))[0]
+                proba = model.predict_proba(pd.DataFrame(processed_data, columns=feature_names))[0] if hasattr(model, 'named_steps') else model.predict_proba(processed_data)[0]
+                classes = list(model.classes_)
+                at_risk_index = classes.index(1)
+                risk_score = int(proba[at_risk_index] * 100)
                 
                 # Get interventions
                 interventions = suggest_interventions(risk_score)
@@ -683,8 +684,8 @@ def predict_batch():
                 student_result = {
                     'studentId': student_data.get('studentId', f'student_{i}'),
                     'studentName': student_data.get('studentName', 'Unknown'),
-                    'is_at_risk': prediction == 0,
-                    'probability': probabilities[0],
+                    'is_at_risk': prediction == 1,
+                    'probability': proba[at_risk_index],
                     'risk_score': risk_score,
                     'risk_level': interventions['level'],
                     'intervention': interventions
@@ -799,14 +800,49 @@ def predict_from_csv():
             
             # Calculate summary statistics
             total_predictions = len(predictions_df)
-            at_risk_count = (predictions_df['at_risk_prediction'] == 0).sum()
+            # Correct orientation: class 1 = at risk
+            at_risk_count = (predictions_df['at_risk_prediction'] == 1).sum()
             confidence_distribution = predictions_df['prediction_confidence'].value_counts().to_dict()
-            
+
+            # Ensure we have a risk score probability for class 1
+            if 'risk_score' in predictions_df.columns:
+                risk_probs = predictions_df['risk_score'].astype(float)
+            elif 'at_risk_probability' in predictions_df.columns:
+                risk_probs = predictions_df['at_risk_probability'].astype(float)
+            else:
+                # Fallback: use 0 vector
+                risk_probs = pd.Series([0.0]*len(predictions_df))
+
+            # Define bucket thresholds (probability scale 0-1)
+            high_mask = risk_probs >= 0.70
+            medium_mask = (risk_probs >= 0.55) & (risk_probs < 0.70)
+            low_mask = (risk_probs >= 0.45) & (risk_probs < 0.55)
+            minimal_mask = risk_probs < 0.45
+
+            bucket_counts = {
+                'high': int(high_mask.sum()),
+                'medium': int(medium_mask.sum()),
+                'low': int(low_mask.sum()),
+                'minimal': int(minimal_mask.sum())
+            }
+
+            # Optional: annotate each prediction with bucket
+            def bucket_label(p):
+                if p >= 0.70: return 'high'
+                if p >= 0.55: return 'medium'
+                if p >= 0.45: return 'low'
+                return 'minimal'
+            # Add only if not already present
+            if 'risk_bucket' not in response_data.columns and len(response_data):
+                response_data['risk_bucket'] = risk_probs.apply(bucket_label)
+                predictions_list = response_data.to_dict('records')
+
             summary = {
                 'total_student_courses': total_predictions,
                 'at_risk_count': int(at_risk_count),
                 'at_risk_percentage': float(at_risk_count / total_predictions * 100) if total_predictions > 0 else 0,
-                'confidence_distribution': confidence_distribution
+                'confidence_distribution': confidence_distribution,
+                'risk_bucket_counts': bucket_counts
             }
             
             # Build response
@@ -884,10 +920,10 @@ def get_at_risk_students():
             student_lookup = {}
             course_lookup = {}
         
-        # Filter for at-risk students (either at_risk_prediction = 0 or risk_score >= 50)
+        # Filter for at-risk students: prediction == 1 (at risk) OR probability threshold
         at_risk_df = df[
-            (df['at_risk_prediction'] == 0) | 
-            (df['risk_score'] >= 0.5)  # Assuming risk_score is probability (0-1)
+            (df['at_risk_prediction'] == 1) |
+            (df.get('risk_score', df.get('at_risk_probability', 0)) >= 0.70)
         ].copy()
           # Convert to list of dictionaries for frontend consumption
         at_risk_students = []
@@ -908,7 +944,7 @@ def get_at_risk_students():
                 'gradeLevel': int(row.get('gradeLevel', 12)),
                 'mlRiskScore': float(row.get('risk_score', 0) * 100),  # Convert to percentage
                 'mlRiskLevel': str(row.get('risk_status', 'Unknown')).lower(),
-                'isAtRisk': bool(row.get('at_risk_prediction', 1) == 0),
+                'isAtRisk': bool(row.get('at_risk_prediction', 0) == 1),
                 'probability': float(row.get('at_risk_probability', 0)),
                 'confidence': str(row.get('prediction_confidence', 'Unknown')),
                 'finalScore': float(row.get('finalScore', 0)),
@@ -951,8 +987,9 @@ def get_at_risk_students():
             'at_risk_percentage': (at_risk_count / total_students * 100) if total_students > 0 else 0,
             'prediction_file': latest_file,
             'high_risk_count': len([s for s in at_risk_students if s['mlRiskScore'] >= 70]),
-            'medium_risk_count': len([s for s in at_risk_students if 40 <= s['mlRiskScore'] < 70]),
-            'low_risk_count': len([s for s in at_risk_students if s['mlRiskScore'] < 40])
+            'medium_risk_count': len([s for s in at_risk_students if 55 <= s['mlRiskScore'] < 70]),
+            'low_risk_count': len([s for s in at_risk_students if 45 <= s['mlRiskScore'] < 55]),
+            'minimal_risk_count': len([s for s in at_risk_students if s['mlRiskScore'] < 45])
         }
         
         response = {
