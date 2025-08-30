@@ -307,8 +307,8 @@ export const calculateClassAverages = (allStudentsData, courseIds = null) => {
   return {
     averageScore: studentCount > 0 ? totalScore / studentCount : 0,
     completion: studentCount > 0 ? totalCompletion / studentCount : 0,
-    submissionRate: 75, // Default reasonable value since we don't have detailed assignment data
-    expertiseRate: 75, // Default reasonable value since we don't have detailed module data
+    // submissionRate: 75, // Default reasonable value since we don't have detailed assignment data
+    // expertiseRate: 75, // Default reasonable value since we don't have detailed module data
     timeSpent: averageTimeSpent
   };
 };

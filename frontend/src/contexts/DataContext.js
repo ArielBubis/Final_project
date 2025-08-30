@@ -84,6 +84,47 @@ export const DataProvider = ({ children }) => {
       };
     });
   }, []);
+
+  // Helper: determine if an identifier looks like a Firebase Auth UID (heuristic used previously in multiple places)
+  const isLikelyUid = useCallback((value) => {
+    return value && typeof value === 'string' && !value.includes('@') && value.length > 10;
+  }, []);
+
+  /**
+   * Resolve a teacher identifier that may be either:
+   *  - A Firestore teacher document ID (already the internal teacherId)
+   *  - A Firebase Auth UID (requires lookup on users collection by uid & role=teacher)
+   * Returns an object { teacherId, found }. If not found (when UID supplied but no match), found=false.
+   * This consolidates previously duplicated code in fetchTeacherDashboard & fetchTeacherCourses.
+   */
+  const resolveTeacherId = useCallback(async (teacherUidOrId) => {
+    if (!teacherUidOrId) return { teacherId: null, found: false };
+
+    // Shortcut: if it does not look like a UID, treat it as already the teacher document ID
+    if (!isLikelyUid(teacherUidOrId)) {
+      return { teacherId: teacherUidOrId, found: true };
+    }
+
+    try {
+      console.log(`Looking up teacher ID for UID: ${teacherUidOrId}`);
+      const teachersWithUid = await fetchDocuments('users', {
+        filters: [
+          { field: 'uid', operator: '==', value: teacherUidOrId },
+          { field: 'role', operator: '==', value: 'teacher' }
+        ]
+      });
+      if (teachersWithUid && teachersWithUid.length > 0) {
+        const teacherId = teachersWithUid[0].id; // Firestore doc ID
+        console.log(`Found teacher ID: ${teacherId} for UID: ${teacherUidOrId}`);
+        return { teacherId, found: true };
+      }
+      console.warn(`No teacher found with UID: ${teacherUidOrId}`);
+      return { teacherId: null, found: false };
+    } catch (e) {
+      console.error(`Error resolving teacher ID for UID ${teacherUidOrId}:`, e);
+      return { teacherId: null, found: false };
+    }
+  }, [fetchDocuments, isLikelyUid]);
   
   // Helper function to get from query cache
   const getFromQueryCache = useCallback((cacheType, key) => {
@@ -170,29 +211,9 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-      let actualTeacherId = teacherUidOrId;
-        // If we're given a UID (Firebase Auth ID), we need to get the actual teacher ID
-      // Check if this looks like a UID (contains no @ and is long alphanumeric)
-      if (!teacherUidOrId.includes('@') && teacherUidOrId.length > 10) {
-        console.log(`Looking up teacher ID for UID: ${teacherUidOrId}`);
-        
-        // Find the teacher document by searching for the UID field
-        const teachersWithUid = await fetchDocuments('users', {
-          filters: [
-            { field: 'uid', operator: '==', value: teacherUidOrId },
-            { field: 'role', operator: '==', value: 'teacher' }
-          ]
-        });
-        
-        if (teachersWithUid && teachersWithUid.length > 0) {
-          // The document ID is the teacher ID we need
-          actualTeacherId = teachersWithUid[0].id;
-          console.log(`Found teacher ID: ${actualTeacherId} for UID: ${teacherUidOrId}`);
-        } else {
-          console.warn(`No teacher found with UID: ${teacherUidOrId}`);
-          return null;
-        }
-      }
+  // Resolve potential UID to actual teacher document ID
+  const { teacherId: actualTeacherId, found } = await resolveTeacherId(teacherUidOrId);
+  if (!found || !actualTeacherId) return null;
       
       console.log(`Fetching dashboard data for teacher ID: ${actualTeacherId}`);
       const dashboard = await fetchDocumentById('teacherDashboards', actualTeacherId);
@@ -222,29 +243,9 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-      let actualTeacherId = teacherUidOrId;
-        // If we're given a UID (Firebase Auth ID), we need to get the actual teacher ID
-      // Check if this looks like a UID (contains no @ and is long alphanumeric)
-      if (!teacherUidOrId.includes('@') && teacherUidOrId.length > 10) {
-        console.log(`Looking up teacher ID for UID: ${teacherUidOrId}`);
-        
-        // Find the teacher document by searching for the UID field
-        const teachersWithUid = await fetchDocuments('users', {
-          filters: [
-            { field: 'uid', operator: '==', value: teacherUidOrId },
-            { field: 'role', operator: '==', value: 'teacher' }
-          ]
-        });
-        
-        if (teachersWithUid && teachersWithUid.length > 0) {
-          // The document ID is the teacher ID we need
-          actualTeacherId = teachersWithUid[0].id;
-          console.log(`Found teacher ID: ${actualTeacherId} for UID: ${teacherUidOrId}`);
-        } else {
-          console.warn(`No teacher found with UID: ${teacherUidOrId}`);
-          return [];
-        }
-      }
+  // Resolve potential UID to actual teacher document ID
+  const { teacherId: actualTeacherId, found } = await resolveTeacherId(teacherUidOrId);
+  if (!found || !actualTeacherId) return [];
       
       console.log(`Searching for courses with teacher ID: ${actualTeacherId}`);
       

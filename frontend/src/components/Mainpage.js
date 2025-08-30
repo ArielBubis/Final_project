@@ -274,7 +274,6 @@ const MainPage = () => {
                 const teacherStudents = await fetchStudentsByTeacher(currentUser?.uid);
                 console.log('Found students:', teacherStudents?.length || 0);
                 
-                // FIXED: Transform student data to match the required format
                 const formattedStudents = (teacherStudents || []).map(student => ({
                     id: student.id || student.studentId,
                     name: `${student.firstName || 'Unknown'} ${student.lastName || 'Student'}`,
@@ -286,11 +285,10 @@ const MainPage = () => {
                     lastActive: student.lastAccessed || new Date().toISOString(),
                     performance: Math.round(student.scores?.average || 0),
                     completion: Math.round(student.completion || 0),                    scores: student.scores || { average: 0 },
-                    // FIXED: Better risk score calculation
                     riskScore: calculateRiskScore(student),
                     // TODO: In new DB design, courses should be fetched from enrollments + studentCourseSummaries
                     // This will need to be updated to query the normalized structure
-                    courses: student.courses || [] // DEPRECATED: Will be empty in new normalized design
+                    courses: student.courses || [] 
                 }));
 
                 // Get teacher analytics if available
