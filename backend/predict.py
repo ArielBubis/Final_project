@@ -71,7 +71,13 @@ def create_early_warning_features(df):
         df['early_time_variance'] = 0
     
     # Time-to-score efficiency ratio (early months)
-    df['early_time_score_ratio'] = df['early_avg_time'] / df['early_avg_score'].replace(0, 1)
+    # Previous implementation divided by early_avg_score with .replace(0,1) which inflates ratio when score is 0.
+    # Use 0 when score is 0 to avoid artificial large ratios.
+    df['early_time_score_ratio'] = np.where(
+        df['early_avg_score'] > 0,
+        df['early_avg_time'] / df['early_avg_score'],
+        0
+    )
     
     # Early engagement rate (proportion of months with activity)
     if early_time_columns:
@@ -90,18 +96,24 @@ def create_early_warning_features(df):
         df['weighted_early_score'] = df['early_avg_score']
     
     # Early trend (slope of scores over first 3 months)
+    # Use actual month numbers from column names instead of re-numbering sequentially when months missing.
     df['early_trend'] = 0  # Default value
-    
     if len(early_score_columns) >= 2:
+        month_numbers = [int(c.split('_')[-1]) for c in early_score_columns]
         slopes = []
         for _, row in df.iterrows():
-            scores = [row[col] for col in early_score_columns if not pd.isna(row[col]) and row[col] > 0]
-            if len(scores) >= 2:
-                months = list(range(1, len(scores) + 1))
+            y_vals = []
+            x_months = []
+            for col, m in zip(early_score_columns, month_numbers):
+                val = row[col]
+                if not pd.isna(val) and val > 0:
+                    y_vals.append(val)
+                    x_months.append(m)
+            if len(y_vals) >= 2:
                 try:
-                    slope, _, _, _, _ = stats.linregress(months, scores)
+                    slope, _, _, _, _ = stats.linregress(x_months, y_vals)
                     slopes.append(slope)
-                except:
+                except Exception:
                     slopes.append(0)
             else:
                 slopes.append(0)
@@ -208,66 +220,85 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
         print(f"Warning: Found {missing_values.sum()} missing values. Filling with feature means.")
         X = X.fillna(X.mean())
     
-    # Scale the features (only if external scaler needed)
+    # Decide whether we need external scaling: if pipeline contains scaler we pass raw X; else transform.
     try:
-        if hasattr(model, 'predict_proba') and hasattr(model, 'named_steps') and 'scaler' in model.named_steps:
-            X_scaled = model.named_steps['scaler'].transform(X)
-        elif scaler is not None:
-            X_scaled = scaler.transform(X)
+        need_external_scaling = not (hasattr(model, 'named_steps') and 'scaler' in model.named_steps)
+        if need_external_scaling and scaler is not None:
+            X_for_inference = scaler.transform(X)
         else:
-            X_scaled = X.values
+            X_for_inference = X  # Pipeline (with internal scaler) or no scaler required
     except Exception as e:
-        print(f"Error scaling features: {str(e)}")
+        print(f"Error preparing features for prediction: {str(e)}")
         return None
 
     # Make predictions
     print("Making predictions...")
     try:
-        # If pipeline, feed raw X so internal scaler applies; else use scaled
-        if hasattr(model, 'named_steps') and 'rf' in model.named_steps:
-            predictions = model.predict(X)
-            proba = model.predict_proba(X)
+        # Predict (pipeline handles internal scaling if present)
+        predictions = model.predict(X_for_inference)
+        proba = model.predict_proba(X_for_inference)
+
+        # Robust class label handling
+        if hasattr(model, 'classes_'):
+            classes = list(model.classes_)
+        elif hasattr(model, 'named_steps') and 'rf' in model.named_steps and hasattr(model.named_steps['rf'], 'classes_'):
+            classes = list(model.named_steps['rf'].classes_)
         else:
-            predictions = model.predict(X_scaled)
-            proba = model.predict_proba(X_scaled)
-        classes = list(model.classes_) if hasattr(model, 'classes_') else list(model.named_steps['rf'].classes_)
-        at_risk_index = classes.index(1)
-        not_at_risk_index = classes.index(0)
+            raise ValueError("Model does not expose classes_.")
+
+        # Determine which class represents 'At Risk'
+        if set(classes) >= {0, 1}:  # numeric labels present
+            at_risk_label = 1
+            not_at_risk_label = 0
+        else:
+            lowered = [str(c).lower() for c in classes]
+            if 'at risk' in lowered:
+                at_risk_label = classes[lowered.index('at risk')]
+                # Choose the other class as not at risk
+                not_at_risk_label = [c for c in classes if c != at_risk_label][0]
+            else:
+                # Fallback: assume first class is not at risk, second is at risk
+                if len(classes) == 2:
+                    not_at_risk_label, at_risk_label = classes[0], classes[1]
+                else:
+                    raise ValueError(f"Unexpected class labels: {classes}")
+
+        at_risk_index = classes.index(at_risk_label)
+        not_at_risk_index = classes.index(not_at_risk_label)
         at_risk_prob = proba[:, at_risk_index]
         not_at_risk_prob = proba[:, not_at_risk_index]
     except Exception as e:
         print(f"Error making predictions: {str(e)}")
         return None
 
-    df['at_risk_prediction'] = predictions  # prediction already class label (1=at_risk)
+    df['at_risk_prediction'] = predictions
     df['at_risk_probability'] = at_risk_prob
     df['not_at_risk_probability'] = not_at_risk_prob
-    # Provide unified risk_score (0-1) == probability of being at risk (class 1)
+    # risk_score is explicitly the probability of being at risk
     df['risk_score'] = at_risk_prob
-    df['risk_status'] = df['at_risk_prediction'].map({1: 'At Risk', 0: 'Not At Risk'})
-    
-    # Create confidence level categories
-    def get_confidence_category(row):
-        # Use the probability of the predicted class
-        if row['at_risk_prediction'] == 0:  # Predicted at risk
-            prob = row['at_risk_probability']
-        else:  # Predicted not at risk
-            prob = row['not_at_risk_probability']
-        
-        if prob >= 0.9:
+    df['risk_status'] = df['at_risk_prediction'].map({at_risk_label: 'At Risk', not_at_risk_label: 'Not At Risk'})
+
+    # Confidence category based on probability of predicted class (corrected logic)
+    predicted_class_prob = np.where(
+        df['at_risk_prediction'] == at_risk_label,
+        df['at_risk_probability'],
+        df['not_at_risk_probability']
+    )
+
+    def map_confidence(p):
+        if p >= 0.90:
             return 'Very High'
-        elif prob >= 0.75:
+        if p >= 0.75:
             return 'High'
-        elif prob >= 0.6:
+        if p >= 0.60:
             return 'Medium'
-        else:
-            return 'Low'
-    
-    df['prediction_confidence'] = df.apply(get_confidence_category, axis=1)
+        return 'Low'
+
+    df['prediction_confidence'] = [map_confidence(p) for p in predicted_class_prob]
     
     # Generate summary statistics
-    at_risk_count = (df['at_risk_prediction'] == 1).sum()
-    not_at_risk_count = (df['at_risk_prediction'] == 0).sum()
+    at_risk_count = (df['at_risk_prediction'] == at_risk_label).sum()
+    not_at_risk_count = (df['at_risk_prediction'] == not_at_risk_label).sum()
     total_count = len(df)
     
     print(f"\n{'='*50}")
@@ -422,8 +453,8 @@ if __name__ == "__main__":
         print(f"\nSample predictions (first 5 rows):")
         print(predictions[available_display_cols].head())
         
-        # Show high-risk students
-        at_risk_students = predictions[predictions['at_risk_prediction'] == 0]
+        # Show high-risk students (use risk_status for robustness)
+        at_risk_students = predictions[predictions['risk_status'] == 'At Risk']
         if len(at_risk_students) > 0:
             print(f"\nHigh-risk students ({len(at_risk_students)} total):")
             high_risk_display = at_risk_students[available_display_cols].head(10)

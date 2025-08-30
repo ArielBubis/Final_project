@@ -16,7 +16,7 @@ import StudentList from './Students/StudentList';
 import MLRiskStudentList from './Students/components/MLRiskStudentList';
 import { formatTimestampForDisplay } from '../utils/firebaseUtils';
 import styles from '../styles/modules/MainPage.module.css';
-import { getEnhancedRiskAssessment } from '../services/riskPredictionService';
+import { getEnhancedRiskAssessment, checkHealth, isMlServiceAvailable } from '../services/riskPredictionService';
 
 const MainPage = () => {
     const { currentUser, userRole } = useAuth();
@@ -44,6 +44,7 @@ const MainPage = () => {
     const [error, setError] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [selectedTab, setSelectedTab] = useState('overview');
+    const [mlServiceStatus, setMlServiceStatus] = useState(null);
 
     // UPDATED: Dashboard metrics derived from fetched data with fallbacks
     const dashboardMetrics = useMemo(() => {
@@ -121,23 +122,38 @@ const MainPage = () => {
             const studentsWithPredictions = await Promise.all(
                 studentList.map(async (student) => {
                     try {
-                        // FIXED: Better data transformation for ML model
+                        // Build payload matching backend expectations: courses[].assignments[].progress
+                        // Derive numeric grade level safely (avoid letter grades like 'A')
+                        const rawGradeLevel = student.gradeLevel ?? student.gradeLevelNumeric ?? student.gradeLevelNum ?? student.grade;
+                        let numericGradeLevel = 12;
+                        if (typeof rawGradeLevel === 'number') {
+                            numericGradeLevel = rawGradeLevel;
+                        } else if (typeof rawGradeLevel === 'string') {
+                            const parsed = parseInt(rawGradeLevel, 10);
+                            if (!isNaN(parsed)) numericGradeLevel = parsed; // ignore letters like 'A'
+                        }
+
                         const studentData = {
-                            ...student,
-                            courses: student.courses || [],
-                            averageScore: student.performance || student.scores?.average || 0,
-                            completionRate: student.completion || student.completionRate || 0,
-                            lastAccessed: student.lastActive || student.lastAccessed || new Date().toISOString(),
-                            // Add more comprehensive assignment data
-                            assignments: (student.courses || []).reduce((allAssignments, course) => {
-                                const courseAssignments = (course.assignments || []).map(assignment => ({
-                                    ...assignment,
-                                    courseId: course.id,
-                                    courseName: course.name || course.courseName
-                                }));
-                                return allAssignments.concat(courseAssignments);
-                            }, [])
+                            studentId: student.id,
+                            studentName: student.name,
+                            gradeLevel: numericGradeLevel,
+                            averageScore: Number(student.performance || student.scores?.average || 0),
+                            completionRate: Number(student.completion || student.completionRate || 0),
+                            courses: (student.courses || []).map(course => ({
+                                id: course.id,
+                                name: course.name || course.courseName,
+                                assignments: (course.assignments || []).map(a => ({
+                                    // Only send minimal required progress structure
+                                    progress: {
+                                        totalScore: Number(a.progress?.totalScore ?? a.score ?? 0),
+                                        totalTime: Number(a.progress?.totalTime ?? a.timeSpent ?? 0),
+                                        isLate: Boolean(a.progress?.isLate ?? a.isLate ?? false)
+                                    }
+                                }))
+                            }))
                         };
+                        // Debug: log key fields for validation
+                        // console.debug('ML payload', { studentId: student.id, gradeLevel: numericGradeLevel, courseCount: studentData.courses.length });
                         
                         const riskAssessment = await getEnhancedRiskAssessment(studentData, true);
                         
@@ -156,9 +172,9 @@ const MainPage = () => {
                 })
             );
             
-            // Filter students with ML predictions who are at medium or high risk (not low)
+            // Do not pre-filter low risk here; let downstream component decide. Sort by ML risk.
             const riskStudents = studentsWithPredictions
-                .filter(student => student.mlRiskLevel && student.mlRiskLevel !== 'low')
+                .filter(s => s.mlRiskScore !== undefined)
                 .sort((a, b) => b.mlRiskScore - a.mlRiskScore);
                 
             console.log('Found', riskStudents.length, 'students at risk according to ML model');
@@ -177,10 +193,12 @@ const MainPage = () => {
     };
 
     useEffect(() => {
-        const fetchData = async () => {
+    const fetchData = async () => {
             try {
                 setLoading(true);
                 setError(null);
+        // Health check for ML service (non-blocking)
+        checkHealth().then(res => setMlServiceStatus(res));
                 
                 console.log('MainPage: Starting data fetch for user:', currentUser?.email);
                 
@@ -396,7 +414,7 @@ const MainPage = () => {
         setSelectedTab(key);
     };
 
-    return (
+        return (
         <div className={styles.mainPage}>
             <div className={styles.dashboardHeader}>
                 <div className={styles.welcomeSection}>
@@ -412,6 +430,14 @@ const MainPage = () => {
                             {t("Mainpage", "refresh")}
                         </Button>
                     </p>
+                                        {mlServiceStatus && !mlServiceStatus.ok && (
+                                            <Alert 
+                                                type="warning" 
+                                                showIcon 
+                                                message="ML service unavailable - showing fallback scores where needed" 
+                                                style={{ marginTop: 8 }}
+                                            />
+                                        )}
                 </div>
             </div>
 

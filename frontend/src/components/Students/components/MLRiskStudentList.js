@@ -12,22 +12,10 @@ import PropTypes from 'prop-types';
  * Uses CSV prediction data when available, falls back to props
  */
 const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error: propError }) => {
-  // Filter function to exclude "not at risk" students
+  // Show all students that have ML scores; downstream UI will color by level
   const filterAtRiskStudents = (studentList) => {
     if (!studentList || !Array.isArray(studentList)) return [];
-    
-    return studentList.filter(student => {
-      const riskLevel = (student.mlRiskLevel || student.risk_status || '').toLowerCase();
-      const isAtRisk = student.isAtRisk;
-      
-      // Exclude students who are explicitly "not at risk"
-      if (riskLevel === 'not at risk' || riskLevel === 'low risk' || isAtRisk === false) {
-        return false;
-      }
-      
-      // Include students with high, medium risk, or explicitly at risk
-      return riskLevel === 'high' || riskLevel === 'medium' || riskLevel === 'at risk' || isAtRisk === true;
-    });
+    return studentList.filter(s => s.mlRiskScore !== undefined);
   };
   const [students, setStudents] = useState(filterAtRiskStudents(propStudents) || []);
   const [loading, setLoading] = useState(propLoading || false);

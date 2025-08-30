@@ -1,6 +1,31 @@
 import { calculateRiskAssessment } from '../utils/scoreCalculations';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Base URL for backend ML API
+export const API_BASE_URL = 'http://localhost:5000/api';
+
+// Simple in-memory flag about backend availability
+let mlServiceAvailable = true;
+
+export const isMlServiceAvailable = () => mlServiceAvailable;
+
+/**
+ * Perform a health check against the backend API
+ */
+export const checkHealth = async () => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`);
+    if (!res.ok) {
+      mlServiceAvailable = false;
+      return { status: 'unhealthy', ok: false };
+    }
+    const data = await res.json();
+    mlServiceAvailable = !!data.model_loaded;
+    return { status: data.status, ok: mlServiceAvailable, featureCount: data.feature_count };
+  } catch (e) {
+    mlServiceAvailable = false;
+    return { status: 'unreachable', ok: false };
+  }
+};
 
 /**
  * Get risk prediction for a student using ML model
@@ -16,16 +41,15 @@ export const getPrediction = async (studentData) => {
       },
       body: JSON.stringify(studentData)
     });
-    
     if (!response.ok) {
       throw new Error(`Server responded with status: ${response.status}`);
     }
-    
-    return await response.json();
+    const json = await response.json();
+    return json;
   } catch (error) {
-    console.error('Error getting risk prediction:', error);
-    // Fallback to client-side calculation if server is unavailable
-    return null;
+    console.warn('ML service unavailable, falling back to rule-based scoring. Reason:', error.message);
+    mlServiceAvailable = false;
+    return null; // Signal caller to fallback
   }
 };
 
@@ -36,25 +60,22 @@ export const getPrediction = async (studentData) => {
  * @returns {Promise<Object>} Risk assessment results
  */
 export const getEnhancedRiskAssessment = async (data, isStudentLevel = false) => {
-  // Try to get prediction from ML model
   try {
     const mlPrediction = await getPrediction(data);
-      if (mlPrediction && mlPrediction.risk_score !== undefined) {
+    if (mlPrediction && mlPrediction.risk_score !== undefined) {
       return {
         score: mlPrediction.risk_score,
-        level: mlPrediction.risk_level || (mlPrediction.risk_score >= 70 ? 'high' : 
-               mlPrediction.risk_score >= 40 ? 'medium' : 'low'),
+        level: mlPrediction.risk_level || (mlPrediction.risk_score >= 70 ? 'high' : mlPrediction.risk_score >= 40 ? 'medium' : 'low'),
         factors: mlPrediction.intervention?.suggestions || mlPrediction.intervention?.interventions || [],
         isAtRisk: mlPrediction.is_at_risk || mlPrediction.risk_score >= 40,
-        mlPrediction: mlPrediction  // Include original ML response for debugging
+        mlPrediction
       };
     }
   } catch (err) {
-    console.error("Error getting ML prediction, falling back to rule-based assessment:", err);
-    // Continue with existing logic if ML fails
+    console.warn('Error during ML prediction, using rule-based fallback:', err.message);
   }
-    // Fall back to the original rule-based assessment
-  return calculateRiskAssessment(data, isStudentLevel);
+  // Fallback
+  return { ...calculateRiskAssessment(data, isStudentLevel), fallback: true };
 };
 
 /**
