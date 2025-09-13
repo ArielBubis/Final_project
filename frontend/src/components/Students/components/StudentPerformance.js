@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Card as AntCard, Row, Col, Empty, Switch, Space, Select } from 'antd';import styles from '../../../styles/modules/Students.module.css';
+import { Card as AntCard, Row, Col, Empty, Switch, Space, Select } from 'antd';
+import styles from '../../../styles/modules/StudentPerformance.module.css';
 import RadarChart from '../../Visualization/RadarChart';
 import PerformanceMetricsLegend from '../../Visualization/PerformanceMetricsLegend';
 import { generateRadarChartData } from '../../../utils/dataProcessingUtils';
@@ -107,12 +108,12 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
       title={
         <div>
           {/* First Row: Title */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' , paddingTop: '13px' }}>
+          <div className={styles.titleRow}>
             <span>{t('PerformanceMetrics', 'Performance Metrics')}</span>
           </div>
 
           {/* Second Row: Course Filter and Toggle Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '8px' }}>
+          <div className={styles.filterRow}>
             <Select
               value={selectedCourse}
               onChange={onCourseChange}
@@ -127,7 +128,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
               style={{ width: 200, marginRight: '16px' }}
             />
             <Space>
-              <span style={{ fontSize: '14px', fontWeight: 'normal' }}>
+              <span className={styles.toggleLabel}>
                 {t('PerformanceMetrics', 'Show Class Average')}
               </span>
               <Switch

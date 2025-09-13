@@ -1,3 +1,22 @@
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+}
+
+.filterRow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.toggleLabel {
+  font-size: 14px;
+  font-weight: normal;
+}
 .cardContent {
   height: auto;
   display: flex;
