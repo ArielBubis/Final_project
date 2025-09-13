@@ -44,13 +44,15 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
     }
   };
 
-  // Format student name
   const getStudentName = (student) => {
     if (student.name) return student.name;
     if (student.firstName && student.lastName) return `${student.firstName} ${student.lastName}`;
+    // NEW: handle CSV fields
+    if (student.first_name && student.last_name) return `${student.first_name} ${student.last_name}`;
+    if (student.student_name) return student.student_name;
     return `Student ${student.studentId || student.id}`;
   };
-
+  
   return (
     <Card className={styles.riskStudentCard}>
       <div className={styles.riskStudentHeader}>
