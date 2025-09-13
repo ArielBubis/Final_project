@@ -46,3 +46,4 @@ backend/INTEGRATION_SUMMARY.md
 backend/API_USAGE_GUIDE.md
 backend/venv/
 backend/app.log
+.idea
