@@ -317,7 +317,7 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
                   options={courseOptions.map(c => ({ label: c, value: c }))}
                 />
               </Col>
-              <Col xs={24} md={6}>
+              {/* <Col xs={24} md={6}>
                 <label style={{ fontSize:12, fontWeight:600 }}>Risk Levels</label>
                 <Select
                   mode="multiple"
@@ -328,11 +328,11 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
                   onChange={v => setSelectedRiskLevels(v)}
                   options={riskLevelOptions.map(l => ({ label: l.toUpperCase(), value: l }))}
                 />
-              </Col>
-              <Col xs={24} md={4}>
+              </Col> */}
+              {/* <Col xs={24} md={4}>
                 <label style={{ fontSize:12, fontWeight:600 }}>At-Risk Only</label>
                 <div><Checkbox checked={atRiskOnly} onChange={e => setAtRiskOnly(e.target.checked)}>Only high/at risk</Checkbox></div>
-              </Col>
+              </Col> */}
             </Row>
             <Row gutter={16}>
               <Col xs={24} md={12}>
