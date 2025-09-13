@@ -24,8 +24,7 @@ const PerformanceMetricsLegend = ({
     if (metricName.toLowerCase().includes('time') || metricName.toLowerCase().includes('duration')) {
       return '#722ed1'; // Purple for neutral time metrics
     }
-    
-    // Try to coerce numeric value if it's a string like '3h' or '75%'
+    // Coerce numeric value if provided as a string like '75%' or '3h'
     let numeric = value;
     if (typeof value === 'string') {
       const parsed = parseFloat(value.replace(/[^0-9.\-]/g, ''));
@@ -33,8 +32,7 @@ const PerformanceMetricsLegend = ({
     }
 
     if (typeof numeric !== 'number' || Number.isNaN(numeric)) {
-      // Unknown numeric value: default neutral color
-      return '#d9d9d9';
+      return '#d9d9d9'; // neutral gray when unknown
     }
 
     if (numeric >= 80) return '#52c41a'; // Green for excellent
@@ -143,12 +141,6 @@ const PerformanceMetricsLegend = ({
         </div>
       </div>
       
-      {/* Explanation if showComparison is true */}
-      {showComparison && (
-        <div style={{ marginTop: '10px', fontSize: '0.85em', color: '#666' }}>
-          <p>* Smaller dots show class average for comparison</p>
-        </div>
-      )}
     </div>
   );
 };

@@ -47,10 +47,8 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     hasClassAverage: !!classAverage,
     classAverageData: classAverage
   });
-  // Build the metrics table values based on the currently selected course and toggle state.
-  // Use radarChartData as the authoritative source for metric values (it is already computed
-  // for the selected course via generateRadarChartData). When radarChartData is empty fall
-  // back to existing student-level fields.
+  // Build the metrics table values based on the currently selected course.
+  // The table must always show the student's metrics (ignore the Show Class Average toggle).
   const performanceMetrics = useMemo(() => {
     if (!student) return [];
 
@@ -63,19 +61,17 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     const expertise = findMetric('expertise') || {};
     const time = findMetric('time') || {};
 
-    // Always display the student's values in the table (ignore showClassAverage toggle)
-    const round = (v) => (typeof v === 'number' ? Math.round(v) : 0);
+    // Use student values only (prefer radarChartData student values when present)
+    const overallVal = typeof overall.value === 'number' ? Math.round(overall.value) : Math.round(student.averageScore || 0);
+    const completionVal = typeof completion.value === 'number' ? Math.round(completion.value) : Math.round(student.completionRate || 0);
+    const submissionVal = typeof submission.value === 'number' ? Math.round(submission.value) : Math.round(student.submissionRate || 0);
+    const expertiseVal = typeof expertise.value === 'number' ? Math.round(expertise.value) : Math.round(student.expertiseRate || 0);
 
-    const overallVal = round(overall.value ?? student.averageScore ?? 0);
-    const completionVal = round(completion.value ?? student.completionRate ?? 0);
-    const submissionVal = round(submission.value ?? student.submissionRate ?? 0);
-    const expertiseVal = round(expertise.value ?? student.expertiseRate ?? 0);
-
-    // Convert Time Spent from minutes -> hours for TABLE display only
-    const studentTimeRaw = typeof time.raw === 'number' ? Math.round(time.raw) : Math.round(student.totalTimeSpent || student.timeSpent || 0);
-    const studentHours = Math.round(studentTimeRaw / 60);
-    const classTimeRaw = typeof time.classAverageRaw === 'number' ? Math.round(time.classAverageRaw) : Math.round(classAverage?.timeSpent || 0);
-    const classHours = Math.round(classTimeRaw / 60);
+    // Time: convert minutes -> hours for the TABLE only and display as an integer with 'h' suffix
+    const studentTimeMinutes = typeof time.raw === 'number' ? time.raw : (student.totalTimeSpent || student.timeSpent || 0);
+    const studentHours = Math.round(studentTimeMinutes / 60);
+    const classTimeMinutes = typeof time.classAverageRaw === 'number' ? time.classAverageRaw : (classAverage?.timeSpent || 0);
+    const classHours = Math.round(classTimeMinutes / 60);
 
     return [
       {
@@ -111,7 +107,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
       title={
         <div>
           {/* First Row: Title */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' , paddingTop: '13px' }}>
             <span>{t('PerformanceMetrics', 'Performance Metrics')}</span>
           </div>
 

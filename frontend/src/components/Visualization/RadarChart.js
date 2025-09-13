@@ -42,9 +42,9 @@ const RadarChart = ({
     metric: item.metric,
     student: item.value || 0,
     classAverage: item.classAverage || 0,
-    // pass through raw minute values when provided for the Time Spent metric
-    raw: item.raw || 0,
-    classAverageRaw: item.classAverageRaw || 0
+    // pass through raw minute values when provided for the Time Spent metric; ensure integers for display
+    raw: typeof item.raw === 'number' ? Math.round(item.raw) : (item.raw || 0),
+    classAverageRaw: typeof item.classAverageRaw === 'number' ? Math.round(item.classAverageRaw) : (item.classAverageRaw || 0)
   })), [data, selectedCourse]);
 
   // Check if we have any class average data to determine if we should show that line
@@ -75,6 +75,8 @@ const RadarChart = ({
             fill: '#595959',
             fontSize: 11 
           }}
+          // ensure tick labels are integers when representing normalized percent values
+          tickFormatter={(val) => Math.round(val)}
         />
         
         {/* Student performance radar */}
@@ -116,19 +118,19 @@ const RadarChart = ({
                     {(() => {
                       const studentMinutes = studentEntry?.payload?.raw;
                       const classMinutes = classEntry?.payload?.classAverageRaw;
-                      const hasStudentMinutes = typeof studentMinutes === 'number' && studentMinutes > 0;
-                      const hasClassMinutes = typeof classMinutes === 'number' && classMinutes > 0;
+                      const hasStudentMinutes = typeof studentMinutes === 'number' && studentMinutes >= 0;
+                      const hasClassMinutes = typeof classMinutes === 'number' && classMinutes >= 0;
                       return (
                         <>
                           <div style={{ color: studentEntry?.stroke || '#000' }}>
                             {hasStudentMinutes
-                              ? `Student: ${((studentMinutes || 0))} mins`
+                              ? `Student: ${Math.round(studentMinutes || 0)} mins`
                               : `Student: ${Math.round(studentEntry?.value || 0)}%`}
                           </div>
                           {classEntry && (
                             <div style={{ color: classEntry?.stroke || '#666' }}>
                               {hasClassMinutes
-                                ? `Class Avg: ${((classMinutes || 0))} mins`
+                                ? `Class Avg: ${Math.round(classMinutes || 0)} mins`
                                 : `Class Avg: ${Math.round(classEntry?.value || 0)}%`}
                             </div>
                           )}
