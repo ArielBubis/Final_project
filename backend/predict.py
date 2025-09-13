@@ -329,7 +329,7 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     
     return df
 
-def predict_risk_from_raw_data(data_dir=None, output_path=None):
+def predict_risk_from_raw_data(data_dir=None, output_path=None, model_path=None, scaler_path=None, features_path=None):
     """
     Complete prediction pipeline: load raw CSV data, process it, and make predictions.
     
@@ -339,6 +339,12 @@ def predict_risk_from_raw_data(data_dir=None, output_path=None):
         Path to directory containing CSV files (default: auto-detect)
     output_path : str, optional
         Path to save predictions (default: auto-generate)
+    model_path : str, optional
+        Path to the model file (default: models/at_risk_rf_model.pkl)
+    scaler_path : str, optional
+        Path to the scaler file (default: models/scaler.pkl)
+    features_path : str, optional
+        Path to the features file (default: models/features.pkl)
     
     Returns:
     --------
@@ -378,7 +384,10 @@ def predict_risk_from_raw_data(data_dir=None, output_path=None):
         
         predictions_df = predict_at_risk_for_dataset(
             input_df=ml_data,
-            output_path=output_path
+            output_path=output_path,
+            model_path=model_path,
+            scaler_path=scaler_path,
+            features_path=features_path
         )
         
         return predictions_df

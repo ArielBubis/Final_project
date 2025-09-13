@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import os
 import logging
+from datetime import datetime
 from scipy import stats
 
 # Custom Exception Classes
@@ -46,6 +47,27 @@ CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "http://12
 model = None
 feature_names = None
 scaler = None
+
+def convert_to_json_serializable(obj):
+    """
+    Convert numpy/pandas data types to JSON-serializable Python native types
+    """
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, pd.Series):
+        return obj.to_list()
+    elif isinstance(obj, dict):
+        return {key: convert_to_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_to_json_serializable(item) for item in obj]
+    else:
+        return obj
 
 def load_model_and_features():
     """Load model and feature names with comprehensive error handling"""
@@ -763,11 +785,54 @@ def predict_from_csv():
         # Get optional parameters from request
         data = request.get_json(force=True) if request.is_json else {}
         data_dir = data.get('data_dir', None)  # Optional custom data directory
+        model_id = data.get('model_id', None)  # Optional model selection
+        
+        # Set model paths if specific model is requested
+        model_path = None
+        scaler_path = None
+        features_path = None
+        
+        if model_id:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            models_dir = os.path.join(script_dir, 'models')
+            
+            # Construct model file paths
+            if not model_id.endswith('.pkl'):
+                model_id_file = f"{model_id}.pkl"
+            else:
+                model_id_file = model_id
+                
+            potential_model_path = os.path.join(models_dir, model_id_file)
+            
+            if os.path.exists(potential_model_path):
+                model_path = potential_model_path
+                # Look for corresponding scaler and features files
+                model_name = model_id.replace('.pkl', '').replace('_model', '')
+                scaler_path = os.path.join(models_dir, 'scaler.pkl')
+                features_path = os.path.join(models_dir, 'features.pkl')
+                logger.info(f"Using custom model: {model_path}")
+            else:
+                logger.warning(f"Requested model {model_id} not found at {potential_model_path}, using default model")
         
         # Run the complete prediction pipeline
         try:
             logger.info("Starting CSV-based prediction pipeline...")
-            predictions_df = predict_risk_from_raw_data(data_dir=data_dir)
+            
+            # Import the prediction function with the provided predict.py
+            from predict import predict_risk_from_raw_data
+            
+            # Generate timestamp for output file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"risk_predictions_{timestamp}.csv"
+            
+            # Call the prediction function with custom parameters if provided
+            predictions_df = predict_risk_from_raw_data(
+                data_dir=data_dir, 
+                output_path=output_path,
+                model_path=model_path,
+                scaler_path=scaler_path if model_path else None,
+                features_path=features_path if model_path else None
+            )
             
             if predictions_df is None:
                 return jsonify({
@@ -795,14 +860,22 @@ def predict_from_csv():
             available_columns = [col for col in response_columns if col in predictions_df.columns]
             response_data = predictions_df[available_columns].copy()
             
-            # Convert to records format
+            # Convert to records format and ensure JSON serializable types
             predictions_list = response_data.to_dict('records')
+            predictions_list = convert_to_json_serializable(predictions_list)
             
             # Calculate summary statistics
             total_predictions = len(predictions_df)
-            # Correct orientation: class 1 = at risk
-            at_risk_count = (predictions_df['at_risk_prediction'] == 1).sum()
+            # Check for at risk using the risk_status column (more reliable)
+            if 'risk_status' in predictions_df.columns:
+                at_risk_count = (predictions_df['risk_status'] == 'At Risk').sum()
+            else:
+                # Fallback to at_risk_prediction column
+                at_risk_count = (predictions_df['at_risk_prediction'] == 1).sum()
+                
+            # Convert confidence distribution to JSON serializable format
             confidence_distribution = predictions_df['prediction_confidence'].value_counts().to_dict()
+            confidence_distribution = convert_to_json_serializable(confidence_distribution)
 
             # Ensure we have a risk score probability for class 1
             if 'risk_score' in predictions_df.columns:
@@ -825,6 +898,8 @@ def predict_from_csv():
                 'low': int(low_mask.sum()),
                 'minimal': int(minimal_mask.sum())
             }
+            # Ensure bucket counts are JSON serializable
+            bucket_counts = convert_to_json_serializable(bucket_counts)
 
             # Optional: annotate each prediction with bucket
             def bucket_label(p):
@@ -836,32 +911,53 @@ def predict_from_csv():
             if 'risk_bucket' not in response_data.columns and len(response_data):
                 response_data['risk_bucket'] = risk_probs.apply(bucket_label)
                 predictions_list = response_data.to_dict('records')
+                predictions_list = convert_to_json_serializable(predictions_list)
 
+            # Convert summary data to JSON serializable format
             summary = {
-                'total_student_courses': total_predictions,
-                'at_risk_count': int(at_risk_count),
-                'at_risk_percentage': float(at_risk_count / total_predictions * 100) if total_predictions > 0 else 0,
+                'total_student_courses': convert_to_json_serializable(total_predictions),
+                'at_risk_count': convert_to_json_serializable(at_risk_count),
+                'at_risk_percentage': convert_to_json_serializable(at_risk_count / total_predictions * 100) if total_predictions > 0 else 0,
                 'confidence_distribution': confidence_distribution,
                 'risk_bucket_counts': bucket_counts
             }
             
-            # Build response
-            response = {
+            # Build final response with JSON serializable data
+            final_response = {
                 'success': True,
-                'summary': summary,
-                'predictions': predictions_list,
-                'message': f'Generated predictions for {total_predictions} student-course combinations'
+                'message': f'Generated predictions for {total_predictions} students',
+                'predictions_count': convert_to_json_serializable(total_predictions),
+                'at_risk_count': convert_to_json_serializable(at_risk_count),
+                'output_file': output_path,
+                'timestamp': timestamp,
+                'model_used': model_id if model_id else 'default',
+                'data_directory': data_dir if data_dir else 'default',
+                'summary': {
+                    'total_students': convert_to_json_serializable(total_predictions),
+                    'at_risk_students': convert_to_json_serializable(at_risk_count),
+                    'not_at_risk_students': convert_to_json_serializable(total_predictions - at_risk_count),
+                    'at_risk_percentage': convert_to_json_serializable(round((at_risk_count / total_predictions) * 100, 1)) if total_predictions > 0 else 0,
+                    'confidence_distribution': confidence_distribution,
+                    'risk_bucket_counts': bucket_counts
+                },
+                'predictions': predictions_list[:50] if len(predictions_list) > 50 else predictions_list  # Limit response size
             }
             
             logger.info(f"CSV prediction completed - {total_predictions} predictions generated")
-            return jsonify(response)
+            return jsonify(final_response)
             
         except Exception as e:
             error_msg = f"Error formatting CSV prediction results: {str(e)}"
             logger.error(error_msg)
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error details: {repr(e)}")
+            # Try to provide more specific error information
+            if "JSON" in str(e) or "serializable" in str(e):
+                logger.error("JSON serialization error detected - likely caused by numpy/pandas data types")
             return jsonify({
                 'error': 'Response formatting failed',
-                'message': 'Predictions were generated but could not be formatted for response.'
+                'message': 'Predictions were generated but could not be formatted for response.',
+                'details': str(e) if app.debug else None
             }), 500
         
     except Exception as e:
@@ -941,17 +1037,17 @@ def get_at_risk_students():
                 'name': student_name,  # Add the actual student name
                 'courseId': course_id,
                 'courseName': course_name,  # Add the actual course name
-                'gradeLevel': int(row.get('gradeLevel', 12)),
-                'mlRiskScore': float(row.get('risk_score', 0) * 100),  # Convert to percentage
+                'gradeLevel': convert_to_json_serializable(row.get('gradeLevel', 12)),
+                'mlRiskScore': convert_to_json_serializable(row.get('risk_score', 0) * 100),  # Convert to percentage
                 'mlRiskLevel': str(row.get('risk_status', 'Unknown')).lower(),
-                'isAtRisk': bool(row.get('at_risk_prediction', 0) == 1),
-                'probability': float(row.get('at_risk_probability', 0)),
+                'isAtRisk': convert_to_json_serializable(row.get('at_risk_prediction', 0) == 1),
+                'probability': convert_to_json_serializable(row.get('at_risk_probability', 0)),
                 'confidence': str(row.get('prediction_confidence', 'Unknown')),
-                'finalScore': float(row.get('finalScore', 0)),
-                'totalTimeSpentMinutes': float(row.get('totalTimeSpentMinutes', 0)),
-                'lateSubmissionRate': float(row.get('late_submission_rate', 0)),
-                'performance': float(row.get('finalScore', 0)),
-                'completion': min(100, float(row.get('totalTimeSpentMinutes', 0)) / 10),  # Rough estimate
+                'finalScore': convert_to_json_serializable(row.get('finalScore', 0)),
+                'totalTimeSpentMinutes': convert_to_json_serializable(row.get('totalTimeSpentMinutes', 0)),
+                'lateSubmissionRate': convert_to_json_serializable(row.get('late_submission_rate', 0)),
+                'performance': convert_to_json_serializable(row.get('finalScore', 0)),
+                'completion': convert_to_json_serializable(min(100, float(row.get('totalTimeSpentMinutes', 0)) / 10)),  # Rough estimate
                 'lastActive': None,  # Not available in CSV
                 'mlRiskFactors': []  # We'll populate this based on data patterns
             }
@@ -982,14 +1078,14 @@ def get_at_risk_students():
         at_risk_count = len(at_risk_students)
         
         summary = {
-            'total_students_analyzed': total_students,
-            'at_risk_count': at_risk_count,
-            'at_risk_percentage': (at_risk_count / total_students * 100) if total_students > 0 else 0,
+            'total_students_analyzed': convert_to_json_serializable(total_students),
+            'at_risk_count': convert_to_json_serializable(at_risk_count),
+            'at_risk_percentage': convert_to_json_serializable((at_risk_count / total_students * 100) if total_students > 0 else 0),
             'prediction_file': latest_file,
-            'high_risk_count': len([s for s in at_risk_students if s['mlRiskScore'] >= 70]),
-            'medium_risk_count': len([s for s in at_risk_students if 55 <= s['mlRiskScore'] < 70]),
-            'low_risk_count': len([s for s in at_risk_students if 45 <= s['mlRiskScore'] < 55]),
-            'minimal_risk_count': len([s for s in at_risk_students if s['mlRiskScore'] < 45])
+            'high_risk_count': convert_to_json_serializable(len([s for s in at_risk_students if s['mlRiskScore'] >= 70])),
+            'medium_risk_count': convert_to_json_serializable(len([s for s in at_risk_students if 55 <= s['mlRiskScore'] < 70])),
+            'low_risk_count': convert_to_json_serializable(len([s for s in at_risk_students if 45 <= s['mlRiskScore'] < 55])),
+            'minimal_risk_count': convert_to_json_serializable(len([s for s in at_risk_students if s['mlRiskScore'] < 45]))
         }
         
         response = {
@@ -1042,17 +1138,17 @@ def get_course_risk_data():
             risk_entry = {
                 'studentId': str(row.get('studentId', '')),
                 'courseId': str(row.get('courseId', '')),
-                'risk_score': float(row.get('risk_score', 0)),
-                'at_risk_prediction': int(row.get('at_risk_prediction', 1)),
-                'at_risk_probability': float(row.get('at_risk_probability', 0)),
+                'risk_score': convert_to_json_serializable(row.get('risk_score', 0)),
+                'at_risk_prediction': convert_to_json_serializable(row.get('at_risk_prediction', 1)),
+                'at_risk_probability': convert_to_json_serializable(row.get('at_risk_probability', 0)),
                 'risk_status': str(row.get('risk_status', 'Unknown')),
                 'prediction_confidence': str(row.get('prediction_confidence', 'Unknown')),
-                'finalScore': float(row.get('finalScore', 0)),
-                'late_submission_rate': float(row.get('late_submission_rate', 0)),
-                'totalTimeSpentMinutes': float(row.get('totalTimeSpentMinutes', 0)),
-                'declining_performance': int(row.get('declining_performance', 0)),
-                'low_engagement': int(row.get('low_engagement', 0)),
-                'inconsistent_performance': int(row.get('inconsistent_performance', 0))
+                'finalScore': convert_to_json_serializable(row.get('finalScore', 0)),
+                'late_submission_rate': convert_to_json_serializable(row.get('late_submission_rate', 0)),
+                'totalTimeSpentMinutes': convert_to_json_serializable(row.get('totalTimeSpentMinutes', 0)),
+                'declining_performance': convert_to_json_serializable(row.get('declining_performance', 0)),
+                'low_engagement': convert_to_json_serializable(row.get('low_engagement', 0)),
+                'inconsistent_performance': convert_to_json_serializable(row.get('inconsistent_performance', 0))
             }
             course_risk_data.append(risk_entry)
         
@@ -1085,6 +1181,67 @@ def health_check():
             'status': 'unhealthy',
             'error': str(e)
         }), 500
+
+@app.route('/api/models', methods=['GET'])
+def get_available_models():
+    """
+    Get list of available models
+    Returns information about models that can be used for predictions
+    """
+    try:
+        models = []
+        
+        # Check for available model files in the models directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir = os.path.join(script_dir, 'models')
+        
+        if os.path.exists(models_dir):
+            # Look for .pkl model files
+            for file in os.listdir(models_dir):
+                if file.endswith('_model.pkl'):
+                    model_id = file.replace('.pkl', '')
+                    model_name = file.replace('_', ' ').replace('.pkl', '').title()
+                    
+                    model_info = {
+                        'id': model_id,
+                        'name': model_name,
+                        'description': f'Machine learning model for risk prediction',
+                        'type': 'pkl',
+                        'available': True
+                    }
+                    
+                    # Add specific descriptions for known models
+                    if 'rf' in model_id.lower() or 'random_forest' in model_id.lower():
+                        model_info['description'] = 'Random Forest classifier for student risk prediction'
+                    elif 'logistic' in model_id.lower():
+                        model_info['description'] = 'Logistic regression model for risk assessment'
+                    elif 'svm' in model_id.lower():
+                        model_info['description'] = 'Support Vector Machine for risk classification'
+                    
+                    models.append(model_info)
+        
+        # If no models found, return the default model info
+        if not models:
+            models = [{
+                'id': 'at_risk_rf_model',
+                'name': 'Random Forest Risk Model',
+                'description': 'Default Random Forest classifier for student risk prediction',
+                'type': 'pkl',
+                'available': model is not None
+            }]
+        
+        return jsonify(models)
+        
+    except Exception as e:
+        logger.error(f"Error getting available models: {str(e)}")
+        # Return default model even if there's an error
+        return jsonify([{
+            'id': 'at_risk_rf_model',
+            'name': 'Random Forest Risk Model',
+            'description': 'Default Random Forest classifier for student risk prediction',
+            'type': 'pkl',
+            'available': model is not None
+        }])
 
 # Error handlers
 @app.errorhandler(404)

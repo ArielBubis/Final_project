@@ -8,6 +8,7 @@ import TeacherManagement from "./Admin/TeacherManagement";
 import StudentsPage from "./Students/StudentsPage";
 import Student from "./Students/Student";
 import CoursesPage from "./Courses/CoursesPage";
+import PerformanceMonitor from "./PerformanceMonitor";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
@@ -53,6 +54,9 @@ const AppContent = () => {
 
   return (
     <div className={styles.appContainer}>
+      {/* Performance Monitor - only enabled in development */}
+      <PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
+      
       {/* Render Sidebar only when the user is logged in */}
       {currentUser && userRole && <Sidebar userRole={userRole} />}
 

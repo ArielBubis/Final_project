@@ -58,6 +58,14 @@ const StudentsPage = () => {
         setLoading(true);
         setError(null);
         
+        // Check if we already have data from a previous navigation
+        // This prevents refetching when navigating between pages
+        if (teacherStudents.length > 0) {
+          console.log('StudentsPage: Using existing teacher students data');
+          setLoading(false);
+          return;
+        }
+        
         // Try to use cached data first
         const cachedStudents = sessionStorage.getItem('teacherStudents');
         if (cachedStudents && isCachedDataValid()) {
@@ -71,6 +79,7 @@ const StudentsPage = () => {
         // If no valid cached data, fetch fresh data
         console.log('StudentsPage: Fetching fresh student data');
         if (currentUser?.uid) {
+          // Use the optimized DataContext function which has better caching
           const studentsData = await fetchStudentsByTeacher(currentUser.uid);
           
           const formattedStudents = studentsData.map(student => ({

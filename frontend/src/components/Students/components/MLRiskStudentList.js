@@ -4,6 +4,7 @@ import { ExclamationCircleOutlined, UserOutlined, BookOutlined, TrophyOutlined }
 import { formatTimestampForDisplay } from '../../../utils/firebaseUtils';
 import { getAtRiskStudents, getCourseRiskData } from '../../../services/riskPredictionService';
 import AtRiskStudentCard from '../../Students_At_Risk/AtRiskStudentCard';
+import CreatePredictionPrompt from '../../Students_At_Risk/CreatePredictionPrompt';
 import styles from '../../../styles/modules/MainPage.module.css';
 import PropTypes from 'prop-types';
 
@@ -26,6 +27,7 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
   const [summary, setSummary] = useState(null);
   const [usingCsvData, setUsingCsvData] = useState(false);
   const [courseRiskData, setCourseRiskData] = useState([]);
+  const [showCreatePrompt, setShowCreatePrompt] = useState(false);
   // Filter state
   const [nameQuery, setNameQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(undefined);
@@ -35,23 +37,34 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
   const [atRiskOnly, setAtRiskOnly] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
   // Fetch CSV data on component mount
-  useEffect(() => {
-    const fetchAtRiskStudents = async () => {
-      setLoading(true);
-      try {
-        // Fetch both at-risk students and course risk data in parallel
-        const [atRiskResponse, courseRiskResponse] = await Promise.all([
-          getAtRiskStudents(),
-          getCourseRiskData()
-        ]);
+  const fetchAtRiskStudents = useCallback(async () => {
+    setLoading(true);
+    setShowCreatePrompt(false);
+    try {
+      // Fetch both at-risk students and course risk data in parallel
+      const [atRiskResponse, courseRiskResponse] = await Promise.all([
+        getAtRiskStudents(),
+        getCourseRiskData()
+      ]);
+      
+      if (atRiskResponse.success) {
+        const clean = filterAtRiskStudents(atRiskResponse.students);
+        setRawStudents(clean);
+        setStudents(clean);
+        setSummary(atRiskResponse.summary);
+        setUsingCsvData(true);
+        setError(null);
+      } else {
+        // Check if the error indicates no CSV files found or corrupt CSV
+        const isNoCsvError = atRiskResponse.message && 
+                           (atRiskResponse.message.includes('No risk prediction CSV files found') ||
+                            atRiskResponse.message.includes('Please run predictions first') ||
+                            atRiskResponse.message.includes('Could not read predictions file') ||
+                            atRiskResponse.message.includes('No columns to parse from file'));
         
-        if (atRiskResponse.success) {
-          const clean = filterAtRiskStudents(atRiskResponse.students);
-          setRawStudents(clean);
-          setStudents(clean);
-          setSummary(atRiskResponse.summary);
-          setUsingCsvData(true);
-          setError(null);
+        if (isNoCsvError) {
+          setShowCreatePrompt(true);
+          setError('No valid predictions available. Please generate new predictions.');
         } else {
           // Fall back to prop data if available
           if (propStudents) {
@@ -62,12 +75,26 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
           }
           setError(atRiskResponse.message || 'Failed to load CSV predictions');
         }
-        
-        // Set course risk data
-        setCourseRiskData(courseRiskResponse);
-        
-      } catch (err) {
-        console.error('Error fetching at-risk students:', err);
+      }
+      
+      // Set course risk data
+      setCourseRiskData(courseRiskResponse);
+      
+    } catch (err) {
+      console.error('Error fetching at-risk students:', err);
+      // Check if this looks like a "no CSV files" error
+      const isNoCsvError = err.message && 
+                         (err.message.includes('404') || 
+                          err.message.includes('No risk prediction CSV files found') ||
+                          err.message.includes('Please run predictions first') ||
+                          err.message.includes('Could not read predictions file') ||
+                          err.message.includes('No columns to parse from file') ||
+                          err.message.includes('500')); // Server error often indicates CSV issues
+      
+      if (isNoCsvError) {
+        setShowCreatePrompt(true);
+        setError('No valid predictions available. Please generate new predictions.');
+      } else {
         // Fall back to prop data if available
         if (propStudents) {
           const clean = filterAtRiskStudents(propStudents);
@@ -76,14 +103,23 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
           setUsingCsvData(false);
         }
         setError('Unable to load latest predictions. Using cached data if available.');
-        setCourseRiskData([]);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchAtRiskStudents();
+      setCourseRiskData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [propStudents]);
+
+  useEffect(() => {
+    fetchAtRiskStudents();
+  }, [fetchAtRiskStudents]);
+  
+  // Handle successful prediction generation
+  const handlePredictionComplete = useCallback((result) => {
+    setShowCreatePrompt(false);
+    // Refresh the data
+    fetchAtRiskStudents();
+  }, [fetchAtRiskStudents]);
   // Use prop data if it changes and we're not using CSV data
   useEffect(() => {
     if (!usingCsvData && propStudents) {
@@ -194,12 +230,38 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
     );
   }
 
-  // Render error state
+  // Render error state with create prompt option
   if (error) {
+    // If we should show the create prompt, render that instead of just the error
+    if (showCreatePrompt) {
+      return (
+        <div>
+          <CreatePredictionPrompt 
+            onPredictionComplete={handlePredictionComplete}
+            visible={true}
+          />
+        </div>
+      );
+    }
+
     return (
       <Alert
         message="ML Risk Analysis Error"
-        description={error}
+        description={
+          <div>
+            {error}
+            {error.includes('No predictions available') && (
+              <div style={{ marginTop: 12 }}>
+                <Button 
+                  type="primary" 
+                  onClick={() => setShowCreatePrompt(true)}
+                >
+                  Generate New Predictions
+                </Button>
+              </div>
+            )}
+          </div>
+        }
         type={usingCsvData ? "warning" : "error"}
         showIcon
       />
@@ -241,13 +303,24 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
 
   return (
     <div>
-      {/* Filters Panel */}
-      <Card
-        size="small"
-        style={{ marginBottom: 16 }}
-        title={<Space wrap>Filters <Badge count={students.length} style={{ backgroundColor: '#1890ff' }} /><span style={{ fontSize:12, color:'#888' }}>showing / {rawStudents.length} total</span></Space>}
-        extra={<Button type="link" onClick={() => setFiltersExpanded(!filtersExpanded)}>{filtersExpanded ? 'Hide' : 'Show'}</Button>}
-      >
+      {/* Show CreatePredictionPrompt when needed */}
+      {showCreatePrompt && (
+        <CreatePredictionPrompt
+          onComplete={handlePredictionComplete}
+          onCancel={() => setShowCreatePrompt(false)}
+        />
+      )}
+      
+      {/* Only show the main content if not showing the prompt */}
+      {!showCreatePrompt && (
+        <>
+          {/* Filters Panel */}
+          <Card
+            size="small"
+            style={{ marginBottom: 16 }}
+            title={<Space wrap>Filters <Badge count={students.length} style={{ backgroundColor: '#1890ff' }} /><span style={{ fontSize:12, color:'#888' }}>showing / {rawStudents.length} total</span></Space>}
+            extra={<Button type="link" onClick={() => setFiltersExpanded(!filtersExpanded)}>{filtersExpanded ? 'Hide' : 'Show'}</Button>}
+          >
         {filtersExpanded && (
           <Space direction="vertical" style={{ width: '100%' }} size="small">
             <Row gutter={16}>
@@ -395,6 +468,8 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
             );
           })}
         </div>
+      )}
+        </>
       )}
     </div>
   );

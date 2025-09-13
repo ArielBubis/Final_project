@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card as AntCard, Spin, Empty, Alert, Button, Select, Row, Col } from 'antd';
 import { useParams } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
-import { useStudentData } from './hooks/useStudentData';
+import { useStudentDataOptimized } from './hooks/useStudentData'; // Use optimized hook
 import { useRiskAssessment } from '../../hooks/useRiskAssessment';
 import { getCourseRiskData } from '../../services/riskPredictionService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,8 +29,8 @@ const Student = () => {
   // Get data context for fetching students
   const { fetchStudentsByTeacher } = useData();
   
-  // Simplified data fetching with broken circular dependencies
-  const { student, loading, error, debugInfo } = useStudentData(id);
+  // Get the optimized student data hook instead of the original one
+  const { student, loading, error, debugInfo } = useStudentDataOptimized(id);
   
   // Separate risk assessment calculation - breaking circular dependencies
   const riskAssessment = useRiskAssessment(student);

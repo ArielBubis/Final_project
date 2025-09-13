@@ -91,14 +91,41 @@ export const getAtRiskStudents = async () => {
       }
     });
     
+    const data = await response.json();
+    
     if (!response.ok) {
-      throw new Error(`Server responded with status: ${response.status}`);
+      // Server returned an error object
+      return {
+        success: false,
+        message: data.message || data.error || `Server responded with status: ${response.status}`,
+        students: [],
+        summary: null
+      };
     }
     
-    return await response.json();
+    // Check if the response indicates an error even with 200 status
+    if (data.error) {
+      return {
+        success: false,
+        message: data.message || data.error,
+        students: [],
+        summary: null
+      };
+    }
+    
+    return {
+      success: true,
+      students: data.students || data,
+      summary: data.summary || null
+    };
   } catch (error) {
     console.error('Error getting at-risk students:', error);
-    throw error;
+    return {
+      success: false,
+      message: error.message,
+      students: [],
+      summary: null
+    };
   }
 };
 
@@ -124,5 +151,63 @@ export const getCourseRiskData = async () => {
     console.error('Error getting course risk data:', error);
     // Return empty array if service is unavailable
     return [];
+  }
+};
+
+/**
+ * Get available models for prediction
+ * @returns {Promise<Array>} Array of available models
+ */
+export const getAvailableModels = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/models`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      // If endpoint doesn't exist, return default model
+      return [{ id: 'at_risk_rf_model', name: 'Random Forest Risk Model', description: 'Default risk prediction model' }];
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting available models:', error);
+    // Return default model if service is unavailable
+    return [{ id: 'at_risk_rf_model', name: 'Random Forest Risk Model', description: 'Default risk prediction model' }];
+  }
+};
+
+/**
+ * Trigger new prediction generation using CSV data pipeline
+ * @param {string} modelId - The model to use for predictions (optional)
+ * @param {string} dataDir - Custom data directory (optional)
+ * @returns {Promise<Object>} Prediction generation results
+ */
+export const generateNewPredictions = async (modelId = null, dataDir = null) => {
+  try {
+    const requestBody = {};
+    if (modelId) requestBody.model_id = modelId;
+    if (dataDir) requestBody.data_dir = dataDir;
+
+    const response = await fetch(`${API_BASE_URL}/predict/csv`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Server responded with status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating new predictions:', error);
+    throw error;
   }
 };
