@@ -122,13 +122,13 @@ const RadarChart = ({
                         <>
                           <div style={{ color: studentEntry?.stroke || '#000' }}>
                             {hasStudentMinutes
-                              ? `Student: ${((studentMinutes || 0))} min`
+                              ? `Student: ${((studentMinutes || 0))} mins`
                               : `Student: ${Math.round(studentEntry?.value || 0)}%`}
                           </div>
                           {classEntry && (
                             <div style={{ color: classEntry?.stroke || '#666' }}>
                               {hasClassMinutes
-                                ? `Class Avg: ${((classMinutes || 0))} min`
+                                ? `Class Avg: ${((classMinutes || 0))} mins`
                                 : `Class Avg: ${Math.round(classEntry?.value || 0)}%`}
                             </div>
                           )}

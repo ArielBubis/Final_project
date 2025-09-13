@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card as AntCard, Row, Col, Empty, Switch, Space, Select } from 'antd';import styles from '../../../styles/modules/Students.module.css';
 import RadarChart from '../../Visualization/RadarChart';
 import PerformanceMetricsLegend from '../../Visualization/PerformanceMetricsLegend';
@@ -47,33 +47,64 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     hasClassAverage: !!classAverage,
     classAverageData: classAverage
   });
-    const performanceMetrics = student ? [
-    { 
-      name: t('PerformanceMetrics', 'Overall Score'), 
-      value: student.averageScore || 0,
-      explanation: t('PerformanceMetrics', 'Average score across all courses weighted by course credits'),
-      comparisonValue: classAverage?.averageScore || 0
-    },
-    { 
-      name: t('PerformanceMetrics', 'Course Completion'), 
-      value: student.completionRate || 0,
-      explanation: t('PerformanceMetrics', 'Percentage of course material accessed and completed'),
-      comparisonValue: classAverage?.completionRate || 0
-    },
-    { 
-      name: t('PerformanceMetrics', 'Assignment Completion'), 
-      value: student?.courses?.length ? 
-      student.courses.reduce((sum, course) => {
-        if (!Array.isArray(course?.assignments) || course.assignments.length === 0) return sum;
-        const completedAssignments = course.assignments.filter(a => 
-          a?.progress?.submittedAt || a?.progress?.submissionDate
-        ).length;
-        return sum + (completedAssignments / course.assignments.length * 100);
-      }, 0) / student.courses.length : 0,
-      explanation: t('PerformanceMetrics', 'Percentage of assignments submitted across all enrolled courses'),
-      comparisonValue: classAverage?.submissionRate || 0
-    }
-  ] : [];
+  // Build the metrics table values based on the currently selected course and toggle state.
+  // Use radarChartData as the authoritative source for metric values (it is already computed
+  // for the selected course via generateRadarChartData). When radarChartData is empty fall
+  // back to existing student-level fields.
+  const performanceMetrics = useMemo(() => {
+    if (!student) return [];
+
+    // Helper to find metric entry from radarChartData by normalized metric name
+    const findMetric = (name) => radarChartData.find(m => m.metric.toLowerCase().includes(name.toLowerCase())) || null;
+
+    const overall = findMetric('overall') || {};
+    const completion = findMetric('completion') || {};
+    const submission = findMetric('submission') || {};
+    const expertise = findMetric('expertise') || {};
+    const time = findMetric('time') || {};
+
+    // Always display the student's values in the table (ignore showClassAverage toggle)
+    const round = (v) => (typeof v === 'number' ? Math.round(v) : 0);
+
+    const overallVal = round(overall.value ?? student.averageScore ?? 0);
+    const completionVal = round(completion.value ?? student.completionRate ?? 0);
+    const submissionVal = round(submission.value ?? student.submissionRate ?? 0);
+    const expertiseVal = round(expertise.value ?? student.expertiseRate ?? 0);
+
+    // Convert Time Spent from minutes -> hours for TABLE display only
+    const studentTimeRaw = typeof time.raw === 'number' ? Math.round(time.raw) : Math.round(student.totalTimeSpent || student.timeSpent || 0);
+    const studentHours = Math.round(studentTimeRaw / 60);
+    const classTimeRaw = typeof time.classAverageRaw === 'number' ? Math.round(time.classAverageRaw) : Math.round(classAverage?.timeSpent || 0);
+    const classHours = Math.round(classTimeRaw / 60);
+
+    return [
+      {
+        name: t('PerformanceMetrics', 'Overall Score'),
+        value: overallVal,
+        explanation: t('PerformanceMetrics', 'Average score across all courses weighted by course credits'),
+        comparisonValue: classAverage?.averageScore ?? 0
+      },
+      {
+        name: t('PerformanceMetrics', 'Course Completion'),
+        value: completionVal,
+        explanation: t('PerformanceMetrics', 'Percentage of course material accessed and completed'),
+        comparisonValue: classAverage?.completion ?? 0
+      },
+      {
+        name: t('PerformanceMetrics', 'Assignment Completion'),
+        value: submissionVal,
+        explanation: t('PerformanceMetrics', 'Percentage of assignments submitted across all enrolled courses'),
+        comparisonValue: classAverage?.submissionRate ?? 0
+      },
+      {
+        name: t('PerformanceMetrics', 'Time Spent'),
+        // Display hours with 'h' suffix in the TABLE only
+        value: `${studentHours}h`,
+        explanation: t('PerformanceMetrics', 'Total time spent (hours)'),
+        comparisonValue: `${classHours}h`
+      }
+    ];
+  }, [radarChartData, selectedCourse, student, classAverage, t]);
 
   return (
     <AntCard 

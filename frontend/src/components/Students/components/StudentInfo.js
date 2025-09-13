@@ -55,10 +55,6 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
               <span className={infoStyles.infoValue}>{student.email || 'N/A'}</span>
             </div>
             <div className={infoStyles.infoFieldRow}>
-              <span className={infoStyles.infoField}>School</span>
-              <span className={infoStyles.infoValue}>{student.schoolName || 'N/A'}</span>
-            </div>
-            <div className={infoStyles.infoFieldRow}>
               <span className={infoStyles.infoField}>Grade Level</span>
               <span className={infoStyles.infoValue}>{student.gradeLevel ? `Grade ${student.gradeLevel}` : 'N/A'}</span>
             </div>
