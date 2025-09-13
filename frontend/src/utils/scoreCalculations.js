@@ -192,3 +192,121 @@ export const calculateRiskAssessment = (data, isStudentLevel = false) => {
     isAtRisk: riskLevel !== 'low'
   };
 }; 
+
+/**
+ * Calculate student-level performance metrics, optionally scoped to a single course.
+ *
+ * This function is pure and returns the same metric keys that the UI expects when
+ * rendering performance summaries and radar charts. When a course selector is
+ * provided, the metrics are computed only from that course's data. When no
+ * selector is given (or the selector equals 'all'), the student's metrics are
+ * aggregated (AVERAGE) across all their courses — matching the current default behavior.
+ *
+ * @param {Object} studentData - The full student performance object (may include .courses[])
+ * @param {Object} [options] - Optional parameters
+ * @param {string} [options.selectedCourseId] - If provided, scope metrics to the course with this id
+ * @param {string} [options.selectedCourseName] - If provided, scope metrics to the course with this name
+ * @returns {Object} Metrics object with keys: averageScore, completion, submissionRate, expertiseRate, timeSpent
+ */
+export const calculateStudentMetrics = (studentData, options = {}) => {
+  const { selectedCourseId, selectedCourseName } = options || {};
+
+  if (!studentData) {
+    return {
+      averageScore: 0,
+      completion: 0,
+      submissionRate: 0,
+      expertiseRate: 0,
+      timeSpent: 0
+    };
+  }
+
+  // Helper to extract metrics from a single course object (if available)
+  const metricsFromCourse = (course) => {
+    if (!course) return null;
+    // Several shapes are supported in the codebase: course.summary, course.assignments, course.modules
+  const avg = (course.summary?.overallScore ?? course.summary?.averageScore ?? course.summary?.average) || 0;
+  const completion = (course.summary?.completionRate ?? course.summary?.completion) || 0;
+  const submission = (course.summary?.submissionRate ?? course.summary?.submissionRate) || 0;
+    const expertise = course.summary?.expertiseRate ?? 0;
+    const time = course.summary?.totalTimeSpent ?? course.summary?.timeSpent ?? 0;
+    return { avg, completion, submission, expertise, time };
+  };
+
+  // If specific course selector provided, try to find the course and compute metrics only for it
+  if ((selectedCourseId && selectedCourseId !== 'all') || (selectedCourseName && selectedCourseName !== 'all')) {
+    const courses = Array.isArray(studentData.courses) ? studentData.courses : [];
+    const matched = courses.find(c => (selectedCourseId && c.id === selectedCourseId) || (selectedCourseName && (c.courseName === selectedCourseName || c.name === selectedCourseName)));
+    const m = metricsFromCourse(matched);
+    if (!m) {
+      // No matching course or no detailed course data — fallback to zeros so caller can handle UI
+      return {
+        averageScore: 0,
+        completion: 0,
+        submissionRate: 0,
+        expertiseRate: 0,
+        timeSpent: 0
+      };
+    }
+
+    return {
+      averageScore: m.avg || 0,
+      completion: m.completion || 0,
+      submissionRate: m.submission || 0,
+      expertiseRate: m.expertise || 0,
+      timeSpent: m.time || 0
+    };
+  }
+
+  // Default behavior: aggregate (average) across all courses — preserve existing behavior
+  if (!Array.isArray(studentData.courses) || studentData.courses.length === 0) {
+    // If student object already contains aggregated fields, use them
+    return {
+      averageScore: studentData.averageScore || studentData.scores?.average || 0,
+      completion: studentData.completion || studentData.completionRate || studentData.overallCompletion || 0,
+      submissionRate: studentData.submissionRate || 0,
+      expertiseRate: studentData.expertiseRate || 0,
+      timeSpent: studentData.timeSpent || studentData.totalTimeSpent || 0
+    };
+  }
+
+  let totalScore = 0;
+  let totalCompletion = 0;
+  let totalSubmission = 0;
+  let totalExpertise = 0;
+  let totalTime = 0;
+  let validCourses = 0;
+
+  studentData.courses.forEach(course => {
+    const m = metricsFromCourse(course);
+    if (!m) return;
+    // consider courses with a valid score
+    if (typeof m.avg === 'number') {
+      totalScore += m.avg;
+      totalCompletion += m.completion || 0;
+      totalSubmission += m.submission || 0;
+      totalExpertise += m.expertise || 0;
+      totalTime += m.time || 0;
+      validCourses++;
+    }
+  });
+
+  if (validCourses === 0) {
+    // fallback to aggregated fields if available
+    return {
+      averageScore: studentData.averageScore || 0,
+      completion: studentData.completion || studentData.completionRate || studentData.overallCompletion || 0,
+      submissionRate: studentData.submissionRate || 0,
+      expertiseRate: studentData.expertiseRate || 0,
+      timeSpent: studentData.timeSpent || studentData.totalTimeSpent || 0
+    };
+  }
+
+  return {
+    averageScore: totalScore / validCourses,
+    completion: totalCompletion / validCourses,
+    submissionRate: totalSubmission / validCourses,
+    expertiseRate: totalExpertise / validCourses,
+    timeSpent: totalTime / validCourses
+  };
+};

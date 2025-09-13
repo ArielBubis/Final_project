@@ -197,6 +197,8 @@ const Student = () => {
           <StudentPerformance 
             student={enrichedStudent} 
             classAverage={classAverageData}
+            selectedCourse={selectedCourse}
+            onCourseChange={setSelectedCourse}
             className={styles.fullWidth}
           />
         </Col>

@@ -1,7 +1,7 @@
 /**
  * Utility functions for processing and transforming data for visualization and analysis
  */
-import { calculateRiskAssessment } from './scoreCalculations';
+import { calculateRiskAssessment, calculateStudentMetrics } from './scoreCalculations';
 
 /**
  * Calculates the average value from an array of numbers
@@ -32,7 +32,7 @@ export const normalizeValue = (value, min, max) => {
  * @param {Object} classAverage - Optional class average data for comparison
  * @returns {Array} - Formatted data for radar chart
  */
-export const generateRadarChartData = (studentData, classAverage = null) => {
+export const generateRadarChartData = (studentData, classAverage = null, options = {}) => {
   if (!studentData) return [];
   
   // Log safely with defensive checks - no need to use logDebug to avoid circular imports
@@ -45,31 +45,40 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
     
   console.log('generateRadarChartData classAverage:', classAverage);
   
-  // Calculate submission rate from courses if not directly available
-  let submissionRate = studentData.submissionRate;
-  if (submissionRate === undefined && Array.isArray(studentData.courses)) {
+  // Use calculateStudentMetrics to obtain either aggregated or per-course metrics
+  const { selectedCourseId, selectedCourseName } = options || {};
+  const metricsSource = calculateStudentMetrics(studentData, { selectedCourseId, selectedCourseName });
+  let submissionRate = metricsSource.submissionRate;
+  let expertiseRate = metricsSource.expertiseRate;
+  let timeSpent = metricsSource.timeSpent;
+
+  // If any of the metrics are missing or zero, compute fallbacks from detailed course data
+  const courses = Array.isArray(studentData.courses) ? studentData.courses : [];
+  let coursesToConsider = courses;
+  if (selectedCourseId && selectedCourseId !== 'all') {
+    coursesToConsider = courses.filter(c => c.id === selectedCourseId);
+  } else if (selectedCourseName && selectedCourseName !== 'all') {
+    coursesToConsider = courses.filter(c => (c.courseName === selectedCourseName || c.name === selectedCourseName));
+  }
+
+  // Fallback: compute submissionRate from assignments if not provided
+  if (!submissionRate && coursesToConsider.length > 0) {
     let totalAssignments = 0;
     let submittedAssignments = 0;
-    
-    studentData.courses.forEach(course => {
+    coursesToConsider.forEach(course => {
       if (Array.isArray(course?.assignments)) {
         totalAssignments += course.assignments.length;
-        submittedAssignments += course.assignments.filter(a => 
-          a?.progress?.submittedAt).length;
+        submittedAssignments += course.assignments.filter(a => a?.progress?.submittedAt || a?.progress?.submissionDate).length;
       }
     });
-    
-    submissionRate = totalAssignments > 0 ? 
-      (submittedAssignments / totalAssignments) * 100 : 0;
+    submissionRate = totalAssignments > 0 ? (submittedAssignments / totalAssignments) * 100 : 0;
   }
-  
-  // Calculate expertise rate if not directly available
-  let expertiseRate = studentData.expertiseRate;
-  if (expertiseRate === undefined && Array.isArray(studentData.courses)) {
+
+  // Fallback: compute expertiseRate from modules if not provided
+  if (!expertiseRate && coursesToConsider.length > 0) {
     let totalModules = 0;
     let expertiseSum = 0;
-    
-    studentData.courses.forEach(course => {
+    coursesToConsider.forEach(course => {
       if (Array.isArray(course?.modules)) {
         totalModules += course.modules.length;
         course.modules.forEach(module => {
@@ -77,53 +86,84 @@ export const generateRadarChartData = (studentData, classAverage = null) => {
         });
       }
     });
-    
-    expertiseRate = totalModules > 0 ? 
-      expertiseSum / totalModules : 0;
+    expertiseRate = totalModules > 0 ? expertiseSum / totalModules : 0;
   }
-  
-  // Calculate average time spent across courses - FIXED to use totalTimeSpent
-  let timeSpent = studentData.timeSpent || studentData.totalTimeSpent;
-  console.log('Time spent before calculation:', timeSpent);
-  if (timeSpent === undefined && Array.isArray(studentData.courses)) {
+
+  // Fallback: compute timeSpent from assignments if not provided
+  if (!timeSpent && coursesToConsider.length > 0) {
     let totalTime = 0;
-    
-    studentData.courses.forEach(course => {
+    coursesToConsider.forEach(course => {
+      // Prefer course.summary fields if available (multiple possible field names)
+      if (course?.summary) {
+        const s = course.summary;
+        if (typeof s.totalTimeSpent === 'number' && s.totalTimeSpent > 0) { totalTime += s.totalTimeSpent; return; }
+        if (typeof s.totalTimeSpentMinutes === 'number' && s.totalTimeSpentMinutes > 0) { totalTime += s.totalTimeSpentMinutes; return; }
+        if (typeof s.timeSpent === 'number' && s.timeSpent > 0) { totalTime += s.timeSpent; return; }
+        if (typeof s.timeSpentMinutes === 'number' && s.timeSpentMinutes > 0) { totalTime += s.timeSpentMinutes; return; }
+        if (typeof s.totalTimeSpentSeconds === 'number' && s.totalTimeSpentSeconds > 0) { totalTime += Math.round(s.totalTimeSpentSeconds / 60); return; }
+      }
+
       if (Array.isArray(course?.assignments)) {
         course.assignments.forEach(assignment => {
-          totalTime += (assignment?.progress?.totalTime || 0);
+          // Support multiple possible fields for time spent collected in different data shapes
+          const progress = assignment?.progress || {};
+          totalTime += (
+            progress.totalTime ||
+            progress.timeSpentMinutes ||
+            progress.timeSpent ||
+            progress.totalTimeSpentMinutes ||
+            progress.totalTimeSpent ||
+            (typeof progress.timeSpentSeconds === 'number' ? Math.round(progress.timeSpentSeconds / 60) : 0) ||
+            0
+          );
         });
       }
     });
-    
+
+    // If still zero, check student-level totals (multiple possible field names)
+    if (totalTime === 0) {
+      totalTime = studentData.totalTimeSpent || studentData.totalTimeSpentMinutes || studentData.timeSpent || studentData.totalTimeSpentSeconds ? Math.round((studentData.totalTimeSpentSeconds || 0) / 60) : 0;
+    }
+
     timeSpent = totalTime;
+
+    // Debug: log raw and normalized timeSpent so we can see what the function computed
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        // eslint-disable-next-line no-console
+        console.debug('generateRadarChartData: computed timeSpent (minutes):', timeSpent, 'normalized:', normalizeTimeSpent(timeSpent || 0));
+      } catch (e) {}
+    }
   }
   
   const metrics = [
     {
       metric: 'Completion Rate',
-      value: studentData.completion || studentData.completionRate || studentData.overallCompletion || 0,
+      value: metricsSource.completion || studentData.completion || studentData.completionRate || studentData.overallCompletion || 0,
       classAverage: classAverage?.completion || 0
     },
     {
       metric: 'Overall Score',
-      value: studentData.averageScore || 0,
+      value: metricsSource.averageScore || studentData.averageScore || 0,
       classAverage: classAverage?.averageScore || 0
     },
     {
       metric: 'Submission Rate',
-      value: submissionRate || 0,
+      value: submissionRate || studentData.submissionRate || 0,
       classAverage: classAverage?.submissionRate || 0
     },
     {
       metric: 'Expertise Rate',
-      value: expertiseRate || 0,
+      value: expertiseRate || studentData.expertiseRate || 0,
       classAverage: classAverage?.expertiseRate || 0
     },
     {
       metric: 'Time Spent',
+      // Keep normalized value for plotting, but expose raw minutes in `raw` for UI display
       value: normalizeTimeSpent(timeSpent || 0),
-      classAverage: normalizeTimeSpent(classAverage?.timeSpent || 0)
+      raw: timeSpent || 0,
+      classAverage: normalizeTimeSpent(classAverage?.timeSpent || 0),
+      classAverageRaw: classAverage?.timeSpent || 0
     }
   ];
   
