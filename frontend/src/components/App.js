@@ -9,6 +9,7 @@ import StudentsPage from "./Students/StudentsPage";
 import Student from "./Students/Student";
 import CoursesPage from "./Courses/CoursesPage";
 import PerformanceMonitor from "./PerformanceMonitor";
+import CoursePage from "./Courses/CoursePage";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
@@ -70,6 +71,7 @@ const AppContent = () => {
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/students/:id" element={<Student />} />
               <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/courses/:id" element={<CoursePage />} />
 
               {/* Admin-specific routes */}
               <Route

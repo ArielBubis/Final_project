@@ -178,7 +178,7 @@ const Student = () => {
           Student Details: {enrichedStudent.firstName} {enrichedStudent.lastName}
         </h1>
         <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
-          Student ID: {id} | Grade {enrichedStudent.gradeLevel || 'N/A'} | {enrichedStudent.schoolName || 'School N/A'}
+          Student ID: {id} | Grade {enrichedStudent.gradeLevel || 'N/A'}
         </p>
       </div>
       
@@ -197,6 +197,8 @@ const Student = () => {
           <StudentPerformance 
             student={enrichedStudent} 
             classAverage={classAverageData}
+            selectedCourse={selectedCourse}
+            onCourseChange={setSelectedCourse}
             className={styles.fullWidth}
           />
         </Col>

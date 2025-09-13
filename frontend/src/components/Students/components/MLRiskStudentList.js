@@ -7,6 +7,39 @@ import AtRiskStudentCard from '../../Students_At_Risk/AtRiskStudentCard';
 import CreatePredictionPrompt from '../../Students_At_Risk/CreatePredictionPrompt';
 import styles from '../../../styles/modules/MainPage.module.css';
 import PropTypes from 'prop-types';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import translate from '../../../utils/translate.json';
+
+// Small dismissible banner used only in this view
+const MLRiskAlertBanner = () => {
+  const { language, t } = useLanguage();
+  const [dismissed, setDismissed] = useState(false);
+
+  const isHE = language === 'HE';
+  const dir = isHE ? 'rtl' : 'ltr';
+
+  const title = t('mlRisk.alert.title');
+  const body = t('mlRisk.alert.body');
+
+  // simple localized dismiss label fallback
+  const dismissLabel = isHE ? 'סגור' : 'Dismiss';
+
+  if (dismissed) return null;
+
+  return (
+    <div className={styles.alertBanner} role="status" aria-live="polite" dir={dir} style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <strong style={{ display: 'block', marginBottom: 6 }}>{title}</strong>
+          <div>{body}</div>
+        </div>
+        <div style={{ marginLeft: 12 }}>
+          <Button type="text" onClick={() => setDismissed(true)} aria-label="dismiss">{dismissLabel}</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Component to display students identified as at-risk by the ML model
@@ -322,7 +355,20 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
             extra={<Button type="link" onClick={() => setFiltersExpanded(!filtersExpanded)}>{filtersExpanded ? 'Hide' : 'Show'}</Button>}
           >
         {filtersExpanded && (
-          <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <div style={{ width: '100%' }}>
+            {/* Important alert banner placed above filter controls - bilingual support */}
+            <div className={styles.alertBanner} role="status" aria-live="polite">
+              <p className={styles.alertBannerEn}>
+                Note: For the most accurate identification of at-risk students, please filter the data by course.
+                <br>
+                </br>Be aware that duplicates may appear since each student is listed for every course they are enrolled in.
+              </p>
+              {/* <p className={styles.alertBannerHeb} style={{ marginTop: 8 }}>
+                לתשומת ליבך: כדי לזהות סטודנטים בסיכון בצורה מיטבית, מומלץ לסנן את הנתונים לפי קורס. שים לב כי ייתכנו כפילויות בשמות מאחר והמערכת מציגה את הסטודנט בכל אחד מההקורסים שהוא לומד.
+              </p> */}
+            </div>
+
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
             <Row gutter={16}>
               <Col xs={24} md={8}>
                 <label style={{ fontSize:12, fontWeight:600 }}>Student Name / Email / ID</label>
@@ -344,7 +390,7 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
                   options={courseOptions.map(c => ({ label: c, value: c }))}
                 />
               </Col>
-              <Col xs={24} md={6}>
+              {/* <Col xs={24} md={6}>
                 <label style={{ fontSize:12, fontWeight:600 }}>Risk Levels</label>
                 <Select
                   mode="multiple"
@@ -355,11 +401,11 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
                   onChange={v => setSelectedRiskLevels(v)}
                   options={riskLevelOptions.map(l => ({ label: l.toUpperCase(), value: l }))}
                 />
-              </Col>
-              <Col xs={24} md={4}>
+              </Col> */}
+              {/* <Col xs={24} md={4}>
                 <label style={{ fontSize:12, fontWeight:600 }}>At-Risk Only</label>
                 <div><Checkbox checked={atRiskOnly} onChange={e => setAtRiskOnly(e.target.checked)}>Only high/at risk</Checkbox></div>
-              </Col>
+              </Col> */}
             </Row>
             <Row gutter={16}>
               <Col xs={24} md={12}>
@@ -390,6 +436,7 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
               <Button type="primary" onClick={applyFilters}>Apply Now</Button>
             </Space>
           </Space>
+          </div>
         )}
       </Card>
   {/* Summary Statistics */}

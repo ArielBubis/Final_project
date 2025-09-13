@@ -44,13 +44,15 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
     }
   };
 
-  // Format student name
   const getStudentName = (student) => {
     if (student.name) return student.name;
     if (student.firstName && student.lastName) return `${student.firstName} ${student.lastName}`;
+    // NEW: handle CSV fields
+    if (student.first_name && student.last_name) return `${student.first_name} ${student.last_name}`;
+    if (student.student_name) return student.student_name;
     return `Student ${student.studentId || student.id}`;
   };
-
+  
   return (
     <Card className={styles.riskStudentCard}>
       <div className={styles.riskStudentHeader}>
@@ -133,70 +135,6 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
           </div>
         </div>
       )}
-
-      {/* Course-specific risk information */}
-      {/* {courseRiskData && (
-        <div style={{ marginTop: 16 }}>
-          <Collapse size="small" ghost>
-            <Panel 
-              header={
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <WarningOutlined style={{ color: '#fa8c16' }} />
-                  Course-Specific Risk Analysis
-                  <Tag color="blue" size="small">
-                    {courseRiskData.length} course{courseRiskData.length > 1 ? 's' : ''}
-                  </Tag>
-                </span>
-              } 
-              key="courseRisk"
-            >
-              {courseRiskData.map((courseRisk, index) => {
-                const formattedRisk = formatCourseRiskData(courseRisk);
-                const riskFactors = getCourseRiskFactors(courseRisk);
-                
-                return (
-                  <div key={`${courseRisk.courseId}-${index}`} style={{ marginBottom: 12, padding: 12, border: '1px solid #f0f0f0', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <Tag icon={<BookOutlined />} color="blue">
-                        {courseRisk.courseId}
-                      </Tag>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Tag color={getCourseRiskLevelColor(formattedRisk?.riskLevel)}>
-                          {formattedRisk?.isAtRisk ? 'AT RISK' : 'SAFE'}
-                        </Tag>
-                        <span style={{ 
-                          fontWeight: 'bold',
-                          color: formattedRisk?.riskScore >= 70 ? '#f5222d' : 
-                                formattedRisk?.riskScore >= 40 ? '#fa8c16' : '#52c41a'
-                        }}>
-                          {formattedRisk?.riskScore}%
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '12px' }}>
-                      <div>Final Score: {formattedRisk?.finalScore}%</div>
-                      <div>Confidence: {formattedRisk?.confidence}</div>
-                      <div>Late Submissions: {Math.round((formattedRisk?.lateSubmissionRate || 0) * 100)}%</div>
-                      <div>Time Spent: {Math.round((formattedRisk?.totalTimeSpent || 0) / 60)}h</div>
-                    </div>
-                    
-                    {riskFactors.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
-                        {riskFactors.map((factor, factorIndex) => (
-                          <Tag key={factorIndex} color="red" size="small" style={{ marginBottom: 2 }}>
-                            {factor}
-                          </Tag>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </Panel>
-          </Collapse>
-        </div>
-      )} */}
       
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
         <Button

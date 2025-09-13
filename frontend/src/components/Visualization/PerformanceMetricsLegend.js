@@ -24,10 +24,20 @@ const PerformanceMetricsLegend = ({
     if (metricName.toLowerCase().includes('time') || metricName.toLowerCase().includes('duration')) {
       return '#722ed1'; // Purple for neutral time metrics
     }
-    
-    if (value >= 80) return '#52c41a'; // Green for excellent
-    if (value >= 60) return '#1890ff'; // Blue for good
-    if (value >= 40) return '#faad14'; // Orange for average
+    // Coerce numeric value if provided as a string like '75%' or '3h'
+    let numeric = value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value.replace(/[^0-9.\-]/g, ''));
+      numeric = Number.isFinite(parsed) ? parsed : NaN;
+    }
+
+    if (typeof numeric !== 'number' || Number.isNaN(numeric)) {
+      return '#d9d9d9'; // neutral gray when unknown
+    }
+
+    if (numeric >= 80) return '#52c41a'; // Green for excellent
+    if (numeric >= 60) return '#1890ff'; // Blue for good
+    if (numeric >= 40) return '#faad14'; // Orange for average
     return '#f5222d'; // Red for poor
   };
   
@@ -75,16 +85,15 @@ const PerformanceMetricsLegend = ({
                     backgroundColor: getColorForValue(metric.value, metric.name) 
                   }}
                 />
-                <span className="value">
-                  {typeof metric.value === 'number' && !metric.name.toLowerCase().includes('time') 
-                    ? `${Math.round(metric.value)}%` 
-                    : metric.value
-                  }
-                </span>
+                  <span className="value">
+                    {typeof metric.value === 'number' ? (
+                      metric.name.toLowerCase().includes('time') ? `${Math.round(metric.value)}` : `${Math.round(metric.value)}%`
+                    ) : metric.value}
+                  </span>
               </div>
               
               {/* Comparison data if available and enabled */}
-              {showComparison && metric.comparisonValue !== undefined && (
+              {/* {showComparison && metric.comparisonValue !== undefined && (
                 <div className="comparison-value" style={{ display: 'flex', alignItems: 'center', gap: '5px', opacity: 0.7 }}>
                   <div 
                     className="comparison-indicator" 
@@ -96,16 +105,15 @@ const PerformanceMetricsLegend = ({
                     }}
                   />
                   <span className="value" style={{ fontSize: '0.9em' }}>
-                    {typeof metric.comparisonValue === 'number' && !metric.name.toLowerCase().includes('time')
-                      ? `${Math.round(metric.comparisonValue)}%` 
-                      : metric.comparisonValue
-                    }
+                    {typeof metric.comparisonValue === 'number' ? (
+                      metric.name.toLowerCase().includes('time') ? `${Math.round(metric.comparisonValue)}` : `${Math.round(metric.comparisonValue)}%`
+                    ) : metric.comparisonValue}
                   </span>
                   <span className="comparison-label" style={{ fontSize: '0.8em', opacity: 0.8 }}>
                     (avg)
                   </span>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         ))}
@@ -133,12 +141,6 @@ const PerformanceMetricsLegend = ({
         </div>
       </div>
       
-      {/* Explanation if showComparison is true */}
-      {showComparison && (
-        <div style={{ marginTop: '10px', fontSize: '0.85em', color: '#666' }}>
-          <p>* Smaller dots show class average for comparison</p>
-        </div>
-      )}
     </div>
   );
 };

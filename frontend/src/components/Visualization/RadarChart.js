@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   RadarChart as RechartsRadarChart, 
   PolarGrid, 
@@ -24,6 +24,8 @@ import styles from '../../styles/modules/RadarChart.module.css';
  * @param {string} [props.classColor='#82ca9d'] - Color for class average line
  * @returns {JSX.Element} - The radar chart component
  */
+// import { useMemo } from 'react';
+
 const RadarChart = ({ 
   data = [], 
   width = 300, 
@@ -31,14 +33,19 @@ const RadarChart = ({
   showLegend = true,
   title,
   studentColor = '#8884d8',
-  classColor = '#82ca9d'
+  classColor = '#82ca9d',
+  // optional selected course (not used to change styling here but kept for memo deps)
+  selectedCourse = null
 }) => {
-  // Transform data for the recharts radar chart
-  const formattedData = data.map(item => ({
+  // Transform data for the recharts radar chart; memoize to avoid unnecessary recalcs
+  const formattedData = useMemo(() => data.map(item => ({
     metric: item.metric,
     student: item.value || 0,
-    classAverage: item.classAverage || 0
-  }));
+    classAverage: item.classAverage || 0,
+    // pass through raw minute values when provided for the Time Spent metric; ensure integers for display
+    raw: typeof item.raw === 'number' ? Math.round(item.raw) : (item.raw || 0),
+    classAverageRaw: typeof item.classAverageRaw === 'number' ? Math.round(item.classAverageRaw) : (item.classAverageRaw || 0)
+  })), [data, selectedCourse]);
 
   // Check if we have any class average data to determine if we should show that line
   const hasClassAverageData = formattedData.some(item => item.classAverage > 0);
@@ -68,6 +75,8 @@ const RadarChart = ({
             fill: '#595959',
             fontSize: 11 
           }}
+          // ensure tick labels are integers when representing normalized percent values
+          tickFormatter={(val) => Math.round(val)}
         />
         
         {/* Student performance radar */}
@@ -91,7 +100,60 @@ const RadarChart = ({
           />
         )}
         
-        <Tooltip formatter={(value) => `${Math.round(value)}%`} />
+        <Tooltip
+          // Custom formatter: show raw minutes for Time Spent, otherwise percent label
+          content={({ payload, label }) => {
+            if (!payload || payload.length === 0) return null;
+            // payload contains entries for student and classAverage if present
+            const studentEntry = payload.find(p => p.dataKey === 'student');
+            const classEntry = payload.find(p => p.dataKey === 'classAverage');
+            // Determine if this is the Time Spent metric
+            const isTimeSpent = label && label.toLowerCase().includes('time');
+
+            return (
+              <div style={{ background: '#fff', padding: 8, border: '1px solid #eee' }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                {isTimeSpent ? (
+                  <div>
+                    {(() => {
+                      const studentMinutes = studentEntry?.payload?.raw;
+                      const classMinutes = classEntry?.payload?.classAverageRaw;
+                      const hasStudentMinutes = typeof studentMinutes === 'number' && studentMinutes >= 0;
+                      const hasClassMinutes = typeof classMinutes === 'number' && classMinutes >= 0;
+                      return (
+                        <>
+                          <div style={{ color: studentEntry?.stroke || '#000' }}>
+                            {hasStudentMinutes
+                              ? `Student: ${Math.round(studentMinutes || 0)} mins`
+                              : `Student: ${Math.round(studentEntry?.value || 0)}%`}
+                          </div>
+                          {classEntry && (
+                            <div style={{ color: classEntry?.stroke || '#666' }}>
+                              {hasClassMinutes
+                                ? `Class Avg: ${Math.round(classMinutes || 0)} mins`
+                                : `Class Avg: ${Math.round(classEntry?.value || 0)}%`}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ color: studentEntry?.stroke || '#000' }}>
+                      Student: {Math.round(studentEntry?.value || 0)}%
+                    </div>
+                    {classEntry && (
+                      <div style={{ color: classEntry?.stroke || '#666' }}>
+                        Class Avg: {Math.round(classEntry?.value || 0)}%
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          }}
+        />
         
         {/* Only show legend if specified */}
         {showLegend && <Legend />}
