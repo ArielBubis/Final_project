@@ -49,3 +49,4 @@ backend/app.log
 .idea
 .github/copilot-instructions.md
 frontend/REFACTORING_SUMMARY.md
+frontend/MIGRATION_PLAN.md
