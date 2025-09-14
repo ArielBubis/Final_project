@@ -48,3 +48,4 @@ backend/venv/
 backend/app.log
 .idea
 .github/copilot-instructions.md
+frontend/REFACTORING_SUMMARY.md
