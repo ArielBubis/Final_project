@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useData } from '../../contexts/DataContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { useData } from '../../../contexts/DataContext';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { Card as AntCard, Row, Col, Spin, Empty, Alert, Button, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { getStudentName } from '../../utils/studentUtils';
-import styles from '../../styles/modules/Students.module.css';
-import { StudentCard } from '../features';
+import { getStudentName } from '../../../utils/studentUtils';
+import styles from '../../../styles/modules/Students.module.css';
+import StudentCard from './StudentCard';
 
 const IndividualStudentReport = ({ selectedStudent }) => {
   const { t } = useLanguage();

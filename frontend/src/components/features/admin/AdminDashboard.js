@@ -7,8 +7,8 @@ import {
   DatabaseOutlined
 } from "@ant-design/icons";
 import TeacherManagement from "./TeacherManagement";
-import styles from "../../styles/modules/AdminDashboard.module.css";
-import { useData } from "../../contexts/DataContext";
+import styles from "../../../styles/modules/AdminDashboard.module.css";
+import { useData } from "../../../contexts/DataContext";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");

@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Card as AntCard, Row, Col, Empty, Switch, Space, Select } from 'antd';
 import styles from '../../../styles/modules/StudentPerformance.module.css';
-import RadarChart from '../../Visualization/RadarChart';
-import PerformanceMetricsLegend from '../../Visualization/PerformanceMetricsLegend';
+import RadarChart from '../visualization/RadarChart';
+import PerformanceMetricsLegend from '../visualization/PerformanceMetricsLegend';
 import { generateRadarChartData } from '../../../utils/dataProcessingUtils';
 import debugLogger from '../../../utils/debugLogger';
 import { useLanguage } from '../../../contexts/LanguageContext';

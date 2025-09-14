@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Select, Row, Col, Divider, Alert } from 'antd';
-import { createTeacher, updateTeacher } from '../../services/adminService';
-import styles from '../../styles/modules/AdminDashboard.module.css';
+import { createTeacher, updateTeacher } from '../../../services/adminService';
+import styles from '../../../styles/modules/AdminDashboard.module.css';
 
 const { Option } = Select;
 

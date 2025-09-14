@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useData } from '../../contexts/DataContext';
-import styles from '../../styles/modules/CoursePage.module.css';
+import { useData } from '../../../contexts/DataContext';
+import styles from '../../../styles/modules/CoursePage.module.css';
 
 const CoursePage = () => {
     const { id } = useParams();

@@ -12,9 +12,9 @@ import {
   RobotOutlined,
 } from '@ant-design/icons';
 import { getStudentName } from '../utils/studentUtils';
-import CourseList from './Courses/CourseList';
-import StudentList from './Students/StudentList';
-import MLRiskStudentList from './Students/components/MLRiskStudentList';
+import CourseList from '../components/features/courses/CourseList';
+import StudentList from '../components/features/students/StudentList';
+import MLRiskStudentList from '../components/features/students/MLRiskStudentList';
 import { formatTimestampForDisplay } from '../utils/firebaseUtils';
 import styles from '../styles/modules/MainPage.module.css';
 import { getEnhancedRiskAssessment, checkHealth, isMlServiceAvailable } from '../services/riskPredictionService';

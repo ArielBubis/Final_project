@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useData } from '../../contexts/DataContext';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useData } from '../../../contexts/DataContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import CourseList from './CourseList';
-import styles from '../../styles/modules/CoursesPage.module.css';
+import styles from '../../../styles/modules/CoursesPage.module.css';
 
 const CoursesPage = () => {
     const { currentUser } = useAuth();

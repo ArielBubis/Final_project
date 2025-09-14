@@ -2,7 +2,7 @@ import { useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
-import Button from "./Button";
+import Button from "../components/shared/buttons/BaseButton";
 import styles from "../styles/modules/Login.module.css";
 import { useLanguage } from "../contexts/LanguageContext";
 import { GlobeIcon } from 'lucide-react';

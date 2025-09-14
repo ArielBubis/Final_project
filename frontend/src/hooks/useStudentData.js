@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../../contexts/DataContext';
-import { db } from '../../../firebaseConfig';
+import { useData } from '../contexts/DataContext';
+import { db } from '../firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { getStudentName } from '../../../utils/studentUtils';
-import debugLogger from '../../../utils/debugLogger';
+import { getStudentName } from '../utils/studentUtils';
+import debugLogger from '../utils/debugLogger';
 
 export const useStudentData = (studentId) => {
   const [student, setStudent] = useState(null);
@@ -53,7 +53,7 @@ export const useStudentData = (studentId) => {
             console.log('Computing risk assessment...');
             requestCount++;
             
-            const { getEnhancedRiskAssessment } = await import('../../../services/riskPredictionService');
+            const { getEnhancedRiskAssessment } = await import('../services/riskPredictionService');
             
             const riskData = {
               averageScore: studentData.averageScore,
@@ -438,7 +438,7 @@ export const useStudentData = (studentId) => {
       }
 
       // Import and calculate risk assessment
-      const { getEnhancedRiskAssessment } = await import('../../../services/riskPredictionService');
+      const { getEnhancedRiskAssessment } = await import('../services/riskPredictionService');
       
       const studentDataForRisk = {
         averageScore,

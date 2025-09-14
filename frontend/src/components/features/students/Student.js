@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Card as AntCard, Spin, Empty, Alert, Button, Select, Row, Col } from 'antd';
 import { useParams } from 'react-router-dom';
-import styles from '../../styles/modules/Students.module.css';
-import { useStudentData } from './hooks/useStudentData'; // Use optimized hook
-import { useRiskAssessment } from '../../hooks/useRiskAssessment';
-import { getCourseRiskData } from '../../services/riskPredictionService';
-import { useAuth } from '../../contexts/AuthContext';
-import { useData } from '../../contexts/DataContext';
-import { getStudentName } from '../../utils/studentUtils';
-import { calculateClassAverages } from '../../utils/dataProcessingUtils';
-import DebugCard from './components/DebugCard';
-import StudentInfo from './components/StudentInfo';
-import StudentPerformance from './components/StudentPerformance';
-import CoursePerformanceCard from './components/CoursePerformanceCard';
-import debugLogger from '../../utils/debugLogger';
+import styles from '../../../styles/modules/Students.module.css';
+import { useStudentData } from '../../../hooks/useStudentData'; // Use optimized hook from root hooks
+import { useRiskAssessment } from '../../../hooks/useRiskAssessment';
+import { getCourseRiskData } from '../../../services/riskPredictionService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useData } from '../../../contexts/DataContext';
+import { getStudentName } from '../../../utils/studentUtils';
+import { calculateClassAverages } from '../../../utils/dataProcessingUtils';
+import DebugCard from './DebugCard';
+import StudentInfo from './StudentInfo';
+import StudentPerformance from './StudentPerformance';
+import CoursePerformanceCard from './CoursePerformanceCard';
+import debugLogger from '../../../utils/debugLogger';
 
 const Student = () => {
   const { id } = useParams();

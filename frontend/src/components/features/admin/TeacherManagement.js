@@ -19,9 +19,9 @@ import {
   UserOutlined,
   BookOutlined
 } from '@ant-design/icons';
-import { fetchAllTeachers, updateTeacher } from '../../services/adminService';
+import { fetchAllTeachers, updateTeacher } from '../../../services/adminService';
 import TeacherForm from './TeacherForm';
-import styles from '../../styles/modules/AdminDashboard.module.css';
+import styles from '../../../styles/modules/AdminDashboard.module.css';
 
 const { Search } = Input;
 

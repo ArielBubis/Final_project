@@ -1,20 +1,20 @@
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./SideBar";
-import Mainpage from "./Mainpage";
-import Login from "./login";
-import AdminDashboard from "./Admin/AdminDashboard";
-import TeacherManagement from "./Admin/TeacherManagement";
-import StudentsPage from "./Students/StudentsPage";
-import Student from "./Students/Student";
-import CoursesPage from "./Courses/CoursesPage";
+import Mainpage from "../pages/Dashboard";
+import Login from "../pages/LoginPage";
+import AdminDashboard from "./features/admin/AdminDashboard";
+import TeacherManagement from "./features/admin/TeacherManagement";
+import StudentsPage from "./features/students/StudentsPage";
+import Student from "./features/students/Student";
+import CoursesPage from "./features/courses/CoursesPage";
 import PerformanceMonitor from "./PerformanceMonitor";
-import CoursePage from "./Courses/CoursePage";
+import CoursePage from "./features/courses/CoursePage";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { AppProvider } from "../contexts/AppProvider";
 import styles from "../styles/modules/App.module.css";
-import ResetPassword from "./resetPassword";
+import ResetPassword from "../pages/ResetPasswordPage";
 
 // Role-based route guard component
 const RoleBasedRoute = ({ element, requiredRole }) => {

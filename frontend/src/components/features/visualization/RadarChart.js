@@ -8,7 +8,7 @@ import {
   Tooltip, 
   Legend 
 } from 'recharts';
-import styles from '../../styles/modules/RadarChart.module.css';
+import styles from '../../../styles/modules/RadarChart.module.css';
 
 /**
  * Reusable Radar Chart component for visualizing multi-dimensional performance data
