@@ -906,7 +906,23 @@ export const DataProvider = ({ children }) => {
         const moduleProgressMap = new Map();
         modules.forEach((module, i) => {
           if (moduleProgress[i]) {
-            moduleProgressMap.set(module.id, moduleProgress[i]);
+            // Transform the raw progress data to match frontend expectations
+            const rawProgress = moduleProgress[i];
+            const transformedProgress = {
+              completion: rawProgress.completionRate || 0,
+              totalExpertiseRate: rawProgress.moduleScore || 0,
+              lastAccessed: rawProgress.lastActivity || null,
+              totalTimeSpent: rawProgress.totalTimeSpent || 0
+            };
+            moduleProgressMap.set(module.id, transformedProgress);
+            
+            // Debug logging for module progress transformation
+            console.log(`DataContext - Module ${module.moduleTitle || module.id}:`, {
+              rawCompletion: rawProgress.completionRate,
+              transformedCompletion: transformedProgress.completion,
+              rawScore: rawProgress.moduleScore,
+              transformedScore: transformedProgress.totalExpertiseRate
+            });
           }
         });
         
@@ -922,9 +938,10 @@ export const DataProvider = ({ children }) => {
           modules: modules.map(module => ({
             ...module,
             progress: moduleProgressMap.get(module.id) || {
-              completionRate: 0,
-              moduleScore: 0,
-              lastActivity: null
+              completion: 0,
+              totalExpertiseRate: 0,
+              lastAccessed: null,
+              totalTimeSpent: 0
             }
           })),
           assignments: assignments.map(assignment => ({
