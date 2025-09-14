@@ -47,3 +47,4 @@ backend/API_USAGE_GUIDE.md
 backend/venv/
 backend/app.log
 .idea
+.github/copilot-instructions.md
