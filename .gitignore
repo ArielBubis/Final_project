@@ -2,7 +2,6 @@ src/admin-sdk.json
 src/venv
 src/frontend/src/firebaseConfig.js
 *.rar
-
 .venv
 /data
 # dependencies
@@ -50,3 +49,5 @@ backend/app.log
 .github/copilot-instructions.md
 frontend/REFACTORING_SUMMARY.md
 frontend/MIGRATION_PLAN.md
+/__pycache__
+*.log
