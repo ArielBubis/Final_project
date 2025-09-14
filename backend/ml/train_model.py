@@ -85,7 +85,7 @@ def train_risk_model():
     print(feature_importance.head(10))
     
     # Save model and artifacts
-    model_dir = os.path.join(os.path.dirname(__file__), 'models')
+    model_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
     os.makedirs(model_dir, exist_ok=True)
     
     # Save model (entire pipeline for consistency)

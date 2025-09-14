@@ -33,7 +33,9 @@ def load_csv_data(data_dir=None):
     if data_dir is None:
         # Default path relative to this file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        data_dir = os.path.join(os.path.dirname(current_dir), 'data', 'csv')
+        # Go up two levels: backend/ml -> backend -> project_root
+        project_root = os.path.dirname(os.path.dirname(current_dir))
+        data_dir = os.path.join(project_root, 'data', 'csv')
     
     try:
         # Load all CSV files

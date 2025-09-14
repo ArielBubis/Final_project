@@ -2,15 +2,31 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+import sys
 from datetime import datetime
 import warnings
 from scipy import stats
-from pre_processing import (
-    load_csv_data, 
-    create_monthly_student_scores_with_time, 
-    prepare_student_data_for_ml,
-    create_risk_prediction_dataset
-)
+
+# Add the backend directory to Python path
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.append(backend_dir)
+
+try:
+    from ml.pre_processing import (
+        load_csv_data, 
+        create_monthly_student_scores_with_time, 
+        prepare_student_data_for_ml,
+        create_risk_prediction_dataset
+    )
+except ImportError:
+    # Fallback for when called directly
+    from pre_processing import (
+        load_csv_data, 
+        create_monthly_student_scores_with_time, 
+        prepare_student_data_for_ml,
+        create_risk_prediction_dataset
+    )
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
@@ -159,11 +175,11 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     
     # Set default model paths
     if model_path is None:
-        model_path = os.path.join(os.path.dirname(__file__), 'models', 'at_risk_rf_model.pkl')
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'at_risk_rf_model.pkl')
     if scaler_path is None:
-        scaler_path = os.path.join(os.path.dirname(__file__), 'models', 'scaler.pkl')
+        scaler_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'scaler.pkl')
     if features_path is None:
-        features_path = os.path.join(os.path.dirname(__file__), 'models', 'features.pkl')
+        features_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'features.pkl')
     
     # Load the data
     if input_df is not None:

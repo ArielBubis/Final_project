@@ -39,9 +39,31 @@ app = Flask(__name__)
 # )
 logger = logging.getLogger(__name__)
 
-# Enable CORS with more specific settings
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}}, 
-     supports_credentials=True)
+# Enable CORS with more permissive settings for development
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Credentials"],
+        "supports_credentials": True
+    }
+})
+
+# Alternative: More permissive CORS for development (uncomment if above doesn't work)
+# CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], 
+#      supports_credentials=True, methods=["GET", "POST", "OPTIONS"])
+
+# Add a simple health check endpoint
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Simple health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'message': 'Risk prediction API is running',
+        'model_loaded': model is not None,
+        'feature_count': len(feature_names) if feature_names is not None else 0,
+        'timestamp': datetime.now().isoformat()
+    })
 
 # Global variables for model and features
 model = None
@@ -77,10 +99,11 @@ def load_model_and_features():
         # Get the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Define paths
-        model_path = os.path.join(script_dir, 'models', 'at_risk_rf_model.pkl')
-        feature_names_path = os.path.join(script_dir, 'models', 'features.pkl')
-        scaler_path = os.path.join(script_dir, 'models', 'scaler.pkl')
+        # Define paths (go up one level since we're in api/ folder)
+        models_dir = os.path.join(script_dir, '..', 'models')
+        model_path = os.path.join(models_dir, 'at_risk_rf_model.pkl')
+        feature_names_path = os.path.join(models_dir, 'features.pkl')
+        scaler_path = os.path.join(models_dir, 'scaler.pkl')
         
         # Check if files exist
         if not os.path.exists(model_path):
@@ -500,7 +523,17 @@ def preprocess_student_data_for_prediction(data, feature_names):
         logger.error(error_msg)
         raise PreprocessingError(error_msg)
 
-@app.route('/api/predict', methods=['POST'])
+# Handle preflight OPTIONS requests
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = jsonify({'status': 'ok'})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        return response
+
+@app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
     try:
         # Check if model is loaded
@@ -774,7 +807,13 @@ def predict_from_csv():
         
         # Import prediction functions
         try:
-            from predict import predict_risk_from_raw_data
+            import sys
+            import os
+            # Add the parent directory to Python path to find ml module
+            parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if parent_dir not in sys.path:
+                sys.path.insert(0, parent_dir)
+            from ml.predict import predict_risk_from_raw_data
         except ImportError as e:
             logger.error(f"Could not import prediction functions: {str(e)}")
             return jsonify({
@@ -818,12 +857,22 @@ def predict_from_csv():
         try:
             logger.info("Starting CSV-based prediction pipeline...")
             
-            # Import the prediction function with the provided predict.py
-            from predict import predict_risk_from_raw_data
+            # Ensure we have the ml module in path and import the prediction function
+            import sys
+            import os
+            parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if parent_dir not in sys.path:
+                sys.path.insert(0, parent_dir)
+            from ml.predict import predict_risk_from_raw_data
             
-            # Generate timestamp for output file
+            # Generate timestamp for output file and ensure it goes to output directory
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = f"risk_predictions_{timestamp}.csv"
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'output')
+            
+            # Create output directory if it doesn't exist
+            os.makedirs(output_dir, exist_ok=True)
+            
+            output_path = os.path.join(output_dir, f"risk_predictions_{timestamp}.csv")
             
             # Call the prediction function with custom parameters if provided
             predictions_df = predict_risk_from_raw_data(
@@ -975,11 +1024,20 @@ def get_at_risk_students():
     Returns students with high risk scores or flagged as at-risk
     """
     try:
-        # Find the latest CSV prediction file
+        # Find the latest CSV prediction file in the output directory
+        output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'output')
         csv_files = []
-        for file in os.listdir('.'):
-            if file.startswith('risk_predictions_') and file.endswith('.csv'):
-                csv_files.append(file)
+        
+        if os.path.exists(output_dir):
+            for file in os.listdir(output_dir):
+                if file.startswith('risk_predictions_') and file.endswith('.csv'):
+                    csv_files.append(file)
+        else:
+            logger.error(f"Output directory not found: {output_dir}")
+            return jsonify({
+                'error': 'Output directory not found',
+                'message': 'Predictions output directory does not exist'
+            }), 404
         
         if not csv_files:
             return jsonify({
@@ -989,12 +1047,13 @@ def get_at_risk_students():
         
         # Get the latest file (sorted by name which includes timestamp)
         latest_file = sorted(csv_files, reverse=True)[0]
+        latest_file_path = os.path.join(output_dir, latest_file)
         
         # Read the CSV file
         try:
-            df = pd.read_csv(latest_file)
+            df = pd.read_csv(latest_file_path)
         except Exception as e:
-            logger.error(f"Error reading CSV file {latest_file}: {str(e)}")
+            logger.error(f"Error reading CSV file {latest_file_path}: {str(e)}")
             return jsonify({
                 'error': 'File read error',
                 'message': f'Could not read predictions file: {str(e)}'
@@ -1159,28 +1218,6 @@ def get_course_risk_data():
         error_msg = f"Unexpected error in get_course_risk_data: {str(e)}"
         logger.error(error_msg)
         return jsonify([])  # Return empty array on error
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    try:
-        status = {
-            'status': 'healthy',
-            'model_loaded': model is not None,
-            'features_loaded': feature_names is not None,
-            'feature_count': len(feature_names) if feature_names else 0
-        }
-        
-        if not model or not feature_names:
-            status['status'] = 'degraded'
-            return jsonify(status), 503
-        
-        return jsonify(status)
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e)
-        }), 500
 
 @app.route('/api/models', methods=['GET'])
 def get_available_models():
