@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
+import { formatDate } from '../../utils/firebaseUtils';
 import styles from '../../styles/modules/CourseCard.module.css';
 
 const CourseCard = ({ course }) => {
@@ -23,7 +24,7 @@ const CourseCard = ({ course }) => {
             <p className={styles.description}>{description}</p>
             <div className={styles.footer}>
                 <span className={styles.lastUpdated}>
-                    Last updated: {new Date(lastUpdated).toLocaleDateString()}
+                    Last updated: {formatDate(lastUpdated)}
                 </span>
                 <button
                     className={styles.viewButton}

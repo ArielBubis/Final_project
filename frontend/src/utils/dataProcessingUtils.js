@@ -2,6 +2,7 @@
  * Utility functions for processing and transforming data for visualization and analysis
  */
 import { calculateRiskAssessment, calculateStudentMetrics } from './scoreCalculations';
+import { getStudentName } from './studentUtils';
 
 /**
  * Calculates the average value from an array of numbers
@@ -257,7 +258,7 @@ export const createPerformanceSummary = (studentData) => {
   
   return {
     id: studentData.id || studentData.studentId,
-    name: `${studentData.firstName} ${studentData.lastName}`,
+    name: getStudentName(studentData),
     averageScore: studentData.averageScore || 0,
     completionRate: studentData.overallCompletion || 0,
     submissionRate: studentData.submissionRate || 0,

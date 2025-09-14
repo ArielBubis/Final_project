@@ -3,6 +3,7 @@ import { Card, Progress, Button, Tag, Collapse } from 'antd';
 import { BookOutlined, WarningOutlined } from '@ant-design/icons';
 import { formatTimestampForDisplay } from '../../utils/firebaseUtils';
 import { getCourseRiskData, formatCourseRiskData, getCourseRiskFactors, getCourseRiskLevelColor } from '../../utils/courseRiskUtils';
+import { getStudentName } from '../../utils/studentUtils';
 import styles from '../../styles/modules/MainPage.module.css';
 import PropTypes from 'prop-types';
 
@@ -42,15 +43,6 @@ const AtRiskStudentCard = ({ student, courseRiskData = null }) => {
       case 'not at risk': return 'NOT AT RISK';
       default: return level ? level.toUpperCase() : 'UNKNOWN';
     }
-  };
-
-  const getStudentName = (student) => {
-    if (student.name) return student.name;
-    if (student.firstName && student.lastName) return `${student.firstName} ${student.lastName}`;
-    // NEW: handle CSV fields
-    if (student.first_name && student.last_name) return `${student.first_name} ${student.last_name}`;
-    if (student.student_name) return student.student_name;
-    return `Student ${student.studentId || student.id}`;
   };
   
   return (

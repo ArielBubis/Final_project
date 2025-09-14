@@ -87,16 +87,6 @@ export const calculateCourseStatistics = (assignments) => {
 };
 
 /**
- * Formats a timestamp into a readable date string
- * @param {Object} timestamp - Firebase timestamp object
- * @returns {string} Formatted date string
- */
-export const formatTimestamp = (timestamp) => {
-  if (!timestamp) return 'Not submitted';
-  return new Date(timestamp.toDate()).toLocaleDateString();
-};
-
-/**
  * Calculates the risk level and score for a student or course based on various performance metrics
  * This is the rule-based implementation that serves as a fallback if the ML model is not available
  * 

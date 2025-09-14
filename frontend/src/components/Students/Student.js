@@ -7,6 +7,7 @@ import { useRiskAssessment } from '../../hooks/useRiskAssessment';
 import { getCourseRiskData } from '../../services/riskPredictionService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import { getStudentName } from '../../utils/studentUtils';
 import { calculateClassAverages } from '../../utils/dataProcessingUtils';
 import DebugCard from './components/DebugCard';
 import StudentInfo from './components/StudentInfo';
@@ -175,7 +176,7 @@ const Student = () => {
       {/* Page Header */}
       <div style={{ marginBottom: '24px', borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' }}>
         <h1 className={styles.title} style={{ marginBottom: '8px', fontSize: '28px', color: '#1890ff' }}>
-          Student Details: {enrichedStudent.firstName} {enrichedStudent.lastName}
+          Student Details: {getStudentName(enrichedStudent)}
         </h1>
         <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
           Student ID: {id} | Grade {enrichedStudent.gradeLevel || 'N/A'}

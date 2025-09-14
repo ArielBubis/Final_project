@@ -4,6 +4,7 @@ import { WarningOutlined, SafetyOutlined, ExclamationCircleOutlined } from '@ant
 import styles from '../../../styles/modules/Students.module.css';
 import { getCourseRiskData, formatCourseRiskData, getCourseRiskColor, getCourseRiskIcon } from '../../../utils/courseRiskUtils';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { formatSubmissionDate, formatLastActivity } from '../../../utils/firebaseUtils';
 
 const CoursePerformanceCard = ({ course, studentId, riskData }) => {
   const { t } = useLanguage();
@@ -93,13 +94,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
                 />
                 <p><strong>{t('PerformanceMetrics', 'Module Score')}:</strong> {Math.round((module?.progress?.totalExpertiseRate || 0))}</p>
                 <p><strong>{t('PerformanceMetrics', 'Last Activity')}:</strong> {
-                  (module?.progress?.lastAccessed) ? 
-                    (typeof module.progress.lastAccessed.toDate === 'function'
-                      ? new Date(module.progress.lastAccessed.toDate()).toLocaleDateString()
-                      : typeof module.progress.lastAccessed === 'string'
-                        ? new Date(module.progress.lastAccessed).toLocaleDateString()
-                        : 'Never')
-                    : 'Never'
+                  formatLastActivity(module?.progress?.lastAccessed)
                 }</p>
               </AntCard>
             </Col>
@@ -137,26 +132,7 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
               title: t('PerformanceMetrics', 'Submitted'),
               dataIndex: 'progress',
               key: 'submitted',
-              render: (progress) => {
-                try {
-                  if (!progress) return t('PerformanceMetrics', 'Not submitted');
-                  // Check for both possible submission date fields
-                  const submissionDate = progress.submittedAt || progress.submissionDate;
-                  if (!submissionDate) return t('PerformanceMetrics', 'Not submitted');
-                  if (typeof submissionDate.toDate === 'function') {
-                    return new Date(submissionDate.toDate()).toLocaleDateString();
-                  } else if (typeof submissionDate === 'string') {
-                    return new Date(submissionDate).toLocaleDateString();
-                  } else if (submissionDate instanceof Date) {
-                    return submissionDate.toLocaleDateString();
-                  } else {
-                    return t('PerformanceMetrics', 'Date format error');
-                  }
-                } catch (e) {
-                  console.error('Error rendering submission date:', e, progress);
-                  return t('PerformanceMetrics', 'Date error');
-                }
-              }
+              render: (progress) => formatSubmissionDate(progress, t)
             },
             {
               title: t('PerformanceMetrics', 'Time Spent'),

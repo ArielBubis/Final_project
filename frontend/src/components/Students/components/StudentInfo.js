@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card as AntCard, Button, Row, Col } from 'antd';
 import { SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { getStudentName } from '../../../utils/studentUtils';
 import styles from '../../../styles/modules/Students.module.css';
 import infoStyles from '../../../styles/modules/StudentInfo.module.css';
 
@@ -48,7 +49,7 @@ const StudentInfo = ({ student, debugInfo = {}, style }) => {
           <div className={infoStyles.infoSection}>
             <div className={infoStyles.infoFieldRow}>
               <span className={infoStyles.infoField}>Name</span>
-              <span className={infoStyles.infoValue}>{(student.firstName || 'Unknown') + ' ' + (student.lastName || 'Student')}</span>
+              <span className={infoStyles.infoValue}>{getStudentName(student)}</span>
             </div>
             <div className={infoStyles.infoFieldRow}>
               <span className={infoStyles.infoField}>Email</span>

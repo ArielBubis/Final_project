@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Card as AntCard, Row, Col, Spin, Empty, Alert, Button, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { getStudentName } from '../../utils/studentUtils';
 import styles from '../../styles/modules/Students.module.css';
 import StudentCard from './StudentCard';
 
@@ -16,7 +17,7 @@ const IndividualStudentReport = ({ selectedStudent }) => {
 
   return (
     <AntCard title={t("StudentsPage", "Selected Student Details")} className={styles.detailCard}>
-      <p><strong>{t("Student", "Name")}:</strong> {`${selectedStudent.firstName} ${selectedStudent.lastName}`}</p>
+      <p><strong>{t("Student", "Name")}:</strong> {getStudentName(selectedStudent)}</p>
       <p><strong>{t("Student", "Email")}:</strong> {selectedStudent.email}</p>
       <p><strong>{t("Student", "Gender")}:</strong> {selectedStudent.gender || 'N/A'}</p>
       <p><strong>{t("Student", "Courses Enrolled")}:</strong> {selectedStudent.courseCount || 0}</p>
@@ -84,7 +85,7 @@ const StudentsPage = () => {
           
           const formattedStudents = studentsData.map(student => ({
             id: student.id || student.studentId,
-            name: `${student.firstName} ${student.lastName}`,
+            name: getStudentName(student),
             firstName: student.firstName,
             lastName: student.lastName,
             email: student.email,

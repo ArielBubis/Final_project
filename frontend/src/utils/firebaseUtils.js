@@ -86,6 +86,93 @@ export const renderTimestamp = (timestamp, format = 'date') => {
 };
 
 /**
+ * Unified date formatting utility that handles all timestamp/date formats
+ * This replaces all scattered date formatting functions across the codebase
+ * 
+ * @param {Object|Date|string|null} timestamp - Any timestamp format (Firebase, Date, string, etc.)
+ * @param {string} format - Format type ('date', 'datetime', 'time', 'short-date')
+ * @param {string} locale - Locale for formatting (default: 'en-US')
+ * @param {string} fallback - Fallback text for invalid/null timestamps
+ * @returns {string} Formatted date string or fallback text
+ */
+export const formatDate = (timestamp, format = 'date', locale = 'en-US', fallback = 'Not available') => {
+  // Handle null/undefined
+  if (!timestamp) return fallback;
+  
+  // Convert to Date object using existing Firebase utility
+  const date = formatFirebaseTimestamp(timestamp);
+  if (!date) return fallback;
+  
+  try {
+    switch (format) {
+      case 'short-date':
+        // Matches StudentCard.js format: "Sep 14, 2024"
+        return date.toLocaleDateString(locale, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      case 'datetime':
+        return date.toLocaleString(locale);
+      case 'time':
+        return date.toLocaleTimeString(locale);
+      case 'date':
+      default:
+        // Default format: "9/14/2024"
+        return date.toLocaleDateString(locale);
+    }
+  } catch (e) {
+    console.error('Error formatting date:', e, { timestamp, format, locale });
+    return fallback;
+  }
+};
+
+/**
+ * Specialized date formatter for assignment submissions
+ * Handles the specific logic from CoursePerformanceCard.js with proper error handling
+ * 
+ * @param {Object} progress - Progress object containing submission date fields
+ * @param {Function} t - Translation function
+ * @param {string} locale - Locale for formatting (default: 'en-US')
+ * @returns {string} Formatted submission date or appropriate message
+ */
+export const formatSubmissionDate = (progress, t, locale = 'en-US') => {
+  try {
+    if (!progress) return t('PerformanceMetrics', 'Not submitted');
+    
+    // Check for both possible submission date fields
+    const submissionDate = progress.submittedAt || progress.submissionDate;
+    if (!submissionDate) return t('PerformanceMetrics', 'Not submitted');
+    
+    // Use the unified formatDate function
+    const formatted = formatDate(submissionDate, 'date', locale, null);
+    if (formatted === null) {
+      return t('PerformanceMetrics', 'Date format error');
+    }
+    
+    return formatted;
+  } catch (e) {
+    console.error('Error rendering submission date:', e, progress);
+    return t('PerformanceMetrics', 'Date error');
+  }
+};
+
+/**
+ * Specialized date formatter for last activity/access dates
+ * Handles the specific logic from CoursePerformanceCard.js module progress
+ * 
+ * @param {Object} lastAccessed - Last accessed timestamp in various formats
+ * @param {string} locale - Locale for formatting (default: 'en-US')
+ * @returns {string} Formatted last activity date or 'Never'
+ */
+export const formatLastActivity = (lastAccessed, locale = 'en-US') => {
+  if (!lastAccessed) return 'Never';
+  
+  const formatted = formatDate(lastAccessed, 'date', locale, null);
+  return formatted || 'Never';
+};
+
+/**
  * Processes all Firestore data to safely handle timestamps and nested objects
  * This function recursively converts all Firestore timestamp objects to JavaScript Date objects
  * and ensures objects are safe for React rendering

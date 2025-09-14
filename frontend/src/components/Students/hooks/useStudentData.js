@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../../contexts/DataContext';
 import { db } from '../../../firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getStudentName } from '../../../utils/studentUtils';
 import debugLogger from '../../../utils/debugLogger';
 
 export const useStudentData = (studentId) => {
@@ -96,7 +97,7 @@ export const useStudentData = (studentId) => {
           moduleCount: studentData.courses.reduce((acc, course) => acc + (course.modules?.length || 0), 0),
           finalStudentObject: {
             id: studentData.id,
-            name: `${studentData.firstName} ${studentData.lastName}`,
+            name: getStudentName(studentData),
             courseCount: studentData.courses.length,
             averageScore: studentData.averageScore,
             completionRate: studentData.completionRate,
@@ -108,7 +109,7 @@ export const useStudentData = (studentId) => {
         
         debugLogger.logDebug('useStudentData', 'Student data loaded successfully', {
           id: studentData.id,
-          name: `${studentData.firstName} ${studentData.lastName}`,
+          name: getStudentName(studentData),
           courses: `${studentData.courses.length} courses`,
           averageScore: studentData.averageScore,
           riskLevel: studentData.riskLevel,

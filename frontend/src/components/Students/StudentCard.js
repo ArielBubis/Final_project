@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { Button } from 'antd';
+import { formatDate } from '../../utils/firebaseUtils';
 import styles from '../../styles/modules/StudentCard.module.css';
 
 const StudentCard = ({ student }) => {
@@ -18,15 +19,6 @@ const StudentCard = ({ student }) => {
         if (score >= 80) return styles.high;
         if (score >= 60) return styles.medium;
         return styles.low;
-    };
-
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
     };
 
     const handleViewDetails = () => {
@@ -49,7 +41,7 @@ const StudentCard = ({ student }) => {
             </div>
             <div className={styles.footer}>
                 <span className={styles.lastActive}>
-                    Last active: {formatDate(lastActive)}
+                    Last active: {formatDate(lastActive, 'short-date')}
                 </span>
                 <Button 
                     type="primary" 

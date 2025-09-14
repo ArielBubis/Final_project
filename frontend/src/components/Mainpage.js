@@ -11,6 +11,7 @@ import {
   WarningOutlined,
   RobotOutlined,
 } from '@ant-design/icons';
+import { getStudentName } from '../utils/studentUtils';
 import CourseList from './Courses/CourseList';
 import StudentList from './Students/StudentList';
 import MLRiskStudentList from './Students/components/MLRiskStudentList';
@@ -276,7 +277,7 @@ const MainPage = () => {
                 
                 const formattedStudents = (teacherStudents || []).map(student => ({
                     id: student.id || student.studentId,
-                    name: `${student.firstName || 'Unknown'} ${student.lastName || 'Student'}`,
+                    name: getStudentName(student),
                     firstName: student.firstName || 'Unknown',
                     lastName: student.lastName || 'Student',
                     email: student.email || '',

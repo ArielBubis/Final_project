@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Spin, Alert, Badge, Statistic, Row, Col, Input, Select, Slider, Checkbox, Button, Space, Divider } from 'antd';
 import { ExclamationCircleOutlined, UserOutlined, BookOutlined, TrophyOutlined } from '@ant-design/icons';
 import { formatTimestampForDisplay } from '../../../utils/firebaseUtils';
+import { getStudentName, getStudentSearchString } from '../../../utils/studentUtils';
 import { getAtRiskStudents, getCourseRiskData } from '../../../services/riskPredictionService';
 import AtRiskStudentCard from '../../Students_At_Risk/AtRiskStudentCard';
 import CreatePredictionPrompt from '../../Students_At_Risk/CreatePredictionPrompt';
@@ -205,9 +206,7 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
     if (nameQuery.trim()) {
       const q = nameQuery.trim().toLowerCase();
       filtered = filtered.filter(s => {
-        const parts = [s.name, s.firstName, s.lastName, s.email, s.studentId, s.id]
-          .filter(Boolean).map(x => String(x).toLowerCase());
-        return parts.some(p => p.includes(q));
+        return getStudentSearchString(s).includes(q);
       });
     }
     if (selectedCourse) {
@@ -326,14 +325,6 @@ const MLRiskStudentList = ({ students: propStudents, loading: propLoading, error
       default: return level ? level.toUpperCase() : 'UNKNOWN';
     }
   };
-
-  // Format student name
-  const getStudentName = (student) => {
-    if (student.name) return student.name;
-    if (student.firstName && student.lastName) return `${student.firstName} ${student.lastName}`;
-    return `Student ${student.studentId || student.id}`;
-  };
-
   return (
     <div>
       {/* Show CreatePredictionPrompt when needed */}
