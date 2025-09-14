@@ -1,0 +1,47 @@
+/* Risk Assessment Specific Styles */
+.riskStudentCard {
+    margin-bottom: 16px;
+}
+
+.riskStudentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.riskStudentHeader h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.riskScore {
+    font-size: 0.9rem;
+}
+
+.riskStudentStats {
+    margin-bottom: 16px;
+}
+
+.riskStat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.riskStat span:first-child {
+    font-weight: 500;
+    margin-right: 8px;
+    min-width: 100px;
+}
+
+.riskFactors {
+    margin-top: 12px;
+}
+
+.riskFactors h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}

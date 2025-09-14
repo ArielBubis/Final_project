@@ -6,7 +6,7 @@ import { Card as AntCard, Row, Col, Spin, Empty, Alert, Button, Input } from 'an
 import { useNavigate } from 'react-router-dom';
 import { getStudentName } from '../../utils/studentUtils';
 import styles from '../../styles/modules/Students.module.css';
-import StudentCard from './StudentCard';
+import { StudentCard } from '../features';
 
 const IndividualStudentReport = ({ selectedStudent }) => {
   const { t } = useLanguage();

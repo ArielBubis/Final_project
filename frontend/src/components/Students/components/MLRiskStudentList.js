@@ -4,8 +4,7 @@ import { ExclamationCircleOutlined, UserOutlined, BookOutlined, TrophyOutlined }
 import { formatTimestampForDisplay } from '../../../utils/firebaseUtils';
 import { getStudentName, getStudentSearchString } from '../../../utils/studentUtils';
 import { getAtRiskStudents, getCourseRiskData } from '../../../services/riskPredictionService';
-import AtRiskStudentCard from '../../Students_At_Risk/AtRiskStudentCard';
-import CreatePredictionPrompt from '../../Students_At_Risk/CreatePredictionPrompt';
+import { AtRiskStudentCard, CreatePredictionPrompt } from '../../features';
 import styles from '../../../styles/modules/MainPage.module.css';
 import PropTypes from 'prop-types';
 import { useLanguage } from '../../../contexts/LanguageContext';

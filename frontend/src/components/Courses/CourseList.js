@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import CourseCard from './CourseCard';
+import { CourseCard } from '../features';
 import styles from '../../styles/modules/CourseList.module.css';
 
 const CourseList = ({ courses, title }) => {

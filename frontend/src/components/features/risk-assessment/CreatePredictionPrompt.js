@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Select, Alert, Spin, Typography, Space, Modal, message } from 'antd';
 import { ExclamationCircleOutlined, RocketOutlined, SettingOutlined } from '@ant-design/icons';
-import { getAvailableModels, generateNewPredictions } from '../../services/riskPredictionService';
+import { getAvailableModels, generateNewPredictions } from '../../../services/riskPredictionService';
 import PropTypes from 'prop-types';
 
 const { Title, Text, Paragraph } = Typography;

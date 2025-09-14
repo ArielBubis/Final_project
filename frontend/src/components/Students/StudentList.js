@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import StudentCard from './StudentCard';
+import { StudentCard } from '../features';
 import styles from '../../styles/modules/StudentList.module.css';
 
 const StudentList = ({ students, title }) => {

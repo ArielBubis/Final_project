@@ -1,0 +1,166 @@
+/* Base Card Styles - Shared across all card components */
+.baseCard {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-sizing: border-box;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.baseCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Card Header Styles */
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.cardTitle {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.cardSubtitle {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    background: #f7f9fa;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+/* Card Content Area */
+.cardContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.cardDescription {
+    color: #7f8c8d;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+/* Stats Display */
+.cardStats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.statRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.statLabel {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+.statValue {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Performance Colors */
+.performanceHigh {
+    color: #27ae60;
+}
+
+.performanceMedium {
+    color: #f39c12;
+}
+
+.performanceLow {
+    color: #e74c3c;
+}
+
+/* Risk Level Colors */
+.riskHigh {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.riskMedium {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.riskLow {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+/* Card Footer */
+.cardFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.cardMetadata {
+    font-size: 0.85rem;
+    color: #95a5a6;
+}
+
+.cardActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Action Button Styles */
+.primaryButton {
+    background-color: #1890ff;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.primaryButton:hover {
+    background-color: #40a9ff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .baseCard {
+        padding: 0.75rem;
+    }
+
+    .cardTitle {
+        font-size: 1rem;
+    }
+
+    .cardFooter {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
+    .cardActions {
+        width: 100%;
+    }
+
+    .cardActions button {
+        width: 100%;
+    }
+}
