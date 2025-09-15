@@ -98,10 +98,10 @@ const Student = () => {
   const enrichedStudent = student ? { 
     ...student, 
     ...riskAssessment 
-  } : null;  // Filter courses based on selection and exclude courses with 0 overall score
+  } : null;  // Filter courses based on selection and exclude courses with 0 
   const filteredCourses = enrichedStudent?.courses ? 
     enrichedStudent.courses.filter(course => {
-      // First filter out courses with 0 overall score
+      // First filter out courses with 0 
       const hasValidScore = course.summary && 
         typeof course.summary.overallScore === 'number' && 
         course.summary.overallScore > 0;

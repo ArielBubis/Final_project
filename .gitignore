@@ -46,3 +46,5 @@ backend/app.log
 .github/
 .github/prompts/system_prompt.prompt.md
 
+copilot-instructions.md
+prompts/system_prompt.prompt.md
