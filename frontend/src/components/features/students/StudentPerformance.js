@@ -83,6 +83,30 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
         return totalScore / validCourses;
     };
 
+    // Calculate total time spent across all courses when "All Courses" is selected
+    const calculateTotalTimeSpent = (studentData) => {
+        const courses = studentData.courses || [];
+        let totalTime = 0;
+        
+        courses.forEach(course => {
+            // Try multiple possible time fields
+            let timeSpent = null;
+            if (course?.summary) {
+                timeSpent = course.summary.totalTimeSpent ?? course.summary.timeSpent ?? null;
+            }
+            if (timeSpent === null) {
+                timeSpent = course.totalTimeSpent ?? course.timeSpent ?? 0;
+            }
+            
+            // Add time if it's a valid number
+            if (typeof timeSpent === 'number' && timeSpent > 0) {
+                totalTime += timeSpent;
+            }
+        });
+        
+        return totalTime;
+    };
+
     const overall = findMetric('overall') || {};
     const completion = findMetric('completion') || {};
     const submission = findMetric('submission') || {};
@@ -98,8 +122,10 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     const submissionVal = typeof submission.value === 'number' ? Math.round(submission.value) : Math.round(student.submissionRate || 0);
     const expertiseVal = typeof expertise.value === 'number' ? Math.round(expertise.value) : Math.round(student.expertiseRate || 0);
 
-    // Time: convert minutes -> hours for the TABLE only and display as an integer with 'h' suffix
-    const studentTimeMinutes = typeof time.raw === 'number' ? time.raw : (student.totalTimeSpent || student.timeSpent || 0);
+    // Time: calculate total when "All Courses" selected, otherwise use radar chart data
+    const studentTimeMinutes = selectedCourse === 'all' 
+        ? calculateTotalTimeSpent(student)
+        : (typeof time.raw === 'number' ? time.raw : (student.totalTimeSpent || student.timeSpent || 0));
     const studentHours = Math.round(studentTimeMinutes / 60);
     const classTimeMinutes = typeof time.classAverageRaw === 'number' ? time.classAverageRaw : (classAverage?.timeSpent || 0);
     const classHours = Math.round(classTimeMinutes / 60);
