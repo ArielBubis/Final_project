@@ -154,6 +154,12 @@ const StudentsPage = () => {
 
   return (
     <div className={styles.studentsPageContainer}>
+      <div className={styles.breadcrumb}>
+        <a onClick={() => navigate('/mainpage')}>{t("Navigation", "Dashboard")}</a>
+        <span className={styles.breadcrumbSeparator}>/</span>
+        <span className={styles.currentPage}>{t("StudentsPage", "Students")}</span>
+      </div>
+      
       <h1 className={styles.title}>{t("StudentsPage", "My Students")}</h1>
       <Row gutter={[16, 16]} className={styles.filterControls}>
         <Col xs={24} md={12}>

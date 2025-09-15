@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card as AntCard, Spin, Empty, Alert, Button, Select, Row, Col } from 'antd';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import styles from '../../../styles/modules/Students.module.css';
 import { useStudentData } from '../../../hooks/useStudentData'; // Use optimized hook from root hooks
 import { useRiskAssessment } from '../../../hooks/useRiskAssessment';
 import { getCourseRiskData } from '../../../services/riskPredictionService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useData } from '../../../contexts/DataContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { getStudentName } from '../../../utils/studentUtils';
 import { calculateClassAverages } from '../../../utils/dataProcessingUtils';
 import DebugCard from './DebugCard';
@@ -17,6 +18,8 @@ import debugLogger from '../../../utils/debugLogger';
 
 const Student = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { t } = useLanguage();
   const [showDebug, setShowDebug] = useState(false); // Set to false in production
   const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
   const [courseRiskData, setCourseRiskData] = useState([]);
@@ -172,6 +175,13 @@ const Student = () => {
   
   return (
     <div className={styles.studentsPageContainer}>
+      <div className={styles.breadcrumb}>
+        <a onClick={() => navigate('/mainpage')}>{t("Navigation", "Dashboard")}</a>
+        <span className={styles.breadcrumbSeparator}>/</span>
+        <a onClick={() => navigate('/students')}>{t("StudentsPage", "Students")}</a>
+        <span className={styles.breadcrumbSeparator}>/</span>
+        <span className={styles.currentPage}>{getStudentName(enrichedStudent)}</span>
+      </div>
       
       {/* Page Header */}
       <div style={{ marginBottom: '24px', borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' }}>

@@ -1,5 +1,34 @@
 /* Students.module.css */
 
+/* Breadcrumb Navigation */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.breadcrumb a {
+  color: #1890ff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbSeparator {
+  margin: 0 0.5rem;
+  color: #ccc;
+}
+
+.currentPage {
+  color: #333;
+  font-weight: 500;
+}
+
 .studentsPageContainer {
   padding: 20px;
   background-color: #f9f9f9;
