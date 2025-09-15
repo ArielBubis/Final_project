@@ -87,7 +87,7 @@ const PerformanceMetricsLegend = ({
                 />
                   <span className="value">
                     {typeof metric.value === 'number' ? (
-                      metric.name.toLowerCase().includes('time') ? `${Math.round(metric.value)}` : `${Math.round(metric.value)}%`
+                      (metric.name.toLowerCase().includes('time') || metric.name.toLowerCase().includes('overall score')) ? `${Math.round(metric.value)}` : `${Math.round(metric.value)}%`
                     ) : metric.value}
                   </span>
               </div>
@@ -106,7 +106,7 @@ const PerformanceMetricsLegend = ({
                   />
                   <span className="value" style={{ fontSize: '0.9em' }}>
                     {typeof metric.comparisonValue === 'number' ? (
-                      metric.name.toLowerCase().includes('time') ? `${Math.round(metric.comparisonValue)}` : `${Math.round(metric.comparisonValue)}%`
+                      (metric.name.toLowerCase().includes('time') || metric.name.toLowerCase().includes('overall score')) ? `${Math.round(metric.comparisonValue)}` : `${Math.round(metric.comparisonValue)}%`
                     ) : metric.comparisonValue}
                   </span>
                   <span className="comparison-label" style={{ fontSize: '0.8em', opacity: 0.8 }}>

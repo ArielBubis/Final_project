@@ -56,20 +56,76 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     // Helper to find metric entry from radarChartData by normalized metric name
     const findMetric = (name) => radarChartData.find(m => m.metric.toLowerCase().includes(name.toLowerCase())) || null;
 
+    // Calculate average score excluding courses with grade = 0
+    const calculateAverageScore = (studentData) => {
+        const courses = studentData.courses || [];
+        let totalScore = 0;
+        let validCourses = 0;
+        
+        courses.forEach(course => {
+            // Try multiple possible grade fields
+            let grade = null;
+            if (course?.summary) {
+                grade = course.summary.overallScore ?? course.summary.averageScore ?? course.summary.average ?? null;
+            }
+            if (grade === null) {
+                grade = course.averageScore ?? course.grade ?? course.finalGrade ?? course.average ?? course.score ?? null;
+            }
+            
+            // Only count courses with valid grades > 0
+            if (typeof grade === 'number' && grade > 0) {
+                totalScore += grade;
+                validCourses++;
+            }
+        });
+        
+        if (validCourses === 0) return 0;
+        return totalScore / validCourses;
+    };
+
+    // Calculate total time spent across all courses when "All Courses" is selected
+    const calculateTotalTimeSpent = (studentData) => {
+        const courses = studentData.courses || [];
+        let totalTime = 0;
+        
+        courses.forEach(course => {
+            // Try multiple possible time fields
+            let timeSpent = null;
+            if (course?.summary) {
+                timeSpent = course.summary.totalTimeSpent ?? course.summary.timeSpent ?? null;
+            }
+            if (timeSpent === null) {
+                timeSpent = course.totalTimeSpent ?? course.timeSpent ?? 0;
+            }
+            
+            // Add time if it's a valid number
+            if (typeof timeSpent === 'number' && timeSpent > 0) {
+                totalTime += timeSpent;
+            }
+        });
+        
+        return totalTime;
+    };
+
     const overall = findMetric('overall') || {};
     const completion = findMetric('completion') || {};
     const submission = findMetric('submission') || {};
     const expertise = findMetric('expertise') || {};
     const time = findMetric('time') || {};
 
-    // Use student values only (prefer radarChartData student values when present)
-    const overallVal = typeof overall.value === 'number' ? Math.round(overall.value) : Math.round(student.averageScore || 0);
+  // Use corrected average calculation when showing all courses
+    const overallVal = selectedCourse === 'all' 
+        ? Math.round(calculateAverageScore(student))
+        : (typeof overall.value === 'number' ? Math.round(overall.value) : Math.round(student.averageScore || 0));
+    
     const completionVal = typeof completion.value === 'number' ? Math.round(completion.value) : Math.round(student.completionRate || 0);
     const submissionVal = typeof submission.value === 'number' ? Math.round(submission.value) : Math.round(student.submissionRate || 0);
     const expertiseVal = typeof expertise.value === 'number' ? Math.round(expertise.value) : Math.round(student.expertiseRate || 0);
 
-    // Time: convert minutes -> hours for the TABLE only and display as an integer with 'h' suffix
-    const studentTimeMinutes = typeof time.raw === 'number' ? time.raw : (student.totalTimeSpent || student.timeSpent || 0);
+    // Time: calculate total when "All Courses" selected, otherwise use radar chart data
+    const studentTimeMinutes = selectedCourse === 'all' 
+        ? calculateTotalTimeSpent(student)
+        : (typeof time.raw === 'number' ? time.raw : (student.totalTimeSpent || student.timeSpent || 0));
     const studentHours = Math.round(studentTimeMinutes / 60);
     const classTimeMinutes = typeof time.classAverageRaw === 'number' ? time.classAverageRaw : (classAverage?.timeSpent || 0);
     const classHours = Math.round(classTimeMinutes / 60);
@@ -77,7 +133,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     return [
       {
         name: t('PerformanceMetrics', 'Overall Score'),
-        value: overallVal,
+        value: `${overallVal}/100`,
         explanation: t('PerformanceMetrics', 'Average score across all courses weighted by course credits'),
         comparisonValue: classAverage?.averageScore ?? 0
       },
