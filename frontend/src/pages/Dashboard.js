@@ -2,25 +2,23 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useData } from '../contexts/DataContext';
-import { usePerformance } from '../contexts/PerformanceContext';
-import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Empty, Tag } from 'antd';
+import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Tag } from 'antd';
 import {
   UserOutlined,
   BookOutlined,
   ClockCircleOutlined,
-  WarningOutlined,
   RobotOutlined,
 } from '@ant-design/icons';
 import { getStudentName } from '../utils/studentUtils';
 import CourseList from '../components/features/courses/CourseList';
 import StudentList from '../components/features/students/StudentList';
 import MLRiskStudentList from '../components/features/students/MLRiskStudentList';
-import { formatTimestampForDisplay } from '../utils/firebaseUtils';
 import styles from '../styles/modules/MainPage.module.css';
-import { getEnhancedRiskAssessment, checkHealth, isMlServiceAvailable } from '../services/riskPredictionService';
+import { getEnhancedRiskAssessment, checkHealth } from '../services/riskPredictionService';
 
 const MainPage = () => {
-    const { currentUser, userRole } = useAuth();
+    // const { currentUser, userRole } = useAuth();
+    const { currentUser } = useAuth();
     const { t } = useLanguage();
     const {
         fetchTeacherCourses,
@@ -31,13 +29,10 @@ const MainPage = () => {
         error: dataError,
         clearCache
     } = useData();
-    const { getTeacherAnalytics } = usePerformance();
     
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
     const [dashboardData, setDashboardData] = useState(null); // NEW: Store dashboard data
-    const [analytics, setAnalytics] = useState(null);
-    const [atRiskStudents, setAtRiskStudents] = useState([]);
     const [mlRiskStudents, setMlRiskStudents] = useState([]);
     const [mlLoading, setMlLoading] = useState(false);
     const [mlError, setMlError] = useState(null);
@@ -86,7 +81,7 @@ const MainPage = () => {
             }
         }).length;
         
-        // Count assignments - FIXED: use assignmentCount from course stats
+        // Count assignments
         const upcomingAssignments = courses.reduce((count, course) =>
             count + (course.assignmentCount || course.upcomingAssignments || 0), 0);
             
@@ -112,7 +107,6 @@ const MainPage = () => {
         setRefreshKey(prev => prev + 1);
     };
 
-    // UPDATED: Function to get ML risk predictions for students
     const getMlRiskPredictions = async (studentList) => {
         setMlLoading(true);
         setMlError(null);
@@ -225,7 +219,6 @@ const MainPage = () => {
                     console.log('No courses found for teacher');
                     setCourses([]);
                     setStudents([]);
-                    setAtRiskStudents([]);
                     return;
                 }
                 
@@ -275,44 +268,11 @@ const MainPage = () => {
                 const teacherStudents = await fetchStudentsByTeacher(currentUser?.uid);
                 console.log('Found students:', teacherStudents?.length || 0);
                 
-                const formattedStudents = (teacherStudents || []).map(student => ({
-                    id: student.id || student.studentId,
-                    name: getStudentName(student),
-                    firstName: student.firstName || 'Unknown',
-                    lastName: student.lastName || 'Student',
-                    email: student.email || '',
-                    grade: calculateGrade(student.scores?.average || 0),
-                    attendance: Math.round(student.attendance || 95), // Default to 95 if not available
-                    lastActive: student.lastAccessed || new Date().toISOString(),
-                    performance: Math.round(student.scores?.average || 0),
-                    completion: Math.round(student.completion || 0),                    scores: student.scores || { average: 0 },
-                    riskScore: calculateRiskScore(student),
-                    // TODO: In new DB design, courses should be fetched from enrollments + studentCourseSummaries
-                    // This will need to be updated to query the normalized structure
-                    courses: student.courses || [] 
-                }));
-
-                // Get teacher analytics if available
-                let teacherAnalytics = null;
-                try {
-                    if (currentUser?.uid) {
-                        teacherAnalytics = await getTeacherAnalytics(currentUser.uid);
-                    }
-                } catch (analyticsErr) {
-                    console.log('Error fetching teacher analytics:', analyticsErr);
-                }
-
-                // FIXED: Identify at-risk students with better logic
-                const riskStudents = formattedStudents
-                    .filter(student => student.riskScore >= 40) // Lower threshold for more sensitivity
-                    .sort((a, b) => b.riskScore - a.riskScore);
-
-                console.log('At-risk students found:', riskStudents.length);
+                // Students are now pre-formatted by DataContext, no need for transformation here
+                const formattedStudents = teacherStudents || [];
 
                 setCourses(coursesWithStats);
                 setStudents(formattedStudents);
-                setAnalytics(teacherAnalytics);
-                setAtRiskStudents(riskStudents);
                 setError(null);
                 
                 // Get ML risk predictions for students
@@ -338,48 +298,7 @@ const MainPage = () => {
             console.log('No current user email available');
             setLoading(false);
         }
-    }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, fetchTeacherDashboard, getTeacherAnalytics, refreshKey]);
-
-    // Helper function to calculate grade based on score
-    const calculateGrade = (score) => {
-        if (score >= 90) return 'A';
-        if (score >= 80) return 'B';
-        if (score >= 70) return 'C';
-        if (score >= 60) return 'D';
-        return 'F';
-    };
-
-    // FIXED: Helper function to calculate risk score with better logic
-    const calculateRiskScore = (student) => {
-        let score = 0;
-        
-        // Low performance increases risk
-        const avgScore = student.scores?.average || 0;
-        if (avgScore < 50) score += 40;
-        else if (avgScore < 60) score += 30;
-        else if (avgScore < 70) score += 15;
-        
-        // Low completion increases risk
-        const completion = student.completion || 0;
-        if (completion < 30) score += 35;
-        else if (completion < 50) score += 25;
-        else if (completion < 70) score += 10;
-        
-        // Recent inactivity increases risk
-        try {
-            const lastAccess = new Date(student.lastAccessed || new Date());
-            const daysSinceLastAccess = Math.floor((new Date() - lastAccess) / (1000 * 60 * 60 * 24));
-            
-            if (daysSinceLastAccess > 21) score += 25;
-            else if (daysSinceLastAccess > 14) score += 20;
-            else if (daysSinceLastAccess > 7) score += 10;
-        } catch (e) {
-            // Invalid date, add some risk
-            score += 15;
-        }
-        
-        return Math.min(score, 100); // Cap at 100
-    };
+    }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, fetchTeacherDashboard, refreshKey]);
 
     if (loading || dataLoading) {
         return (

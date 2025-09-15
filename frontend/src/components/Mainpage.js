@@ -17,7 +17,10 @@ import StudentList from './Students/StudentList';
 import MLRiskStudentList from './features/students/MLRiskStudentList';
 import { formatTimestampForDisplay } from '../utils/firebaseUtils';
 import styles from '../styles/modules/MainPage.module.css';
-import { getEnhancedRiskAssessment, checkHealth, isMlServiceAvailable } from '../services/riskPredictionService';
+import { checkHealth, isMlServiceAvailable } from '../services/riskPredictionService';
+import { useMlRiskPredictions } from '../hooks/useMlRiskPredictions';
+import { useDataRefresh } from '../hooks/useDataRefresh';
+import { calculateDashboardMetrics } from '../utils/dashboardCalculations';
 
 const MainPage = () => {
     const { currentUser, userRole } = useAuth();
@@ -28,170 +31,27 @@ const MainPage = () => {
         fetchCourseStats,
         fetchTeacherDashboard,
         loading: dataLoading,
-        error: dataError,
-        clearCache
+        error: dataError
     } = useData();
     const { getTeacherAnalytics } = usePerformance();
+    const { mlRiskStudents, mlLoading, mlError, getMlRiskPredictions, setMlError } = useMlRiskPredictions();
+    const { refreshKey, handleRefresh } = useDataRefresh();
     
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
     const [dashboardData, setDashboardData] = useState(null); // NEW: Store dashboard data
     const [analytics, setAnalytics] = useState(null);
     const [atRiskStudents, setAtRiskStudents] = useState([]);
-    const [mlRiskStudents, setMlRiskStudents] = useState([]);
-    const [mlLoading, setMlLoading] = useState(false);
-    const [mlError, setMlError] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [refreshKey, setRefreshKey] = useState(0);
     const [selectedTab, setSelectedTab] = useState('overview');
     const [mlServiceStatus, setMlServiceStatus] = useState(null);
 
-    // UPDATED: Dashboard metrics derived from fetched data with fallbacks
-    const dashboardMetrics = useMemo(() => {
-        // First try to use pre-computed dashboard data
-        if (dashboardData) {
-            return {
-                totalCourses: dashboardData.totalCourses || 0,
-                totalStudents: dashboardData.totalStudents || 0,
-                avgCompletion: Math.round(dashboardData.averageCompletionRate || 0),
-                // avgPerformance: Math.round(dashboardData.averageScore || 0),
-                activeStudents: dashboardData.totalActiveStudents || 0,
-                activeStudentsPercentage: dashboardData.totalStudents > 0 ? 
-                    Math.round((dashboardData.totalActiveStudents / dashboardData.totalStudents) * 100) : 0,
-                upcomingAssignments: dashboardData.upcomingAssignmentCount || 0
-            };
-        }
-        
-        // Fallback to calculated metrics if no dashboard data
-        if (!courses.length && !students.length) return null;
-        
-        // Calculate average course completion - FIXED: use averageCompletion instead of progress
-        const avgCompletion = courses.length > 0 ? 
-            courses.reduce((sum, course) => sum + (course.averageCompletion || course.progress || 0), 0) / courses.length : 0;
-        
-        // Calculate average student performance - FIXED: handle scores object properly
-        const avgPerformance = students.length > 0 ? 
-            students.reduce((sum, student) => sum + (student.performance || student.scores?.average || 0), 0) / students.length : 0;
-        
-        // Count active students in the last 7 days - FIXED: handle date parsing
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
-        const activeStudents = students.filter(student => {
-            try {
-                const lastActiveDate = new Date(student.lastActive || student.lastAccessed);
-                return lastActiveDate >= sevenDaysAgo;
-            } catch (e) {
-                return false; // Invalid date
-            }
-        }).length;
-        
-        // Count assignments - FIXED: use assignmentCount from course stats
-        const upcomingAssignments = courses.reduce((count, course) =>
-            count + (course.assignmentCount || course.upcomingAssignments || 0), 0);
-            
-        return {
-            totalCourses: courses.length,
-            totalStudents: students.length,
-            avgCompletion: Math.round(avgCompletion),
-            avgPerformance: Math.round(avgPerformance),
-            activeStudents,
-            activeStudentsPercentage: students.length > 0 ? Math.round((activeStudents / students.length) * 100) : 0,
-            upcomingAssignments
-        };
-    }, [courses, students, dashboardData]);
-
-    // Function to refresh data
-    const handleRefresh = () => {
-        // Clear relevant caches
-        clearCache('teacherCourses');
-        clearCache('studentsByTeacher');
-        clearCache('courseStats');
-        clearCache('teacherDashboard'); // NEW: Clear dashboard cache
-        // Trigger re-fetch by updating the key
-        setRefreshKey(prev => prev + 1);
-    };
-
-    // UPDATED: Function to get ML risk predictions for students
-    const getMlRiskPredictions = async (studentList) => {
-        setMlLoading(true);
-        setMlError(null);
-        try {
-            console.log('Getting ML risk predictions for', studentList.length, 'students');
-            
-            // Process students with ML predictions
-            const studentsWithPredictions = await Promise.all(
-                studentList.map(async (student) => {
-                    try {
-                        // Build payload matching backend expectations: courses[].assignments[].progress
-                        // Derive numeric grade level safely (avoid letter grades like 'A')
-                        const rawGradeLevel = student.gradeLevel ?? student.gradeLevelNumeric ?? student.gradeLevelNum ?? student.grade;
-                        let numericGradeLevel = 12;
-                        if (typeof rawGradeLevel === 'number') {
-                            numericGradeLevel = rawGradeLevel;
-                        } else if (typeof rawGradeLevel === 'string') {
-                            const parsed = parseInt(rawGradeLevel, 10);
-                            if (!isNaN(parsed)) numericGradeLevel = parsed; // ignore letters like 'A'
-                        }
-
-                        const studentData = {
-                            studentId: student.id,
-                            studentName: student.name,
-                            gradeLevel: numericGradeLevel,
-                            averageScore: Number(student.performance || student.scores?.average || 0),
-                            completionRate: Number(student.completion || student.completionRate || 0),
-                            courses: (student.courses || []).map(course => ({
-                                id: course.id,
-                                name: course.name || course.courseName,
-                                assignments: (course.assignments || []).map(a => ({
-                                    // Only send minimal required progress structure
-                                    progress: {
-                                        totalScore: Number(a.progress?.totalScore ?? a.score ?? 0),
-                                        totalTime: Number(a.progress?.totalTime ?? a.timeSpent ?? 0),
-                                        isLate: Boolean(a.progress?.isLate ?? a.isLate ?? false)
-                                    }
-                                }))
-                            }))
-                        };
-                        // Debug: log key fields for validation
-                        // console.debug('ML payload', { studentId: student.id, gradeLevel: numericGradeLevel, courseCount: studentData.courses.length });
-                        
-                        const riskAssessment = await getEnhancedRiskAssessment(studentData, true);
-                        
-                        return {
-                            ...student,
-                            mlRiskScore: riskAssessment.score,
-                            mlRiskLevel: riskAssessment.level,
-                            mlRiskFactors: riskAssessment.factors || [],
-                            mlIsAtRisk: riskAssessment.isAtRisk
-                        };
-                    } catch (err) {
-                        console.error(`Failed to get ML prediction for student ${student.id}:`, err);
-                        // Return student with original risk assessment if ML prediction fails
-                        return student;
-                    }
-                })
-            );
-            
-            // Do not pre-filter low risk here; let downstream component decide. Sort by ML risk.
-            const riskStudents = studentsWithPredictions
-                .filter(s => s.mlRiskScore !== undefined)
-                .sort((a, b) => b.mlRiskScore - a.mlRiskScore);
-                
-            console.log('Found', riskStudents.length, 'students at risk according to ML model');
-            setMlRiskStudents(riskStudents);
-            
-            // If no at-risk students were found but we have predictions
-            if (riskStudents.length === 0 && studentsWithPredictions.length > 0) {
-                setMlError('No students identified as at-risk by the ML model');
-            }
-        } catch (err) {
-            console.error('Error processing ML risk predictions:', err);
-            setMlError('Failed to process ML risk predictions: ' + err.message);
-        } finally {
-            setMlLoading(false);
-        }
-    };
+    // Calculate dashboard metrics using the utility function
+    const dashboardMetrics = useMemo(() => 
+        calculateDashboardMetrics(dashboardData, courses, students), 
+        [dashboardData, courses, students]
+    );
 
     useEffect(() => {
     const fetchData = async () => {
@@ -275,22 +135,8 @@ const MainPage = () => {
                 const teacherStudents = await fetchStudentsByTeacher(currentUser?.uid);
                 console.log('Found students:', teacherStudents?.length || 0);
                 
-                const formattedStudents = (teacherStudents || []).map(student => ({
-                    id: student.id || student.studentId,
-                    name: getStudentName(student),
-                    firstName: student.firstName || 'Unknown',
-                    lastName: student.lastName || 'Student',
-                    email: student.email || '',
-                    grade: calculateGrade(student.scores?.average || 0),
-                    attendance: Math.round(student.attendance || 95), // Default to 95 if not available
-                    lastActive: student.lastAccessed || new Date().toISOString(),
-                    performance: Math.round(student.scores?.average || 0),
-                    completion: Math.round(student.completion || 0),                    scores: student.scores || { average: 0 },
-                    riskScore: calculateRiskScore(student),
-                    // TODO: In new DB design, courses should be fetched from enrollments + studentCourseSummaries
-                    // This will need to be updated to query the normalized structure
-                    courses: student.courses || [] 
-                }));
+                // Students are now pre-formatted by DataContext, no need for transformation here
+                const formattedStudents = teacherStudents || [];
 
                 // Get teacher analytics if available
                 let teacherAnalytics = null;
@@ -340,47 +186,6 @@ const MainPage = () => {
         }
     }, [currentUser, fetchTeacherCourses, fetchStudentsByTeacher, fetchCourseStats, fetchTeacherDashboard, getTeacherAnalytics, refreshKey]);
 
-    // Helper function to calculate grade based on score
-    const calculateGrade = (score) => {
-        if (score >= 90) return 'A';
-        if (score >= 80) return 'B';
-        if (score >= 70) return 'C';
-        if (score >= 60) return 'D';
-        return 'F';
-    };
-
-    // FIXED: Helper function to calculate risk score with better logic
-    const calculateRiskScore = (student) => {
-        let score = 0;
-        
-        // Low performance increases risk
-        const avgScore = student.scores?.average || 0;
-        if (avgScore < 50) score += 40;
-        else if (avgScore < 60) score += 30;
-        else if (avgScore < 70) score += 15;
-        
-        // Low completion increases risk
-        const completion = student.completion || 0;
-        if (completion < 30) score += 35;
-        else if (completion < 50) score += 25;
-        else if (completion < 70) score += 10;
-        
-        // Recent inactivity increases risk
-        try {
-            const lastAccess = new Date(student.lastAccessed || new Date());
-            const daysSinceLastAccess = Math.floor((new Date() - lastAccess) / (1000 * 60 * 60 * 24));
-            
-            if (daysSinceLastAccess > 21) score += 25;
-            else if (daysSinceLastAccess > 14) score += 20;
-            else if (daysSinceLastAccess > 7) score += 10;
-        } catch (e) {
-            // Invalid date, add some risk
-            score += 15;
-        }
-        
-        return Math.min(score, 100); // Cap at 100
-    };
-
     if (loading || dataLoading) {
         return (
             <div className={styles.loadingContainer}>
@@ -429,14 +234,14 @@ const MainPage = () => {
                             {t("Mainpage", "refresh")}
                         </Button>
                     </p>
-                                        {mlServiceStatus && !mlServiceStatus.ok && (
-                                            <Alert 
-                                                type="warning" 
-                                                showIcon 
-                                                message="ML service unavailable - showing fallback scores where needed" 
-                                                style={{ marginTop: 8 }}
-                                            />
-                                        )}
+                    {mlServiceStatus && !mlServiceStatus.ok && (
+                        <Alert 
+                            type="warning" 
+                            showIcon 
+                            message="ML service unavailable - showing fallback scores where needed" 
+                            style={{ marginTop: 8 }}
+                        />
+                    )}
                 </div>
             </div>
 

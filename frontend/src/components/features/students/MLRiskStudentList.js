@@ -10,7 +10,6 @@ import PropTypes from 'prop-types';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import translate from '../../../utils/translate.json';
 
-// Small dismissible banner used only in this view
 const MLRiskAlertBanner = () => {
   const { language, t } = useLanguage();
   const [dismissed, setDismissed] = useState(false);

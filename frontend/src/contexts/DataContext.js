@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchDocuments, fetchDocumentById, formatFirebaseTimestamp, fetchSubcollection } from '../utils/firebaseUtils';
+import { formatStudentForUI } from '../utils/studentUtils';
 
 // Create the context
 const DataContext = createContext(null);
@@ -410,7 +411,7 @@ export const DataProvider = ({ children }) => {
         summaryMap.get(summary.studentId).push(summary);
       });
       
-      // Process students with their performance data
+      // Process students with their performance data and format for UI
       const studentsWithSchools = await Promise.all(
         studentIds.map(async (studentId) => {
           const userData = userDataMap.get(studentId) || {}; // Use studentId as document ID
@@ -448,7 +449,8 @@ export const DataProvider = ({ children }) => {
             }
           });
           
-          return {
+          // Create raw student data object
+          const rawStudentData = {
             id: studentId,
             studentId: studentId,
             firstName: userData.firstName || 'Unknown',
@@ -464,8 +466,12 @@ export const DataProvider = ({ children }) => {
             completion: courseCount > 0 ? totalCompletion / courseCount : 0,
             totalTimeSpent: totalTimeSpent,
             lastAccessed: lastAccessed,
-            courseCount: courseCount
+            courseCount: courseCount,
+            attendance: userData.attendance || null // Pass through raw attendance data
           };
+          
+          // Format the student data for UI consistency
+          return formatStudentForUI(rawStudentData);
         })
       );
       

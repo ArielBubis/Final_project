@@ -43,11 +43,11 @@ const StudentDisplay = ({
                             {student.courseName || student.courseId}
                         </Tag>
                     )}
-                    {showGrade && (student.gradeLevel || student.grade) && (
+                    {/* {showGrade && (student.gradeLevel || student.grade) && (
                         <Tag color="green">
                             Grade {student.gradeLevel || student.grade}
                         </Tag>
-                    )}
+                    )} */}
                 </div>
             </div>
 

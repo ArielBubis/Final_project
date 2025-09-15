@@ -44,5 +44,4 @@ backend/app.log
 /__pycache__
 *.log
 .github/
-.github/prompts/system_prompt.prompt.md
 
