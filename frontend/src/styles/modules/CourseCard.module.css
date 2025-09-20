@@ -1,12 +1,14 @@
 .courseCard {
     background: white;
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.875rem;
     box-sizing: border-box;
     border: 1px solid #ddd;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    height: 100%;
+    height: auto;
+    min-height: 200px;
+    max-height: 280px;
     display: flex;
     flex-direction: column;
 }
@@ -20,32 +22,38 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .courseName {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: #2c3e50;
     margin: 0;
+    line-height: 1.3;
 }
 
 .studentCount {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #7f8c8d;
     background: #f7f9fa;
-    padding: 4px 8px;
+    padding: 3px 8px;
     border-radius: 12px;
 }
 
 .description {
     color: #7f8c8d;
-    font-size: 0.95rem;
-    margin-bottom: 20px;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
     line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .progressContainer {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .progressBar {
@@ -73,7 +81,7 @@
     justify-content: space-between;
     align-items: center;
     margin-top: auto;
-    padding-top: 1rem;
+    padding-top: 0.75rem;
     border-top: 1px solid #eee;
     flex-wrap: wrap;
 }

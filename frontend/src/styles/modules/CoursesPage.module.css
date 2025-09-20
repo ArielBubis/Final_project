@@ -1,7 +1,10 @@
 .coursesPageContainer {
     padding: 20px;
     background-color: #f9f9f9;
-    min-height: 100vh;
+    min-height: 90vh;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .title {
@@ -9,6 +12,7 @@
     font-weight: bold;
     margin-bottom: 20px;
     color: #333;
+    flex-shrink: 0;
 }
 
 .loading {
