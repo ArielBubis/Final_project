@@ -6,10 +6,8 @@ import { useStudentData } from '../../../hooks/useStudentData'; // Use optimized
 import { useRiskAssessment } from '../../../hooks/useRiskAssessment';
 import { getCourseRiskData } from '../../../services/riskPredictionService';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useData } from '../../../contexts/DataContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getStudentName } from '../../../utils/studentUtils';
-import { calculateClassAverages } from '../../../utils/dataProcessingUtils';
 import DebugCard from './DebugCard';
 import StudentInfo from './StudentInfo';
 import StudentPerformance from './StudentPerformance';
@@ -24,14 +22,9 @@ const Student = () => {
   const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
   const [courseRiskData, setCourseRiskData] = useState([]);
   const [riskDataLoading, setRiskDataLoading] = useState(true);
-  const [classAverageData, setClassAverageData] = useState(null);
-  const [allStudentsData, setAllStudentsData] = useState([]);
   
   // Get auth context for teacher ID
   const { currentUser } = useAuth();
-  
-  // Get data context for fetching students
-  const { fetchStudentsByTeacher } = useData();
   
   // Get the optimized student data hook instead of the original one
   const { student, loading, error, debugInfo } = useStudentData(id);
@@ -56,43 +49,6 @@ const Student = () => {
 
     fetchCourseRiskData();
   }, []);
-  
-  // Fetch all students data for class average calculation
-  useEffect(() => {
-    const fetchAllStudentsForAverage = async () => {
-      if (!currentUser?.uid) return;
-      
-      try {
-        console.log('Student.js: Fetching all students for class average calculation...');
-        const allStudents = await fetchStudentsByTeacher(currentUser.uid);
-        console.log('Student.js: Fetched students for average:', allStudents?.length || 0);
-        
-        if (allStudents && allStudents.length > 0) {
-          setAllStudentsData(allStudents);
-          
-          // Calculate class averages - use all courses since we don't have detailed course structure
-          const averages = calculateClassAverages(allStudents);
-          console.log('Student.js: Calculated class averages:', averages);
-          setClassAverageData(averages);
-        }
-      } catch (error) {
-        console.error('Student.js: Error fetching students for class average:', error);
-        setAllStudentsData([]);
-        setClassAverageData(null);
-      }
-    };
-
-    fetchAllStudentsForAverage();
-  }, [currentUser?.uid, fetchStudentsByTeacher]);
-  
-  // Update class averages when we have both students data and current student data
-  useEffect(() => {
-    if (allStudentsData.length > 0) {
-      const averages = calculateClassAverages(allStudentsData);
-      console.log('Student.js: Recalculated class averages:', averages);
-      setClassAverageData(averages);
-    }
-  }, [allStudentsData]);
   
   // Combine student data with risk assessment
   const enrichedStudent = student ? { 
@@ -207,7 +163,6 @@ const Student = () => {
         <Col xs={24} lg={12} className={styles.columnFlex} style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
           <StudentPerformance 
             student={enrichedStudent} 
-            classAverage={classAverageData}
             selectedCourse={selectedCourse}
             onCourseChange={setSelectedCourse}
             className={styles.fullWidth}

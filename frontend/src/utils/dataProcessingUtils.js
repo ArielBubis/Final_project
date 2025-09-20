@@ -30,7 +30,6 @@ export const normalizeValue = (value, min, max) => {
 /**
  * Generates data for radar chart visualization from student performance metrics
  * @param {Object} studentData - The student performance data
- * @param {Object} classAverage - Optional class average data for comparison
  * @returns {Array} - Formatted data for radar chart
  */
 export const generateRadarChartData = (studentData, classAverage = null, options = {}) => {
@@ -43,8 +42,6 @@ export const generateRadarChartData = (studentData, classAverage = null, options
       hasData: true,
       hasCourses: Array.isArray(studentData.courses) && studentData.courses.length > 0
     } : 'No student data');
-    
-  console.log('generateRadarChartData classAverage:', classAverage);
   
   // Use calculateStudentMetrics to obtain either aggregated or per-course metrics
   const { selectedCourseId, selectedCourseName } = options || {};
@@ -140,31 +137,25 @@ export const generateRadarChartData = (studentData, classAverage = null, options
   const metrics = [
     {
       metric: 'Completion Rate',
-      value: metricsSource.completion || studentData.completion || studentData.completionRate || studentData.overallCompletion || 0,
-      classAverage: classAverage?.completion || 0
+      value: metricsSource.completion || studentData.completion || studentData.completionRate || studentData.overallCompletion || 0
     },
     {
       metric: 'Overall Score',
-      value: metricsSource.averageScore || studentData.averageScore || 0,
-      classAverage: classAverage?.averageScore || 0
+      value: metricsSource.averageScore || studentData.averageScore || 0
     },
     {
       metric: 'Submission Rate',
-      value: submissionRate || studentData.submissionRate || 0,
-      classAverage: classAverage?.submissionRate || 0
+      value: submissionRate || studentData.submissionRate || 0
     },
     {
       metric: 'Expertise Rate',
-      value: expertiseRate || studentData.expertiseRate || 0,
-      classAverage: classAverage?.expertiseRate || 0
+      value: expertiseRate || studentData.expertiseRate || 0
     },
     {
       metric: 'Time Spent',
       // Keep normalized value for plotting, but expose raw minutes in `raw` for UI display
       value: normalizeTimeSpent(timeSpent || 0),
-      raw: timeSpent || 0,
-      classAverage: normalizeTimeSpent(classAverage?.timeSpent || 0),
-      classAverageRaw: classAverage?.timeSpent || 0
+      raw: timeSpent || 0
     }
   ];
   

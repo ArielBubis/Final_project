@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Card as AntCard, Row, Col, Empty, Switch, Space, Select } from 'antd';
+import React, { useMemo } from 'react';
+import { Card as AntCard, Row, Col, Empty, Select } from 'antd';
 import styles from '../../../styles/modules/StudentPerformance.module.css';
 import RadarChart from '../visualization/RadarChart';
 import PerformanceMetricsLegend from '../visualization/PerformanceMetricsLegend';
@@ -7,11 +7,10 @@ import { generateRadarChartData } from '../../../utils/dataProcessingUtils';
 import debugLogger from '../../../utils/debugLogger';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
-const StudentPerformance = ({ student, classAverage = null, style, selectedCourse = 'all', onCourseChange = () => {} }) => {
+const StudentPerformance = ({ student, style, selectedCourse = 'all', onCourseChange = () => {} }) => {
   const { t } = useLanguage();
-  const [showClassAverage, setShowClassAverage] = useState(false);
   
-  const radarChartData = student ? generateRadarChartData(student, classAverage, { selectedCourseId: selectedCourse }) : [];
+  const radarChartData = student ? generateRadarChartData(student, null, { selectedCourseId: selectedCourse }) : [];
   // Diagnostic: log imported component types to help catch undefined imports that cause React to crash
   // (This will be removed after root cause is fixed)
   if (process.env.NODE_ENV !== 'production') {
@@ -44,9 +43,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
   debugLogger.logDebug('StudentPerformance', 'Render with data', { 
     hasStudent: !!student,
     studentId: student?.id,
-    radarChartDataLength: radarChartData.length,
-    hasClassAverage: !!classAverage,
-    classAverageData: classAverage
+    radarChartDataLength: radarChartData.length
   });
   // Build the metrics table values based on the currently selected course.
   // The table must always show the student's metrics (ignore the Show Class Average toggle).
@@ -127,37 +124,31 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
         ? calculateTotalTimeSpent(student)
         : (typeof time.raw === 'number' ? time.raw : (student.totalTimeSpent || student.timeSpent || 0));
     const studentHours = Math.round(studentTimeMinutes / 60);
-    const classTimeMinutes = typeof time.classAverageRaw === 'number' ? time.classAverageRaw : (classAverage?.timeSpent || 0);
-    const classHours = Math.round(classTimeMinutes / 60);
 
     return [
       {
         name: t('PerformanceMetrics', 'Overall Score'),
         value: `${overallVal}/100`,
-        explanation: t('PerformanceMetrics', 'Average score across all courses weighted by course credits'),
-        comparisonValue: classAverage?.averageScore ?? 0
+        explanation: t('PerformanceMetrics', 'Average score across all courses weighted by course credits')
       },
       {
         name: t('PerformanceMetrics', 'Course Completion'),
         value: completionVal,
-        explanation: t('PerformanceMetrics', 'Percentage of course material accessed and completed'),
-        comparisonValue: classAverage?.completion ?? 0
+        explanation: t('PerformanceMetrics', 'Percentage of course material accessed and completed')
       },
       {
         name: t('PerformanceMetrics', 'Assignment Completion'),
         value: submissionVal,
-        explanation: t('PerformanceMetrics', 'Percentage of assignments submitted across all enrolled courses'),
-        comparisonValue: classAverage?.submissionRate ?? 0
+        explanation: t('PerformanceMetrics', 'Percentage of assignments submitted across all enrolled courses')
       },
       {
         name: t('PerformanceMetrics', 'Time Spent'),
         // Display hours with 'h' suffix in the TABLE only
         value: `${studentHours}h`,
-        explanation: t('PerformanceMetrics', 'Total time spent (hours)'),
-        comparisonValue: `${classHours}h`
+        explanation: t('PerformanceMetrics', 'Total time spent (hours)')
       }
     ];
-  }, [radarChartData, selectedCourse, student, classAverage, t]);
+  }, [radarChartData, selectedCourse, student, t]);
 
   return (
     <AntCard 
@@ -168,7 +159,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
             <span>{t('PerformanceMetrics', 'Performance Metrics')}</span>
           </div>
 
-          {/* Second Row: Course Filter and Toggle Button */}
+          {/* Course Filter */}
           <div className={styles.filterRow}>
             <Select
               value={selectedCourse}
@@ -181,19 +172,8 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
                   label: course.courseName || t('PerformanceMetrics', 'Unnamed Course'),
                 })) || [])
               ]}
-              style={{ width: 200, marginRight: '16px' }}
+              style={{ width: 200 }}
             />
-            <Space>
-              <span className={styles.toggleLabel}>
-                {t('PerformanceMetrics', 'Show Class Average')}
-              </span>
-              <Switch
-                checked={showClassAverage}
-                onChange={setShowClassAverage}
-                size="small"
-                disabled={!classAverage || radarChartData.every(metric => metric.classAverage === 0)}
-              />
-            </Space>
           </div>
         </div>
       }
@@ -208,16 +188,14 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
               data={radarChartData}
               width={500}
               height={300}
-              showLegend={showClassAverage}
+              showLegend={false}
               studentColor="#722ed1"
-              classColor="#82ca9d"
             />
           </div>
           <div className={styles.legendWrapper}>
             <PerformanceMetricsLegendSafe 
               metrics={performanceMetrics}
-              showComparison={showClassAverage}
-              comparisonData={classAverage}
+              showComparison={false}
             />
           </div>
         </>
