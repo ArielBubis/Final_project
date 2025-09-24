@@ -71,12 +71,13 @@ const Login = () => {
 
                             <div className={styles.loginButtonWrapper}>
                                 <Button
-                                    label={t("LoginPage", "Login")}
                                     onClick={handleLogin}
                                     type="submit"
                                     variant="primary"
                                     size="wide"
-                                />
+                                >
+                                    {t("LoginPage", "Login")}
+                                </Button>
                             </div>
 
                             {error && <p className={styles.errorMessage}>{error}</p>}
