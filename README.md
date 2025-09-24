@@ -9,3 +9,5 @@ An example of a possible analysis in our system: Comparing students' progress ag
 
 ## Execution Method:
 The project will be executed in Agile methodology. We split the work into 3 main phases: planning, execution and summary. We will have 14 iterations in total. The first iteration (planning phase) will take approximately 3 weeks, and the last iteration (summary phase) will take approximately 2 weeks. The other 12 iterations (in execution phase) will take approximately 3 weeks each and include: planning, development, and review phases to ensure continuous feedback and adaptability. This iterative approach will help align the final product with project goals and user needs.                                               	
+
+

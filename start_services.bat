@@ -9,8 +9,11 @@ echo.
 echo Setting up Python environment...
 echo --------------------------------------------
 
-REM Navigate to backend directory
-cd /d "e:\Libraries\My Documents\University\Year 4\FinalProject\website\Final_project\backend"
+REM Get the directory of this script
+set SCRIPT_DIR=%~dp0
+
+REM Navigate to backend directory (relative)
+cd /d "%SCRIPT_DIR%backend"
 
 REM Check if virtual environment exists
 if not exist "venv" (
@@ -55,14 +58,18 @@ echo.
 echo Starting backend and frontend services...
 echo --------------------------------------------
 
+
+
 REM Start ML risk prediction backend service in a new terminal with venv activated
-start powershell -NoExit -Command "cd 'e:\Libraries\My Documents\University\Year 4\FinalProject\website\Final_project\backend'; .\venv\Scripts\Activate.ps1; python app.py"
+start powershell -NoExit -Command "cd '%SCRIPT_DIR%backend'; .\venv\Scripts\Activate.ps1; py ./api/app.py"
 
 REM Wait a moment for backend to initialize
 timeout /t 5
 
-REM Start frontend service in a new terminal
-start powershell -NoExit -Command "cd 'e:\Libraries\My Documents\University\Year 4\FinalProject\website\Final_project\frontend'; npm start"
+
+
+REM Install frontend dependencies and start frontend service in a new terminal
+start powershell -NoExit -Command "cd '%SCRIPT_DIR%frontend'; npm install; npm start"
 
 echo.
 echo Both services should be starting...

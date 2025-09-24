@@ -1,0 +1,8 @@
+{
+  "features": {
+    "ENABLE_MULTI_MODEL": false
+  },
+  "description": "Shared configuration file for both frontend and backend",
+  "version": "1.0.0",
+  "lastUpdated": "2025-09-24"
+}
