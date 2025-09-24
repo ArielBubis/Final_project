@@ -16,6 +16,7 @@ import MLRiskStudentList from '../components/features/students/MLRiskStudentList
 import ModelSelector from '../components/common/ModelSelector';
 import styles from '../styles/modules/MainPage.module.css';
 import { getEnhancedRiskAssessment, checkHealth } from '../services/riskPredictionService';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 const MainPage = () => {
     // const { currentUser, userRole } = useAuth();
@@ -370,7 +371,8 @@ const MainPage = () => {
                 // Get ML risk predictions for students
                 if (formattedStudents.length > 0) {
                     try {
-                        await getMlRiskPredictions(formattedStudents, selectedModel?.id);
+                        const modelId = FEATURE_FLAGS.ENABLE_MULTI_MODEL ? selectedModel?.id : null;
+                        await getMlRiskPredictions(formattedStudents, modelId);
                     } catch (mlError) {
                         console.error('Error getting ML risk predictions:', mlError);
                         setMlError('Failed to process ML risk predictions');
@@ -550,18 +552,20 @@ const MainPage = () => {
                     >
                         <div className={styles.tabContent}>
                             <Row gutter={16}>
-                                <Col xs={24} md={8}>
-                                    <ModelSelector 
-                                        onModelChange={handleModelChange}
-                                        disabled={mlLoading}
-                                    />
-                                </Col>
-                                <Col xs={24} md={16}>
+                                {FEATURE_FLAGS.ENABLE_MULTI_MODEL && (
+                                    <Col xs={24} md={8}>
+                                        <ModelSelector 
+                                            onModelChange={handleModelChange}
+                                            disabled={mlLoading}
+                                        />
+                                    </Col>
+                                )}
+                                <Col xs={24} md={FEATURE_FLAGS.ENABLE_MULTI_MODEL ? 16 : 24}>
                                     <Card
                                         title={
                                             <div className={styles.riskCardTitle}>
                                                 <RobotOutlined /> {t("Mainpage", "ML Risk analysis")}
-                                                {selectedModel && (
+                                                {FEATURE_FLAGS.ENABLE_MULTI_MODEL && selectedModel && (
                                                     <Tag color="blue" style={{ marginLeft: '8px' }}>
                                                         {selectedModel.name}
                                                     </Tag>
