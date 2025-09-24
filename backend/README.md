@@ -13,7 +13,7 @@ backend/
 │   ├── pre_processing.py  # Data processing & feature engineering
 │   └── train_model.py     # Model training pipeline
 ├── models/        # Trained ML models
-│   ├── at_risk_rf_model.pkl  # RandomForest classifier
+│   ├── student_risk_model.pkl  # RandomForest classifier
 │   ├── scaler.pkl            # Feature scaler
 │   └── features.pkl          # Feature names & metadata
 ├── output/        # Generated prediction files
@@ -174,7 +174,7 @@ The system generates 15+ features from student data:
 
 ## Data Flow
 
-1. **CSV Data Sources** (`data/csv/`):
+1. **CSV Data Sources** (`data/`):
    - `students.csv`, `courses.csv`, `assignments.csv`
    - `studentAssignments.csv`, `studentCourses.csv`
    - `modules.csv`, etc.
@@ -219,6 +219,6 @@ Set `logging.DEBUG` in `app.py` for detailed request/response logging.
 
 ## Model Files
 
-- **`at_risk_rf_model.pkl`**: Trained RandomForest classifier
+- **`student_risk_model.pkl`**: Trained RandomForest classifier
 - **`scaler.pkl`**: StandardScaler for feature normalization  
 - **`features.pkl`**: Feature names and metadata for consistency

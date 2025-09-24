@@ -446,7 +446,9 @@ const MainPage = () => {
                                             <Alert 
                                                 type="warning" 
                                                 showIcon 
-                                                message="ML service unavailable - showing fallback scores where needed" 
+                                                message={`Model is missing from backend/models folder - showing fallback scores where needed.
+                                                    To train a model go to this link: https://colab.research.google.com/drive/124Tc_TnAGpkGgHMw82S7wwZzxbUOz0EJ
+                                                    Restart the server after adding the model`} 
                                                 style={{ marginTop: 8 }}
                                             />
                                         )}
@@ -497,13 +499,13 @@ const MainPage = () => {
                             showInfo={false}
                         />
                     </Card>
-                    <Card className={styles.metricCard}>
+                    {/* <Card className={styles.metricCard}>
                         <Statistic
                             title={t("Mainpage", "Upcoming Assigments")}
                             value={dashboardMetrics.upcomingAssignments}
                             prefix={<ClockCircleOutlined />}
                         />
-                    </Card>
+                    </Card> */}
                 </div>
             )}
 

@@ -23,7 +23,7 @@ async function importCsvToFirebase(csvFolder) {
       studentAssignments: true,
       studentCourseSummaries: true,
       teacherDashboards: true,
-      studentModules: true // Add this new option
+      studentModules: true 
     };
     
     // Load all CSV data first
@@ -747,7 +747,7 @@ function extractLastName(fullName) {
 }
 
 // Run the import
-const csvFolder = path.join(__dirname, '../data/csv');
+const csvFolder = path.join(__dirname, '../data');
 importCsvToFirebase(csvFolder);
 
 // Add this new function to calculate and import student module progress

@@ -48,6 +48,11 @@ const StudentDisplay = ({
                             Grade {student.gradeLevel || student.grade}
                         </Tag>
                     )} */}
+                    {/* {showGrade && (student.performance !== undefined || student.finalScore !== undefined) && (
+                        <Tag color="purple">
+                            Score: {Math.round(student.performance || student.finalScore || 0)}%
+                        </Tag>
+                    )} */}
                 </div>
             </div>
 

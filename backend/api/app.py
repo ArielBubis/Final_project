@@ -343,7 +343,9 @@ def load_model_and_features():
                 continue
         
         if not loaded_models:
-            raise ModelLoadError("No models could be loaded successfully")
+            raise ModelLoadError("Model is missing from backend/models folder. "
+                               "To train a model go to this link: "
+                               "https://colab.research.google.com/drive/124Tc_TnAGpkGgHMw82S7wwZzxbUOz0EJ")
         
         # Set global variables
         models = loaded_models
@@ -362,7 +364,7 @@ def load_model_and_features():
         # Try to load legacy model as fallback (only in multi-model mode)
         if ENABLE_MULTI_MODEL:
             try:
-                legacy_model_path = os.path.join(models_dir, 'at_risk_rf_model.pkl')
+                legacy_model_path = os.path.join(models_dir, 'student_risk_model.pkl')
                 legacy_feature_names_path = os.path.join(models_dir, 'features.pkl')
                 legacy_scaler_path = os.path.join(models_dir, 'scaler.pkl')
                 
@@ -1316,9 +1318,11 @@ def predict_from_csv():
             if predictions_df is None:
                 return jsonify({
                     'error': 'Prediction failed',
-                    'message': 'Could not generate predictions from CSV data. Check that CSV files are available.'
+                    'message': ('Could not generate predictions from CSV data. '
+                               'Please ensure CSV files are available in the "/data" directory. '
+                               'You can generate new sample data from the repository: '
+                               'https://github.com/ArielBubis/simulating_student_data')
                 }), 500
-            
         except Exception as e:
             error_msg = f"CSV prediction pipeline failed: {str(e)}"
             logger.error(error_msg)
@@ -1492,11 +1496,11 @@ def get_at_risk_students():
         # Load student and course lookup data
         try:
             # Read students CSV for name mapping
-            students_df = pd.read_csv('../../data/csv/students.csv')
+            students_df = pd.read_csv('../../data/students.csv')
             student_lookup = dict(zip(students_df['id'].astype(str), students_df['name']))
             
             # Read courses CSV for course name mapping
-            courses_df = pd.read_csv('../../data/csv/courses.csv')
+            courses_df = pd.read_csv('../../data/courses.csv')
             course_lookup = dict(zip(courses_df['id'], courses_df['name']))
             
             logger.info(f"Loaded {len(student_lookup)} student names and {len(course_lookup)} course names")
