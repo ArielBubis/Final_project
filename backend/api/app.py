@@ -90,7 +90,8 @@ def get_available_models():
         
         return jsonify({
             'models': model_list,
-            'current_model': current_model_type
+            'current_model': current_model_type,
+            'multi_model_enabled': ENABLE_MULTI_MODEL
         })
     except Exception as e:
         logger.error(f"Error getting available models: {str(e)}")
@@ -103,6 +104,14 @@ def get_available_models():
 def set_current_model():
     """Set the current active model"""
     try:
+        # If multi-model is disabled, return appropriate response
+        if not ENABLE_MULTI_MODEL:
+            return jsonify({
+                'error': 'Model switching disabled',
+                'message': 'Multi-model feature is disabled. Using single model.',
+                'current_model': current_model_type
+            }), 400
+        
         data = request.get_json()
         if not data or 'model_id' not in data:
             return jsonify({
@@ -113,10 +122,11 @@ def set_current_model():
         model_id = data['model_id']
         
         if set_current_model(model_id):
+            model_name = models[model_id]['config']['name'] if model_id in models else model_id
             return jsonify({
                 'success': True,
                 'current_model': current_model_type,
-                'message': f'Successfully switched to {AVAILABLE_MODELS[model_id]["name"]}'
+                'message': f'Successfully switched to {model_name}'
             })
         else:
             return jsonify({
@@ -130,6 +140,25 @@ def set_current_model():
             'error': 'Failed to set model',
             'message': str(e)
         }), 500
+
+# Load shared configuration
+def load_shared_config():
+    """Load configuration from shared config.json file"""
+    try:
+        # Get the project root directory (two levels up from api/)
+        project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+        config_path = os.path.join(project_root, 'config.json')
+        
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        return config.get('features', {}).get('ENABLE_MULTI_MODEL', False)
+    except Exception as e:
+        logger.warning(f"Could not load shared config: {str(e)}, defaulting to single model mode")
+        return False
+
+# Configuration
+ENABLE_MULTI_MODEL = load_shared_config()
 
 # Global variables for models and features
 models = {}  # Will store multiple models: {'1_3': {...}, '1_6': {...}, etc.}
@@ -196,6 +225,67 @@ def load_model_and_features():
         
         # Define paths (go up one level since we're in api/ folder)
         models_dir = os.path.join(script_dir, '..', 'models')
+        
+        # If multi-model is disabled, load single model directly
+        if not ENABLE_MULTI_MODEL:
+            logger.info("Multi-model feature is disabled. Loading single model.")
+            
+            # Load single model files directly from models directory
+            model_path = os.path.join(models_dir, 'student_risk_model.pkl')
+            feature_names_path = os.path.join(models_dir, 'features.pkl')
+            scaler_path = os.path.join(models_dir, 'scaler.pkl')
+            
+            # Check if required files exist
+            if not os.path.exists(model_path):
+                raise ModelLoadError(f"Single model file not found: {model_path}")
+            
+            if not os.path.exists(feature_names_path):
+                raise ModelLoadError(f"Feature names file not found: {feature_names_path}")
+            
+            # Load the single model
+            logger.info(f"Loading single model from: {model_path}")
+            model = joblib.load(model_path)
+            
+            if model is None:
+                raise ModelLoadError("Single model loaded but is None")
+            
+            # Load feature names
+            logger.info(f"Loading feature names from: {feature_names_path}")
+            with open(feature_names_path, 'rb') as f:
+                model_feature_names = joblib.load(f)
+            
+            if model_feature_names is None or len(model_feature_names) == 0:
+                raise ModelLoadError("Feature names loaded but are empty")
+            
+            # Load scaler if available
+            model_scaler = None
+            if os.path.exists(scaler_path):
+                logger.info(f"Loading scaler from: {scaler_path}")
+                model_scaler = joblib.load(scaler_path)
+            
+            # Set up single model structure
+            models = {
+                'single': {
+                    'model': model,
+                    'feature_names': model_feature_names,
+                    'scaler': model_scaler,
+                    'config': {
+                        'name': 'Student Risk Model',
+                        'description': 'Single risk prediction model',
+                        'months_required': 6,
+                        'folder': 'single'
+                    }
+                }
+            }
+            
+            current_model_type = 'single'
+            feature_names = model_feature_names
+            
+            logger.info(f"Successfully loaded single model with {len(model_feature_names)} features")
+            return
+        
+        # Multi-model loading logic (existing code)
+        logger.info("Multi-model feature is enabled. Loading multiple models.")
         
         # Load each available model
         loaded_models = {}
@@ -269,32 +359,33 @@ def load_model_and_features():
         
         logger.info(f"Successfully loaded {len(models)} models. Current model: {current_model_type}")
         
-        # Try to load legacy model as fallback
-        try:
-            legacy_model_path = os.path.join(models_dir, 'at_risk_rf_model.pkl')
-            legacy_feature_names_path = os.path.join(models_dir, 'features.pkl')
-            legacy_scaler_path = os.path.join(models_dir, 'scaler.pkl')
-            
-            if os.path.exists(legacy_model_path) and os.path.exists(legacy_feature_names_path):
-                legacy_model = joblib.load(legacy_model_path)
-                legacy_features = joblib.load(legacy_feature_names_path)
-                legacy_scaler = joblib.load(legacy_scaler_path) if os.path.exists(legacy_scaler_path) else None
+        # Try to load legacy model as fallback (only in multi-model mode)
+        if ENABLE_MULTI_MODEL:
+            try:
+                legacy_model_path = os.path.join(models_dir, 'at_risk_rf_model.pkl')
+                legacy_feature_names_path = os.path.join(models_dir, 'features.pkl')
+                legacy_scaler_path = os.path.join(models_dir, 'scaler.pkl')
                 
-                if legacy_model is not None and legacy_features:
-                    models['legacy'] = {
-                        'model': legacy_model,
-                        'feature_names': legacy_features,
-                        'scaler': legacy_scaler,
-                        'config': {
-                            'name': 'Legacy Risk Model',
-                            'description': 'Original risk prediction model',
-                            'months_required': 3,
-                            'folder': 'legacy'
+                if os.path.exists(legacy_model_path) and os.path.exists(legacy_feature_names_path):
+                    legacy_model = joblib.load(legacy_model_path)
+                    legacy_features = joblib.load(legacy_feature_names_path)
+                    legacy_scaler = joblib.load(legacy_scaler_path) if os.path.exists(legacy_scaler_path) else None
+                    
+                    if legacy_model is not None and legacy_features:
+                        models['legacy'] = {
+                            'model': legacy_model,
+                            'feature_names': legacy_features,
+                            'scaler': legacy_scaler,
+                            'config': {
+                                'name': 'Legacy Risk Model',
+                                'description': 'Original risk prediction model',
+                                'months_required': 3,
+                                'folder': 'legacy'
+                            }
                         }
-                    }
-                    logger.info("Legacy model loaded successfully as fallback")
-        except Exception as e:
-            logger.warning(f"Could not load legacy model: {str(e)}")
+                        logger.info("Legacy model loaded successfully as fallback")
+            except Exception as e:
+                logger.warning(f"Could not load legacy model: {str(e)}")
         
     except FileNotFoundError as e:
         error_msg = f"Model or feature file not found: {str(e)}"
@@ -339,10 +430,14 @@ def validate_data_for_model(data, model_type):
     Returns (is_valid, months_available, error_message)
     """
     try:
-        if model_type not in AVAILABLE_MODELS:
+        # Handle single model case
+        if not ENABLE_MULTI_MODEL or model_type == 'single':
+            # For single model, use a default requirement of 6 months
+            required_months = 6
+        elif model_type not in AVAILABLE_MODELS:
             return False, 0, f"Unknown model type: {model_type}"
-        
-        required_months = AVAILABLE_MODELS[model_type]['months_required']
+        else:
+            required_months = AVAILABLE_MODELS[model_type]['months_required']
         
         # Extract course data
         courses = data.get('courses', [])
