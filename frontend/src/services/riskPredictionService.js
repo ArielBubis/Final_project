@@ -30,16 +30,22 @@ export const checkHealth = async () => {
 /**
  * Get risk prediction for a student using ML model
  * @param {Object} studentData - The student data to analyze
+ * @param {string} modelId - Optional model ID to use for prediction
  * @returns {Promise<Object>} - The prediction results
  */
-export const getPrediction = async (studentData) => {
+export const getPrediction = async (studentData, modelId = null) => {
   try {
+    const requestBody = { ...studentData };
+    if (modelId) {
+      requestBody.model_id = modelId;
+    }
+    
     const response = await fetch(`${API_BASE_URL}/predict`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(studentData)
+      body: JSON.stringify(requestBody)
     });
     if (!response.ok) {
       throw new Error(`Server responded with status: ${response.status}`);
@@ -57,11 +63,12 @@ export const getPrediction = async (studentData) => {
  * Enhanced risk assessment that tries ML prediction first then falls back to rule-based
  * @param {Object} data - Student data object
  * @param {boolean} isStudentLevel - Whether this is student or course level assessment
+ * @param {string} modelId - Optional model ID to use for prediction
  * @returns {Promise<Object>} Risk assessment results
  */
-export const getEnhancedRiskAssessment = async (data, isStudentLevel = false) => {
+export const getEnhancedRiskAssessment = async (data, isStudentLevel = false, modelId = null) => {
   try {
-    const mlPrediction = await getPrediction(data);
+    const mlPrediction = await getPrediction(data, modelId);
     if (mlPrediction && mlPrediction.risk_score !== undefined) {
       return {
         score: mlPrediction.risk_score,
@@ -169,14 +176,53 @@ export const getAvailableModels = async () => {
     
     if (!response.ok) {
       // If endpoint doesn't exist, return default model
-      return [{ id: 'at_risk_rf_model', name: 'Random Forest Risk Model', description: 'Default risk prediction model' }];
+      return [{ 
+        id: '1_3', 
+        name: '1-3 Months Early Warning', 
+        description: 'Predicts risk based on first 3 months of data',
+        months_required: 3,
+        is_current: true
+      }];
+    }
+    
+    const data = await response.json();
+    return data.models || [];
+  } catch (error) {
+    console.error('Error getting available models:', error);
+    // Return default model if service is unavailable
+    return [{ 
+      id: '1_3', 
+      name: '1-3 Months Early Warning', 
+      description: 'Predicts risk based on first 3 months of data',
+      months_required: 3,
+      is_current: true
+    }];
+  }
+};
+
+/**
+ * Set the current active model
+ * @param {string} modelId - The model to activate
+ * @returns {Promise<Object>} Response from server
+ */
+export const setCurrentModel = async (modelId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/models/current`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ model_id: modelId })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with status: ${response.status}`);
     }
     
     return await response.json();
   } catch (error) {
-    console.error('Error getting available models:', error);
-    // Return default model if service is unavailable
-    return [{ id: 'at_risk_rf_model', name: 'Random Forest Risk Model', description: 'Default risk prediction model' }];
+    console.error('Error setting current model:', error);
+    throw error;
   }
 };
 

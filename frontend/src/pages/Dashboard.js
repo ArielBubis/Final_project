@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useData } from '../contexts/DataContext';
-import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Tag } from 'antd';
+import { Button, Card, Progress, Spin, Alert, Statistic, Tabs, Tag, Row, Col } from 'antd';
 import {
   UserOutlined,
   BookOutlined,
@@ -13,6 +13,7 @@ import { getStudentName } from '../utils/studentUtils';
 import CourseList from '../components/features/courses/CourseList';
 import StudentList from '../components/features/students/StudentList';
 import MLRiskStudentList from '../components/features/students/MLRiskStudentList';
+import ModelSelector from '../components/common/ModelSelector';
 import styles from '../styles/modules/MainPage.module.css';
 import { getEnhancedRiskAssessment, checkHealth } from '../services/riskPredictionService';
 
@@ -23,6 +24,7 @@ const MainPage = () => {
     const {
         fetchTeacherCourses,
         fetchStudentsByTeacher,
+        fetchStudentDetailsCached,
         fetchCourseStats,
         fetchTeacherDashboard,
         loading: dataLoading,
@@ -41,6 +43,7 @@ const MainPage = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     const [selectedTab, setSelectedTab] = useState('overview');
     const [mlServiceStatus, setMlServiceStatus] = useState(null);
+    const [selectedModel, setSelectedModel] = useState(null);
 
     // UPDATED: Dashboard metrics derived from fetched data with fallbacks
     const dashboardMetrics = useMemo(() => {
@@ -107,19 +110,36 @@ const MainPage = () => {
         setRefreshKey(prev => prev + 1);
     };
 
-    const getMlRiskPredictions = async (studentList) => {
+    const getMlRiskPredictions = async (studentList, modelId = null) => {
         setMlLoading(true);
         setMlError(null);
         try {
-            console.log('Getting ML risk predictions for', studentList.length, 'students');
+            console.log('Getting ML risk predictions for', studentList.length, 'students', 
+                      modelId ? `using model ${modelId}` : 'using default model');
             
-            // Process students with ML predictions
+            // Process students with ML predictions - fetch detailed data for each student
             const studentsWithPredictions = await Promise.all(
                 studentList.map(async (student) => {
                     try {
+                        // Fetch detailed student data with course and assignment information
+                        console.log(`Fetching detailed data for student ${student.id}...`);
+                        const detailedStudent = await fetchStudentDetailsCached(student.id);
+                        
+                        if (!detailedStudent) {
+                            console.warn(`No detailed data found for student ${student.id}`);
+                            return {
+                                ...student,
+                                mlRiskScore: 0,
+                                mlRiskLevel: 'unknown',
+                                mlRiskFactors: ['Student data not found'],
+                                mlIsAtRisk: false,
+                                skippedReason: 'Student not found'
+                            };
+                        }
+                        
                         // Build payload matching backend expectations: courses[].assignments[].progress
                         // Derive numeric grade level safely (avoid letter grades like 'A')
-                        const rawGradeLevel = student.gradeLevel ?? student.gradeLevelNumeric ?? student.gradeLevelNum ?? student.grade;
+                        const rawGradeLevel = detailedStudent.gradeLevel ?? student.gradeLevel ?? 12;
                         let numericGradeLevel = 12;
                         if (typeof rawGradeLevel === 'number') {
                             numericGradeLevel = rawGradeLevel;
@@ -129,31 +149,94 @@ const MainPage = () => {
                         }
 
                         const studentData = {
-                            studentId: student.id,
-                            studentName: student.name,
+                            studentId: detailedStudent.id,
+                            studentName: detailedStudent.firstName && detailedStudent.lastName 
+                                ? `${detailedStudent.firstName} ${detailedStudent.lastName}` 
+                                : student.name,
                             gradeLevel: numericGradeLevel,
-                            averageScore: Number(student.performance || student.scores?.average || 0),
-                            completionRate: Number(student.completion || student.completionRate || 0),
-                            courses: (student.courses || []).map(course => ({
+                            averageScore: Number(detailedStudent.averageScore || 0),
+                            completionRate: Number(detailedStudent.completionRate || 0),
+                            courses: (detailedStudent.courses || []).map(course => ({
                                 id: course.id,
-                                name: course.name || course.courseName,
-                                assignments: (course.assignments || []).map(a => ({
-                                    // Only send minimal required progress structure
+                                name: course.courseName || course.name,
+                                assignments: (course.assignments || []).map(assignment => ({
+                                    // Map the detailed assignment progress structure
                                     progress: {
-                                        totalScore: Number(a.progress?.totalScore ?? a.score ?? 0),
-                                        totalTime: Number(a.progress?.totalTime ?? a.timeSpent ?? 0),
-                                        isLate: Boolean(a.progress?.isLate ?? a.isLate ?? false)
+                                        totalScore: Number(assignment.progress?.totalScore ?? 0),
+                                        totalTime: Number(assignment.progress?.totalTime ?? 0),
+                                        isLate: Boolean(assignment.progress?.isLate ?? false)
                                     }
                                 }))
                             }))
                         };
-                        // Debug: log key fields for validation
-                        // console.debug('ML payload', { studentId: student.id, gradeLevel: numericGradeLevel, courseCount: studentData.courses.length });
                         
-                        const riskAssessment = await getEnhancedRiskAssessment(studentData, true);
+                        // Debug logging
+                        console.log(`Student ${student.id} (${studentData.studentName}) detailed data:`, {
+                            courseCount: studentData.courses.length,
+                            courses: studentData.courses.map(c => ({
+                                id: c.id,
+                                name: c.name,
+                                assignmentCount: c.assignments.length
+                            })),
+                            averageScore: studentData.averageScore,
+                            completionRate: studentData.completionRate
+                        });
+                        
+                        // Skip students with no course data
+                        if (studentData.courses.length === 0) {
+                            console.warn(`Skipping student ${student.id} - no course data`);
+                            return {
+                                ...student,
+                                // Preserve detailed student data for name information
+                                name: detailedStudent.firstName && detailedStudent.lastName 
+                                    ? `${detailedStudent.firstName} ${detailedStudent.lastName}` 
+                                    : student.name,
+                                firstName: detailedStudent.firstName || student.firstName,
+                                lastName: detailedStudent.lastName || student.lastName,
+                                mlRiskScore: 0,
+                                mlRiskLevel: 'unknown',
+                                mlRiskFactors: ['No course data available'],
+                                mlIsAtRisk: false,
+                                skippedReason: 'No course data'
+                            };
+                        }
+                        
+                        // Check if any course has assignments with valid data
+                        const hasValidAssignments = studentData.courses.some(course => 
+                            course.assignments && course.assignments.length > 0
+                        );
+                        
+                        if (!hasValidAssignments) {
+                            console.warn(`Student ${student.id} has courses but no assignment data`);
+                            return {
+                                ...student,
+                                // Preserve detailed student data for name information
+                                name: detailedStudent.firstName && detailedStudent.lastName 
+                                    ? `${detailedStudent.firstName} ${detailedStudent.lastName}` 
+                                    : student.name,
+                                firstName: detailedStudent.firstName || student.firstName,
+                                lastName: detailedStudent.lastName || student.lastName,
+                                courses: detailedStudent.courses || student.courses || [],
+                                mlRiskScore: 0,
+                                mlRiskLevel: 'unknown',
+                                mlRiskFactors: ['No assignment data available'],
+                                mlIsAtRisk: false,
+                                skippedReason: 'No assignment data'
+                            };
+                        }
+                        
+                        const riskAssessment = await getEnhancedRiskAssessment(studentData, true, modelId);
                         
                         return {
                             ...student,
+                            // Preserve detailed student data for name and course information
+                            name: detailedStudent.firstName && detailedStudent.lastName 
+                                ? `${detailedStudent.firstName} ${detailedStudent.lastName}` 
+                                : student.name,
+                            firstName: detailedStudent.firstName || student.firstName,
+                            lastName: detailedStudent.lastName || student.lastName,
+                            courses: detailedStudent.courses || student.courses || [],
+                            // Add ML risk assessment results
                             mlRiskScore: riskAssessment.score,
                             mlRiskLevel: riskAssessment.level,
                             mlRiskFactors: riskAssessment.factors || [],
@@ -184,6 +267,15 @@ const MainPage = () => {
             setMlError('Failed to process ML risk predictions: ' + err.message);
         } finally {
             setMlLoading(false);
+        }
+    };
+
+    const handleModelChange = async (newModel) => {
+        setSelectedModel(newModel);
+        
+        // Re-run ML predictions with the new model if we have students
+        if (students.length > 0) {
+            await getMlRiskPredictions(students, newModel?.id);
         }
     };
 
@@ -278,7 +370,7 @@ const MainPage = () => {
                 // Get ML risk predictions for students
                 if (formattedStudents.length > 0) {
                     try {
-                        await getMlRiskPredictions(formattedStudents);
+                        await getMlRiskPredictions(formattedStudents, selectedModel?.id);
                     } catch (mlError) {
                         console.error('Error getting ML risk predictions:', mlError);
                         setMlError('Failed to process ML risk predictions');
@@ -457,20 +549,35 @@ const MainPage = () => {
                         key="mlRisk"
                     >
                         <div className={styles.tabContent}>
-                            <Card
-                                title={
-                                    <div className={styles.riskCardTitle}>
-                                        <RobotOutlined /> {t("Mainpage", "ML Risk analysis")}
-                                    </div>
-                                }
-                                className={styles.riskCard}
-                            >
-                                <MLRiskStudentList 
-                                    students={mlRiskStudents} 
-                                    loading={mlLoading}
-                                    error={mlError}
-                                />
-                            </Card>
+                            <Row gutter={16}>
+                                <Col xs={24} md={8}>
+                                    <ModelSelector 
+                                        onModelChange={handleModelChange}
+                                        disabled={mlLoading}
+                                    />
+                                </Col>
+                                <Col xs={24} md={16}>
+                                    <Card
+                                        title={
+                                            <div className={styles.riskCardTitle}>
+                                                <RobotOutlined /> {t("Mainpage", "ML Risk analysis")}
+                                                {selectedModel && (
+                                                    <Tag color="blue" style={{ marginLeft: '8px' }}>
+                                                        {selectedModel.name}
+                                                    </Tag>
+                                                )}
+                                            </div>
+                                        }
+                                        className={styles.riskCard}
+                                    >
+                                        <MLRiskStudentList 
+                                            students={mlRiskStudents} 
+                                            loading={mlLoading}
+                                            error={mlError}
+                                        />
+                                    </Card>
+                                </Col>
+                            </Row>
                         </div>
                     </Tabs.TabPane>
                 </Tabs>

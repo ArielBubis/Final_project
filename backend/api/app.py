@@ -57,18 +57,113 @@ CORS(app, resources={
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Simple health check endpoint"""
+    current_model = get_current_model()
+    current_features = get_current_feature_names()
+    
     return jsonify({
         'status': 'healthy',
         'message': 'Risk prediction API is running',
-        'model_loaded': model is not None,
-        'feature_count': len(feature_names) if feature_names is not None else 0,
+        'model_loaded': current_model is not None,
+        'feature_count': len(current_features) if current_features is not None else 0,
+        'current_model': current_model_type,
+        'available_models': len(models),
+        'models': {k: v['config'] for k, v in models.items()},
         'timestamp': datetime.now().isoformat()
     })
 
-# Global variables for model and features
-model = None
+@app.route('/api/models', methods=['GET'])
+def get_available_models():
+    """Get list of available prediction models"""
+    try:
+        model_list = []
+        for model_id, model_data in models.items():
+            config = model_data['config']
+            model_info = {
+                'id': model_id,
+                'name': config['name'],
+                'description': config['description'],
+                'months_required': config['months_required'],
+                'is_current': model_id == current_model_type,
+                'feature_count': len(model_data['feature_names'])
+            }
+            model_list.append(model_info)
+        
+        return jsonify({
+            'models': model_list,
+            'current_model': current_model_type
+        })
+    except Exception as e:
+        logger.error(f"Error getting available models: {str(e)}")
+        return jsonify({
+            'error': 'Failed to get models',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/models/current', methods=['POST'])
+def set_current_model():
+    """Set the current active model"""
+    try:
+        data = request.get_json()
+        if not data or 'model_id' not in data:
+            return jsonify({
+                'error': 'Invalid request',
+                'message': 'model_id is required'
+            }), 400
+        
+        model_id = data['model_id']
+        
+        if set_current_model(model_id):
+            return jsonify({
+                'success': True,
+                'current_model': current_model_type,
+                'message': f'Successfully switched to {AVAILABLE_MODELS[model_id]["name"]}'
+            })
+        else:
+            return jsonify({
+                'error': 'Invalid model',
+                'message': f'Model {model_id} not found or not loaded'
+            }), 404
+            
+    except Exception as e:
+        logger.error(f"Error setting current model: {str(e)}")
+        return jsonify({
+            'error': 'Failed to set model',
+            'message': str(e)
+        }), 500
+
+# Global variables for models and features
+models = {}  # Will store multiple models: {'1_3': {...}, '1_6': {...}, etc.}
+current_model_type = '1_3'  # Default model
 feature_names = None
 scaler = None
+
+# Available model configurations
+AVAILABLE_MODELS = {
+    '1_3': {
+        'name': '1-3 Months Early Warning',
+        'description': 'Predicts risk based on first 3 months of data',
+        'months_required': 3,
+        'folder': 'model_1_3_20250919_114922'
+    },
+    '1_6': {
+        'name': '1-6 Months Prediction',
+        'description': 'Predicts risk based on first 6 months of data',
+        'months_required': 6,
+        'folder': 'model_1_6_20250919_130455'
+    },
+    '1_9': {
+        'name': '1-9 Months Prediction',
+        'description': 'Predicts risk based on first 9 months of data',
+        'months_required': 9,
+        'folder': 'model_1_9_20250919_130809'
+    },
+    '1_12': {
+        'name': '1-12 Months Full Academic Year',
+        'description': 'Predicts risk based on full academic year data',
+        'months_required': 12,
+        'folder': 'model_1_12_20250919_131121'
+    }
+}
 
 def convert_to_json_serializable(obj):
     """
@@ -92,8 +187,8 @@ def convert_to_json_serializable(obj):
         return obj
 
 def load_model_and_features():
-    """Load model and feature names with comprehensive error handling"""
-    global model, feature_names
+    """Load all available models and feature names with comprehensive error handling"""
+    global models, feature_names, current_model_type
     
     try:
         # Get the directory where this script is located
@@ -101,36 +196,105 @@ def load_model_and_features():
         
         # Define paths (go up one level since we're in api/ folder)
         models_dir = os.path.join(script_dir, '..', 'models')
-        model_path = os.path.join(models_dir, 'at_risk_rf_model.pkl')
-        feature_names_path = os.path.join(models_dir, 'features.pkl')
-        scaler_path = os.path.join(models_dir, 'scaler.pkl')
         
-        # Check if files exist
-        if not os.path.exists(model_path):
-            raise ModelLoadError(f"Model file not found at: {model_path}")
+        # Load each available model
+        loaded_models = {}
         
-        if not os.path.exists(feature_names_path):
-            raise ModelLoadError(f"Feature names file not found at: {feature_names_path}")
+        for model_id, model_config in AVAILABLE_MODELS.items():
+            try:
+                model_folder = os.path.join(models_dir, model_config['folder'])
+                model_path = os.path.join(model_folder, 'student_risk_model.pkl')
+                feature_names_path = os.path.join(model_folder, 'features.pkl')
+                scaler_path = os.path.join(model_folder, 'scaler.pkl')
+                
+                # Check if files exist
+                if not os.path.exists(model_path):
+                    logger.warning(f"Model file not found for {model_id} at: {model_path}")
+                    continue
+                
+                if not os.path.exists(feature_names_path):
+                    logger.warning(f"Feature names file not found for {model_id} at: {feature_names_path}")
+                    continue
+                
+                # Load model
+                logger.info(f"Loading model {model_id} from: {model_path}")
+                model = joblib.load(model_path)
+                
+                if model is None:
+                    logger.warning(f"Model {model_id} loaded but is None")
+                    continue
+                
+                # Load feature names
+                logger.info(f"Loading feature names for {model_id} from: {feature_names_path}")
+                with open(feature_names_path, 'rb') as f:
+                    model_feature_names = joblib.load(f)
+                
+                if model_feature_names is None or len(model_feature_names) == 0:
+                    logger.warning(f"Feature names for {model_id} loaded but are empty")
+                    continue
+                
+                # Load scaler if available
+                model_scaler = None
+                if os.path.exists(scaler_path):
+                    model_scaler = joblib.load(scaler_path)
+                
+                # Store the loaded model data
+                loaded_models[model_id] = {
+                    'model': model,
+                    'feature_names': model_feature_names,
+                    'scaler': model_scaler,
+                    'config': model_config
+                }
+                
+                logger.info(f"Successfully loaded model {model_id} with {len(model_feature_names)} features")
+                
+            except Exception as e:
+                logger.error(f"Error loading model {model_id}: {str(e)}")
+                continue
         
-        # Load model
-        logger.info(f"Loading model from: {model_path}")
-        model = joblib.load(model_path)
+        if not loaded_models:
+            raise ModelLoadError("No models could be loaded successfully")
         
-        if model is None:
-            raise ModelLoadError("Model loaded but is None")
+        # Set global variables
+        models = loaded_models
         
-        # Load feature names
-        logger.info(f"Loading feature names from: {feature_names_path}")
-        with open(feature_names_path, 'rb') as f:
-            feature_names = joblib.load(f)
-        if os.path.exists(scaler_path):
-            global scaler
-            scaler = joblib.load(scaler_path)
+        # Set feature_names to the first available model's features as default
+        if current_model_type in models:
+            feature_names = models[current_model_type]['feature_names']
+        else:
+            # If current_model_type is not available, use the first loaded model
+            first_model_id = list(models.keys())[0]
+            current_model_type = first_model_id
+            feature_names = models[first_model_id]['feature_names']
         
-        if feature_names is None or len(feature_names) == 0:
-            raise ModelLoadError("Feature names loaded but are empty")
+        logger.info(f"Successfully loaded {len(models)} models. Current model: {current_model_type}")
         
-        logger.info(f"Successfully loaded model with {len(feature_names)} features")
+        # Try to load legacy model as fallback
+        try:
+            legacy_model_path = os.path.join(models_dir, 'at_risk_rf_model.pkl')
+            legacy_feature_names_path = os.path.join(models_dir, 'features.pkl')
+            legacy_scaler_path = os.path.join(models_dir, 'scaler.pkl')
+            
+            if os.path.exists(legacy_model_path) and os.path.exists(legacy_feature_names_path):
+                legacy_model = joblib.load(legacy_model_path)
+                legacy_features = joblib.load(legacy_feature_names_path)
+                legacy_scaler = joblib.load(legacy_scaler_path) if os.path.exists(legacy_scaler_path) else None
+                
+                if legacy_model is not None and legacy_features:
+                    models['legacy'] = {
+                        'model': legacy_model,
+                        'feature_names': legacy_features,
+                        'scaler': legacy_scaler,
+                        'config': {
+                            'name': 'Legacy Risk Model',
+                            'description': 'Original risk prediction model',
+                            'months_required': 3,
+                            'folder': 'legacy'
+                        }
+                    }
+                    logger.info("Legacy model loaded successfully as fallback")
+        except Exception as e:
+            logger.warning(f"Could not load legacy model: {str(e)}")
         
     except FileNotFoundError as e:
         error_msg = f"Model or feature file not found: {str(e)}"
@@ -138,11 +302,124 @@ def load_model_and_features():
         raise ModelLoadError(error_msg)
     
     except Exception as e:
-        error_msg = f"Unexpected error loading model: {str(e)}"
+        error_msg = f"Unexpected error loading models: {str(e)}"
         logger.error(error_msg)
         raise ModelLoadError(error_msg)
 
+def get_current_model():
+    """Get the currently active model"""
+    if current_model_type in models:
+        return models[current_model_type]['model']
+    return None
+
+def get_current_feature_names():
+    """Get the feature names for the currently active model"""
+    if current_model_type in models:
+        return models[current_model_type]['feature_names']
+    return feature_names
+
+def get_current_scaler():
+    """Get the scaler for the currently active model"""
+    if current_model_type in models:
+        return models[current_model_type]['scaler']
+    return None
+
+def set_current_model(model_type):
+    """Set the current active model"""
+    global current_model_type, feature_names
+    if model_type in models:
+        current_model_type = model_type
+        feature_names = models[model_type]['feature_names']
+        return True
+    return False
+
+def validate_data_for_model(data, model_type):
+    """
+    Validate if the student data has enough history for the specified model
+    Returns (is_valid, months_available, error_message)
+    """
+    try:
+        if model_type not in AVAILABLE_MODELS:
+            return False, 0, f"Unknown model type: {model_type}"
+        
+        required_months = AVAILABLE_MODELS[model_type]['months_required']
+        
+        # Extract course data
+        courses = data.get('courses', [])
+        if not courses:
+            return False, 0, "No course data provided"
+        
+        # Calculate available data months based on assignments
+        total_assignments = 0
+        for course in courses:
+            if isinstance(course, dict):
+                assignments = course.get('assignments', [])
+                if isinstance(assignments, list):
+                    total_assignments += len(assignments)
+        
+        # Adjusted logic: Since preprocessing simulates months by distributing assignments,
+        # we need a more lenient validation. The key is having enough assignments to 
+        # populate the required number of months, not actual chronological months.
+        # For N months, we need at least N assignments to have some data in each month.
+        estimated_months = min(required_months, max(1, total_assignments))
+        
+        # Allow the model to run if we have at least some assignments
+        # The preprocessing will distribute them across the required months
+        if total_assignments < required_months:
+            # We'll allow it but warn that some months may be sparse
+            logger.warning(f"Limited data: {total_assignments} assignments for {required_months}-month model")
+        
+        # Only reject if we have no assignments at all
+        if total_assignments == 0:
+            return False, 0, f"No assignments found. Need at least some assignment data for {AVAILABLE_MODELS[model_type]['name']}"
+        
+        return True, estimated_months, None
+        
+    except Exception as e:
+        return False, 0, f"Error validating data: {str(e)}"
+
 def validate_input_data(data):
+    """Validate incoming request data"""
+    if not data:
+        raise DataValidationError("Request body is empty")
+    
+    if not isinstance(data, dict):
+        raise DataValidationError("Request body must be a JSON object")
+    
+    # Check for required fields (courses)
+    if 'courses' not in data:
+        raise DataValidationError("Missing required field: courses")
+    
+    # Validate course structure
+    courses = data['courses']
+    if not isinstance(courses, list):
+        raise DataValidationError("Courses must be an array")
+    
+    if len(courses) == 0:
+        raise DataValidationError("At least one course is required")
+    
+    # Validate assignments
+    for i, course in enumerate(courses):
+        if not isinstance(course, dict):
+            raise DataValidationError(f"Course {i} must be an object")
+        
+        if 'assignments' not in course:
+            raise DataValidationError(f"Course {i} missing assignments field")
+        
+        assignments = course['assignments']
+        if not isinstance(assignments, list):
+            raise DataValidationError(f"Course {i} assignments must be an array")
+    
+    # Validate optional numeric fields
+    numeric_fields = ['averageScore', 'completionRate', 'gradeLevel']
+    for field in numeric_fields:
+        if field in data:
+            try:
+                float(data[field])
+            except (ValueError, TypeError):
+                raise DataValidationError(f"Field {field} must be a number")
+    
+    return data
     """Validate incoming request data"""
     if not data:
         raise DataValidationError("Request body is empty")
@@ -254,14 +531,14 @@ def suggest_interventions(risk_score):
 def preprocess_student_data_for_prediction(data, feature_names):
     """
     Transform incoming student data to match the exact training data format.
-    This function creates the same features as the training pipeline using early warning features.
+    This function creates the same features as the training pipeline using 6-month features.
     
     Expected model features:
-    - Score_Month_1, Score_Month_2, Score_Month_3
-    - TimeSpent_Month_1, TimeSpent_Month_2, TimeSpent_Month_3
+    - Score_Month_1, Score_Month_2, Score_Month_3, Score_Month_4, Score_Month_5, Score_Month_6
+    - TimeSpent_Month_1, TimeSpent_Month_2, TimeSpent_Month_3, TimeSpent_Month_4, TimeSpent_Month_5, TimeSpent_Month_6
     - totalTimeSpentMinutes, gradeLevel, late_submission_rate
-    - early_avg_score, early_avg_time, early_score_variance, early_time_variance
-    - early_time_score_ratio, early_engagement, weighted_early_score, early_trend
+    - avg_score_month_1_to_6, avg_time_month_1_to_6, score_variance_month_1_to_6, time_variance_month_1_to_6
+    - time_score_ratio_month_1_to_6, engagement_month_1_to_6, weighted_score_month_1_to_6, score_trend_month_1_to_6
     """
     if not feature_names:
         raise PreprocessingError("Feature names not available")
@@ -290,9 +567,9 @@ def preprocess_student_data_for_prediction(data, feature_names):
             raise PreprocessingError("Courses must be a list")
         
         # Process assignment data to simulate the CSV structure used in training
-        # We'll aggregate assignment data by simulated months (first 3 months)
-        monthly_scores = [[], [], []]  # For months 1, 2, 3
-        monthly_times = [[], [], []]   # For months 1, 2, 3
+        # We'll aggregate assignment data by simulated months (first 6 months)
+        monthly_scores = [[], [], [], [], [], []]  # For months 1, 2, 3, 4, 5, 6
+        monthly_times = [[], [], [], [], [], []]   # For months 1, 2, 3, 4, 5, 6
         
         total_time = 0
         late_submissions = 0
@@ -346,9 +623,9 @@ def preprocess_student_data_for_prediction(data, feature_names):
                     if is_late:
                         late_submissions += 1
                     
-                    # Distribute assignments across 3 months for early warning features
+                    # Distribute assignments across 6 months for early warning features
                     # Use assignment index to determine month (simulate chronological order)
-                    month_idx = assignment_idx % 3  # Cycles through 0, 1, 2 (representing months 1, 2, 3)
+                    month_idx = assignment_idx % 6  # Cycles through 0, 1, 2, 3, 4, 5 (representing months 1, 2, 3, 4, 5, 6)
                     monthly_scores[month_idx].append(score)
                     monthly_times[month_idx].append(time_spent)
                     
@@ -356,11 +633,11 @@ def preprocess_student_data_for_prediction(data, feature_names):
                     logger.warning(f"Error processing course {course_idx}, assignment {assignment_idx}: {str(e)}")
                     continue
         
-        # Calculate monthly cumulative scores and time spent for first 3 months
+        # Calculate monthly cumulative scores and time spent for first 6 months
         cumulative_scores = []
         monthly_time_totals = []
         
-        for month_idx in range(3):
+        for month_idx in range(6):
             # Calculate cumulative average score up to this month
             all_scores_up_to_month = []
             all_time_up_to_month = 0
@@ -411,77 +688,77 @@ def preprocess_student_data_for_prediction(data, feature_names):
         
         # Calculate early warning features (matching the training pipeline)
         try:
-            # Early average score (first 3 months)
-            if 'early_avg_score' in feature_names:
+            # Early average score (first 6 months)
+            if 'avg_score_month_1_to_6' in feature_names:
                 non_zero_scores = [s for s in cumulative_scores if s > 0]
                 if non_zero_scores:
-                    processed_data.loc[0, 'early_avg_score'] = np.mean(non_zero_scores)
+                    processed_data.loc[0, 'avg_score_month_1_to_6'] = np.mean(non_zero_scores)
                 else:
-                    processed_data.loc[0, 'early_avg_score'] = 0
+                    processed_data.loc[0, 'avg_score_month_1_to_6'] = 0
             
-            # Early average time (first 3 months)
-            if 'early_avg_time' in feature_names:
-                processed_data.loc[0, 'early_avg_time'] = np.mean(monthly_time_totals)
+            # Early average time (first 6 months)
+            if 'avg_time_month_1_to_6' in feature_names:
+                processed_data.loc[0, 'avg_time_month_1_to_6'] = np.mean(monthly_time_totals)
             
             # Early score variance (consistency indicator)
-            if 'early_score_variance' in feature_names:
+            if 'score_variance_month_1_to_6' in feature_names:
                 non_zero_scores = [s for s in cumulative_scores if s > 0]
                 if len(non_zero_scores) > 1:
-                    processed_data.loc[0, 'early_score_variance'] = np.var(non_zero_scores)
+                    processed_data.loc[0, 'score_variance_month_1_to_6'] = np.var(non_zero_scores)
                 else:
-                    processed_data.loc[0, 'early_score_variance'] = 0
+                    processed_data.loc[0, 'score_variance_month_1_to_6'] = 0
             
             # Early time variance
-            if 'early_time_variance' in feature_names:
+            if 'time_variance_month_1_to_6' in feature_names:
                 if len(monthly_time_totals) > 1:
-                    processed_data.loc[0, 'early_time_variance'] = np.var(monthly_time_totals)
+                    processed_data.loc[0, 'time_variance_month_1_to_6'] = np.var(monthly_time_totals)
                 else:
-                    processed_data.loc[0, 'early_time_variance'] = 0
+                    processed_data.loc[0, 'time_variance_month_1_to_6'] = 0
             
             # Time-to-score efficiency ratio
-            if 'early_time_score_ratio' in feature_names:
-                avg_score = processed_data.loc[0, 'early_avg_score'] if 'early_avg_score' in feature_names else np.mean([s for s in cumulative_scores if s > 0]) or 1
-                avg_time = processed_data.loc[0, 'early_avg_time'] if 'early_avg_time' in feature_names else np.mean(monthly_time_totals)
+            if 'time_score_ratio_month_1_to_6' in feature_names:
+                avg_score = processed_data.loc[0, 'avg_score_month_1_to_6'] if 'avg_score_month_1_to_6' in feature_names else np.mean([s for s in cumulative_scores if s > 0]) or 1
+                avg_time = processed_data.loc[0, 'avg_time_month_1_to_6'] if 'avg_time_month_1_to_6' in feature_names else np.mean(monthly_time_totals)
                 
                 if avg_score > 0:
-                    processed_data.loc[0, 'early_time_score_ratio'] = avg_time / avg_score
+                    processed_data.loc[0, 'time_score_ratio_month_1_to_6'] = avg_time / avg_score
                 else:
-                    processed_data.loc[0, 'early_time_score_ratio'] = 0
+                    processed_data.loc[0, 'time_score_ratio_month_1_to_6'] = 0
             
             # Early engagement (proportion of months with activity)
-            if 'early_engagement' in feature_names:
+            if 'engagement_month_1_to_6' in feature_names:
                 active_months = sum(1 for t in monthly_time_totals if t > 0)
-                processed_data.loc[0, 'early_engagement'] = active_months / 3
+                processed_data.loc[0, 'engagement_month_1_to_6'] = active_months / 6
             
             # Weighted early score (more recent months weighted higher)
-            if 'weighted_early_score' in feature_names:
-                weights = np.array([1, 2, 3])
+            if 'weighted_score_month_1_to_6' in feature_names:
+                weights = np.array([1, 2, 3, 4, 5, 6])
                 valid_scores = [(score, weight) for score, weight in zip(cumulative_scores, weights) if score > 0]
                 
                 if valid_scores:
                     weighted_sum = sum(score * weight for score, weight in valid_scores)
                     weight_sum = sum(weight for _, weight in valid_scores)
-                    processed_data.loc[0, 'weighted_early_score'] = weighted_sum / weight_sum
+                    processed_data.loc[0, 'weighted_score_month_1_to_6'] = weighted_sum / weight_sum
                 else:
-                    processed_data.loc[0, 'weighted_early_score'] = 0
+                    processed_data.loc[0, 'weighted_score_month_1_to_6'] = 0
             
-            # Early trend (slope of scores over first 3 months)
-            if 'early_trend' in feature_names:
+            # Early trend (slope of scores over first 6 months)
+            if 'score_trend_month_1_to_6' in feature_names:
                 valid_data = [(i+1, score) for i, score in enumerate(cumulative_scores) if score > 0]
                 
                 if len(valid_data) >= 2:
                     months, scores = zip(*valid_data)
                     slope, _, _, _, _ = stats.linregress(months, scores)
-                    processed_data.loc[0, 'early_trend'] = slope if np.isfinite(slope) else 0
+                    processed_data.loc[0, 'score_trend_month_1_to_6'] = slope if np.isfinite(slope) else 0
                 else:
-                    processed_data.loc[0, 'early_trend'] = 0
+                    processed_data.loc[0, 'score_trend_month_1_to_6'] = 0
             
             # Override with provided summary data if available
             if 'averageScore' in data:
                 try:
                     avg_score = float(data['averageScore'])
-                    if 'early_avg_score' in feature_names and np.isfinite(avg_score):
-                        processed_data.loc[0, 'early_avg_score'] = avg_score
+                    if 'avg_score_month_1_to_6' in feature_names and np.isfinite(avg_score):
+                        processed_data.loc[0, 'avg_score_month_1_to_6'] = avg_score
                 except (ValueError, TypeError):
                     logger.warning("Invalid averageScore provided, ignoring")
             
@@ -490,8 +767,8 @@ def preprocess_student_data_for_prediction(data, feature_names):
                     completion_rate = float(data['completionRate'])
                     if 0 <= completion_rate <= 100:
                         completion_ratio = completion_rate / 100.0
-                        if 'early_engagement' in feature_names:
-                            processed_data.loc[0, 'early_engagement'] = completion_ratio
+                        if 'engagement_month_1_to_6' in feature_names:
+                            processed_data.loc[0, 'engagement_month_1_to_6'] = completion_ratio
                     else:
                         logger.warning("Completion rate out of range (0-100), ignoring")
                 except (ValueError, TypeError):
@@ -537,7 +814,10 @@ def handle_preflight():
 def predict():
     try:
         # Check if model is loaded
-        if model is None or feature_names is None:
+        current_model = get_current_model()
+        current_features = get_current_feature_names()
+        
+        if current_model is None or current_features is None:
             logger.error("Model or feature names not loaded")
             return jsonify({
                 'error': 'Model not available',
@@ -553,37 +833,76 @@ def predict():
                 'error': 'Invalid JSON',
                 'message': 'Request body must contain valid JSON data'
             }), 400
+
+        # Check for model selection parameter
+        requested_model_id = data.get('model_id', current_model_type)
         
+        # If a specific model is requested, validate it and temporarily switch
+        original_model_type = current_model_type
+        model_switched = False
+        
+        if requested_model_id != current_model_type:
+            if requested_model_id not in models:
+                return jsonify({
+                    'error': 'Invalid model',
+                    'message': f'Model {requested_model_id} not available. Available models: {list(models.keys())}'
+                }), 400
+            
+            # Validate data for the requested model
+            is_valid, months_available, validation_error = validate_data_for_model(data, requested_model_id)
+            if not is_valid:
+                return jsonify({
+                    'error': 'Insufficient data',
+                    'message': validation_error,
+                    'months_available': months_available,
+                    'months_required': AVAILABLE_MODELS[requested_model_id]['months_required']
+                }), 422
+            
+            # Temporarily switch to the requested model
+            set_current_model(requested_model_id)
+            model_switched = True
+            logger.info(f"Temporarily switched to model {requested_model_id} for this prediction")
+
+        # Get current model and features (may have been switched)
+        current_model = get_current_model()
+        current_features = get_current_feature_names()
+
         # Validate input data
         try:
             validated_data = validate_input_data(data)
         except DataValidationError as e:
+            # Restore original model if switched
+            if model_switched:
+                set_current_model(original_model_type)
             logger.error(f"Data validation failed: {str(e)}")
             return jsonify({
                 'error': 'Invalid input data',
                 'message': str(e)
             }), 400
-        
+
         # Preprocess student data
         try:
-            processed_data = preprocess_student_data_for_prediction(validated_data, feature_names)
+            processed_data = preprocess_student_data_for_prediction(validated_data, current_features)
         except PreprocessingError as e:
+            # Restore original model if switched
+            if model_switched:
+                set_current_model(original_model_type)
             logger.error(f"Preprocessing failed: {str(e)}")
             return jsonify({
                 'error': 'Data preprocessing failed',
                 'message': str(e)
             }), 422
-        
+
         # Make prediction
         try:
-            prediction = model.predict(processed_data)[0] if not hasattr(model, 'named_steps') else model.predict(pd.DataFrame(processed_data, columns=feature_names))[0]
-            if hasattr(model, 'predict_proba'):
-                if hasattr(model, 'named_steps'):
-                    proba = model.predict_proba(pd.DataFrame(processed_data, columns=feature_names))[0]
-                    classes = list(model.classes_)
+            prediction = current_model.predict(processed_data)[0] if not hasattr(current_model, 'named_steps') else current_model.predict(pd.DataFrame(processed_data, columns=current_features))[0]
+            if hasattr(current_model, 'predict_proba'):
+                if hasattr(current_model, 'named_steps'):
+                    proba = current_model.predict_proba(pd.DataFrame(processed_data, columns=current_features))[0]
+                    classes = list(current_model.classes_)
                 else:
-                    proba = model.predict_proba(processed_data)[0]
-                    classes = list(model.classes_)
+                    proba = current_model.predict_proba(processed_data)[0]
+                    classes = list(current_model.classes_)
             else:
                 raise PredictionError("Model lacks predict_proba")
             at_risk_index = classes.index(1)
@@ -608,12 +927,12 @@ def predict():
         # Get feature importance
         feature_importances = None
         try:
-            if hasattr(model, 'feature_importances_'):
-                importances = dict(zip(feature_names, model.feature_importances_))
+            if hasattr(current_model, 'feature_importances_'):
+                importances = dict(zip(current_features, current_model.feature_importances_))
                 feature_importances = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:5]
         except Exception as e:
             logger.warning(f"Could not get feature importances: {str(e)}")
-        
+
         # Get suggested interventions
         try:
             interventions = suggest_interventions(risk_score)
@@ -631,17 +950,27 @@ def predict():
             'probability': float(proba[at_risk_index]),
             'risk_score': risk_score,
             'risk_level': interventions['level'],
-            'intervention': interventions
+            'intervention': interventions,
+            'model_used': requested_model_id,
+            'model_name': AVAILABLE_MODELS[requested_model_id]['name']
         }
-        
+
         # Add feature importances if available
         if feature_importances:
             response['risk_factors'] = [{'name': factor[0], 'importance': float(factor[1])} for factor in feature_importances]
-        
-        logger.info(f"Prediction successful - Risk Score: {risk_score}, At Risk: {prediction == 1}")
+
+        # Restore original model if switched
+        if model_switched:
+            set_current_model(original_model_type)
+            logger.info(f"Restored original model {original_model_type}")
+
+        logger.info(f"Prediction successful - Risk Score: {risk_score}, At Risk: {prediction == 1}, Model: {requested_model_id}")
         return jsonify(response)
         
     except Exception as e:
+        # Restore original model if switched
+        if 'model_switched' in locals() and model_switched:
+            set_current_model(original_model_type)
         error_msg = f"Unexpected error in predict endpoint: {str(e)}"
         logger.error(error_msg)
         return jsonify({
@@ -670,7 +999,10 @@ def predict_batch():
     """
     try:
         # Check if model is loaded
-        if model is None or feature_names is None:
+        current_model = get_current_model()
+        current_features = get_current_feature_names()
+        
+        if current_model is None or current_features is None:
             logger.error("Model or feature names not loaded")
             return jsonify({
                 'error': 'Model not available',
@@ -723,12 +1055,12 @@ def predict_batch():
                 validated_data = validate_input_data(student_data)
                 
                 # Preprocess student data
-                processed_data = preprocess_student_data_for_prediction(validated_data, feature_names)
+                processed_data = preprocess_student_data_for_prediction(validated_data, current_features)
                 
                 # Make prediction
-                prediction = model.predict(processed_data)[0] if not hasattr(model, 'named_steps') else model.predict(pd.DataFrame(processed_data, columns=feature_names))[0]
-                proba = model.predict_proba(pd.DataFrame(processed_data, columns=feature_names))[0] if hasattr(model, 'named_steps') else model.predict_proba(processed_data)[0]
-                classes = list(model.classes_)
+                prediction = current_model.predict(processed_data)[0] if not hasattr(current_model, 'named_steps') else current_model.predict(pd.DataFrame(processed_data, columns=current_features))[0]
+                proba = current_model.predict_proba(pd.DataFrame(processed_data, columns=current_features))[0] if hasattr(current_model, 'named_steps') else current_model.predict_proba(processed_data)[0]
+                classes = list(current_model.classes_)
                 at_risk_index = classes.index(1)
                 risk_score = int(proba[at_risk_index] * 100)
                 
@@ -798,7 +1130,10 @@ def predict_from_csv():
     """
     try:
         # Check if model is loaded
-        if model is None or feature_names is None:
+        current_model = get_current_model()
+        current_features = get_current_feature_names()
+        
+        if current_model is None or current_features is None:
             logger.error("Model or feature names not loaded")
             return jsonify({
                 'error': 'Model not available',
@@ -1062,11 +1397,11 @@ def get_at_risk_students():
         # Load student and course lookup data
         try:
             # Read students CSV for name mapping
-            students_df = pd.read_csv('../data/csv/students.csv')
+            students_df = pd.read_csv('../../data/csv/students.csv')
             student_lookup = dict(zip(students_df['id'].astype(str), students_df['name']))
             
             # Read courses CSV for course name mapping
-            courses_df = pd.read_csv('../data/csv/courses.csv')
+            courses_df = pd.read_csv('../../data/csv/courses.csv')
             course_lookup = dict(zip(courses_df['id'], courses_df['name']))
             
             logger.info(f"Loaded {len(student_lookup)} student names and {len(course_lookup)} course names")
@@ -1218,67 +1553,6 @@ def get_course_risk_data():
         error_msg = f"Unexpected error in get_course_risk_data: {str(e)}"
         logger.error(error_msg)
         return jsonify([])  # Return empty array on error
-
-@app.route('/api/models', methods=['GET'])
-def get_available_models():
-    """
-    Get list of available models
-    Returns information about models that can be used for predictions
-    """
-    try:
-        models = []
-        
-        # Check for available model files in the models directory
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        models_dir = os.path.join(script_dir, 'models')
-        
-        if os.path.exists(models_dir):
-            # Look for .pkl model files
-            for file in os.listdir(models_dir):
-                if file.endswith('_model.pkl'):
-                    model_id = file.replace('.pkl', '')
-                    model_name = file.replace('_', ' ').replace('.pkl', '').title()
-                    
-                    model_info = {
-                        'id': model_id,
-                        'name': model_name,
-                        'description': f'Machine learning model for risk prediction',
-                        'type': 'pkl',
-                        'available': True
-                    }
-                    
-                    # Add specific descriptions for known models
-                    if 'rf' in model_id.lower() or 'random_forest' in model_id.lower():
-                        model_info['description'] = 'Random Forest classifier for student risk prediction'
-                    elif 'logistic' in model_id.lower():
-                        model_info['description'] = 'Logistic regression model for risk assessment'
-                    elif 'svm' in model_id.lower():
-                        model_info['description'] = 'Support Vector Machine for risk classification'
-                    
-                    models.append(model_info)
-        
-        # If no models found, return the default model info
-        if not models:
-            models = [{
-                'id': 'at_risk_rf_model',
-                'name': 'Random Forest Risk Model',
-                'description': 'Default Random Forest classifier for student risk prediction',
-                'type': 'pkl',
-                'available': model is not None
-            }]
-        
-        return jsonify(models)
-        
-    except Exception as e:
-        logger.error(f"Error getting available models: {str(e)}")
-        # Return default model even if there's an error
-        return jsonify([{
-            'id': 'at_risk_rf_model',
-            'name': 'Random Forest Risk Model',
-            'description': 'Default Random Forest classifier for student risk prediction',
-            'type': 'pkl',
-            'available': model is not None
-        }])
 
 # Error handlers
 @app.errorhandler(404)

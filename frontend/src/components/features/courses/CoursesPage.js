@@ -79,7 +79,7 @@ const CoursesPage = () => {
         if (currentUser?.email) {
             loadCourses();
         }
-    }, [currentUser, fetchTeacherCourses]);
+    }, [currentUser, fetchTeacherCourses, fetchCourseStats]);
 
     if (loading) {
         return <div className={styles.loading}>Loading courses...</div>;

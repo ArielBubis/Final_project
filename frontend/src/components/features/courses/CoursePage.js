@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../../contexts/DataContext';
+import { useAuth } from '../../../contexts/AuthContext';
+
 import styles from '../../../styles/modules/CoursePage.module.css';
 
 const CoursePage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { courses, fetchCourseStats } = useData();
+    const { currentUser } = useAuth();
+    const { courses, fetchCourseStats, fetchStudentsByTeacher, fetchTeacherCourses } = useData();
     const [course, setCourse] = useState(null);
     const [stats, setStats] = useState(null);
+    const [students, setStudents] = useState([]);
+    const [allCourses, setAllCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -22,6 +27,54 @@ const CoursePage = () => {
 
                 const s = await fetchCourseStats(id);
                 setStats(s);
+
+                // Fetch students data for visualizations
+                if (currentUser?.uid) {
+                    const allStudents = await fetchStudentsByTeacher(currentUser.uid);
+                    console.log('CoursePage: All students fetched:', allStudents.length);
+                    
+                    // Filter students enrolled in this specific course
+                    const courseStudents = allStudents.filter(student => 
+                        student.courses && student.courses.some(course => course.id === id)
+                    );
+                    console.log('CoursePage: Students in this course:', courseStudents.length);
+                    console.log('CoursePage: Course ID being filtered:', id);
+                    
+                    // TEMPORARY: If no students found for this course, use all students for testing
+                    const studentsToUse = courseStudents.length > 0 ? courseStudents : allStudents;
+                    console.log('CoursePage: Using students for visualization:', studentsToUse.length);
+                    
+                    setStudents(studentsToUse);
+
+                    // Fetch all teacher courses for comparison
+                    const teacherCourses = await fetchTeacherCourses(currentUser.uid);
+                    const coursesWithStats = await Promise.all(
+                        teacherCourses.map(async (course) => {
+                            try {
+                                const courseStats = await fetchCourseStats(course.id);
+                                return {
+                                    id: course.id,
+                                    name: course.courseName || course.name,
+                                    averageScore: courseStats?.averageScore || 0,
+                                    averageCompletion: courseStats?.averageCompletion || 0,
+                                    activeRatio7Days: courseStats?.activeRatio7Days || 0,
+                                    studentCount: courseStats?.studentCount || 0
+                                };
+                            } catch (err) {
+                                console.error(`Error fetching stats for course ${course.id}:`, err);
+                                return {
+                                    id: course.id,
+                                    name: course.courseName || course.name,
+                                    averageScore: 0,
+                                    averageCompletion: 0,
+                                    activeRatio7Days: 0,
+                                    studentCount: 0
+                                };
+                            }
+                        })
+                    );
+                    setAllCourses(coursesWithStats);
+                }
             } catch (err) {
                 console.error('Error loading course details:', err);
                 setError('Failed to load course details.');
@@ -31,7 +84,7 @@ const CoursePage = () => {
         };
 
         if (id) load();
-    }, [id, courses, fetchCourseStats]);
+    }, [id, courses, fetchCourseStats, fetchStudentsByTeacher, fetchTeacherCourses, currentUser]);
 
     if (loading) return <div className={styles.loading}>Loading course...</div>;
     if (error) return <div className={styles.error}>{error}</div>;
