@@ -51,14 +51,14 @@
         "Password": "סיסמה",
         "Forgot password?": "שכחת סיסמה?",
         "Placeholders": {
-          "Enter your email": "הכנס כתובת מייל",
-          "Enter your password": "הכנס סיסמה"
+          "Enter your email": "הכניסו כתובת מייל",
+          "Enter your password": "הכניסו סיסמה"
         }
       },
       "ResetPassword": {
-        "Reset Password": "איפוס סיסמה",
-        "Send Reset Link": "שלח לינק איפוס",
-        "Back to Login": "חזור להתחברות",
+  "Reset Password": "איפוס סיסמה",
+  "Submit": "שליחה",
+  "Back": "חזור",
         "Forgot your password?": "שכחת סיסמה?",
         "Enter your email address and we'll send you a link to reset your password.": "הקלידו את כתובת המייל שלכם ואנחנו נשלח לכם לינק לאיפוס הסיסמה",
         "A password reset email has been sent. Please check your inbox.": "אימייל לאיפוס סיסמה נשלח. בדקו את תיבת הדואר שלכם.",
