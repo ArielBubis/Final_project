@@ -1,16 +1,46 @@
 import React from 'react';
-import { Card as AntCard, Row, Col, Statistic, Progress, Alert, Table, Badge, Divider } from 'antd';
-import { WarningOutlined, SafetyOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Card as AntCard, Row, Col, Statistic, Progress, Alert, Table, Divider, Tag } from 'antd';
+import { WarningOutlined, ExclamationCircleOutlined, SafetyOutlined } from '@ant-design/icons';
 import styles from '../../../styles/modules/Students.module.css';
-import { getCourseRiskData, formatCourseRiskData, getCourseRiskColor, getCourseRiskIcon } from '../../../utils/courseRiskUtils';
+import { getCourseRiskData, formatCourseRiskData } from '../../../utils/courseRiskUtils';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { formatSubmissionDate, formatLastActivity } from '../../../utils/firebaseUtils';
+import { 
+  getRiskLevelText, 
+  getConfidenceColor,
+  formatDisplayValue 
+} from '../../shared/cardUtils';
 
-const CoursePerformanceCard = ({ course, studentId, riskData }) => {
+const CoursePerformanceCard = ({ course, studentId, riskData, mlRiskData }) => {
   const { t } = useLanguage();
   // Get course-specific risk data
   const courseRisk = getCourseRiskData(riskData, studentId, course?.id);
   const formattedRiskData = courseRisk ? formatCourseRiskData(courseRisk) : null;
+  
+  // Get ML-specific risk data for this course
+  const courseMLRisk = mlRiskData ? getCourseRiskData(mlRiskData, studentId, course?.id) : null;
+  
+  // Helper function to get ML risk level color
+  const getMLRiskLevelColor = (level) => {
+    const levelLower = (level || '').toLowerCase();
+    switch (levelLower) {
+      case 'high': return '#f5222d';
+      case 'medium': return '#fa8c16';
+      case 'low': return '#52c41a';
+      default: return '#1890ff';
+    }
+  };
+  
+  // Helper function to get ML risk icon
+  const getMLRiskIcon = (level) => {
+    const levelLower = (level || '').toLowerCase();
+    switch (levelLower) {
+      case 'high': return <ExclamationCircleOutlined />;
+      case 'medium': return <WarningOutlined />;
+      case 'low': return <SafetyOutlined />;
+      default: return <ExclamationCircleOutlined />;
+    }
+  };
 
   return (
     <AntCard 
@@ -22,13 +52,65 @@ const CoursePerformanceCard = ({ course, studentId, riskData }) => {
       } 
       className={styles.courseCard}
     >
-      {/* Course Risk Assessment Section */}
+      {/* ML Risk Assessment Section */}
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>
-          {courseRisk && formattedRiskData && (
+          {courseMLRisk && (
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {getMLRiskIcon(courseMLRisk.mlRiskLevel)}
+                <span>{t('PerformanceMetrics', 'ML Risk Assessment')}</span>
+                <Tag color={getMLRiskLevelColor(courseMLRisk.mlRiskLevel)}>
+                  {getRiskLevelText(courseMLRisk.mlRiskLevel, courseMLRisk.isAtRisk)}
+                </Tag>
+              </h4>
+              <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
+                <Col xs={12}>
+                  <Statistic
+                    title={t('PerformanceMetrics', 'Risk Score')}
+                    value={formatDisplayValue(courseMLRisk.mlRiskScore, true)}
+                    suffix="%"
+                    valueStyle={{ 
+                      color: getMLRiskLevelColor(courseMLRisk.mlRiskLevel), 
+                      fontSize: '16px' 
+                    }}
+                  />
+                </Col>
+                {courseMLRisk.confidence && (
+                  <Col xs={12}>
+                    <Statistic
+                      title={t('PerformanceMetrics', 'Confidence')}
+                      value={courseMLRisk.confidence}
+                      suffix=""
+                      valueStyle={{ 
+                        color: getConfidenceColor ? getConfidenceColor(courseMLRisk.confidence) : '#1890ff', 
+                        fontSize: '16px' 
+                      }}
+                    />
+                  </Col>
+                )}
+              </Row>
+              {courseMLRisk.mlRiskFactors && courseMLRisk.mlRiskFactors.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <h5 style={{ margin: '0 0 8px 0', color: '#7f8c8d' }}>Risk Factors:</h5>
+                  <div>
+                    {courseMLRisk.mlRiskFactors.map((factor, index) => (
+                      <Tag key={index} color="volcano" style={{ marginBottom: 4 }}>
+                        {factor}
+                      </Tag>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Fallback to traditional risk assessment if no ML data */}
+          {!courseMLRisk && courseRisk && formattedRiskData && (
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
-                <span style={{ marginLeft: 8 }}>{t('PerformanceMetrics', 'Risk Assessment')}</span>
+                <WarningOutlined style={{ marginRight: 8 }} />
+                <span>{t('PerformanceMetrics', 'Risk Assessment')}</span>
               </h4>
               <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
                 <Col xs={12}>

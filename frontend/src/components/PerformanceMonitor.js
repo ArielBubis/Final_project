@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Badge, Alert } from 'antd';
+import { useEffect } from 'react';
 
 /**
  * Performance monitor component to track API calls in development
  */
 export const PerformanceMonitor = ({ enabled = false }) => {
-  const [callCount, setCallCount] = useState(0);
-  const [lastReset, setLastReset] = useState(Date.now());
 
   useEffect(() => {
     if (!enabled) return;
@@ -17,7 +14,6 @@ export const PerformanceMonitor = ({ enabled = false }) => {
 
     window.fetch = function(...args) {
       counter++;
-      setCallCount(counter);
       console.log(`API Call #${counter}:`, args[0]);
       return originalFetch.apply(this, arguments);
     };
@@ -26,8 +22,6 @@ export const PerformanceMonitor = ({ enabled = false }) => {
     const resetInterval = setInterval(() => {
       console.log(`API calls in last 30s: ${counter}`);
       counter = 0;
-      setCallCount(0);
-      setLastReset(Date.now());
     }, 30000);
 
     return () => {
