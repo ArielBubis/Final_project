@@ -49,32 +49,6 @@ CORS(app, resources={
     }
 })
 
-def get_robust_models_path():
-    """
-    Get the models directory path with robust cross-platform handling
-    """
-    # Get the directory where this script is located
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Try the standard path first (api/../models)
-    models_dir = os.path.normpath(os.path.join(script_dir, '..', 'models'))
-    
-    if os.path.exists(models_dir):
-        return models_dir
-    
-    # Try alternative path (backend/models)
-    backend_dir = os.path.dirname(script_dir)
-    models_dir = os.path.normpath(os.path.join(backend_dir, 'models'))
-    
-    if os.path.exists(models_dir):
-        return models_dir
-    
-    # Try project root path
-    project_root = os.path.dirname(backend_dir)
-    models_dir = os.path.normpath(os.path.join(project_root, 'backend', 'models'))
-    
-    return models_dir
-
 # Alternative: More permissive CORS for development (uncomment if above doesn't work)
 # CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], 
 #      supports_credentials=True, methods=["GET", "POST", "OPTIONS"])
@@ -246,37 +220,25 @@ def load_model_and_features():
     global models, feature_names, current_model_type
     
     try:
-        # Use the robust path resolution function
-        models_dir = get_robust_models_path()
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Verify the models directory exists
-        if not os.path.exists(models_dir):
-            raise ModelLoadError(f"Models directory not found at: {models_dir}")
-        
-        logger.info(f"Using models directory: {models_dir}")
+        # Define paths (go up one level since we're in api/ folder)
+        models_dir = os.path.join(script_dir, '..', 'models')
         
         # If multi-model is disabled, load single model directly
         if not ENABLE_MULTI_MODEL:
             logger.info("Multi-model feature is disabled. Loading single model.")
             
             # Load single model files directly from models directory
-            model_path = os.path.normpath(os.path.join(models_dir, 'student_risk_model.pkl'))
-            feature_names_path = os.path.normpath(os.path.join(models_dir, 'features.pkl'))
-            scaler_path = os.path.normpath(os.path.join(models_dir, 'scaler.pkl'))
+            model_path = os.path.join(models_dir, 'student_risk_model.pkl')
+            feature_names_path = os.path.join(models_dir, 'features.pkl')
+            scaler_path = os.path.join(models_dir, 'scaler.pkl')
             
-            # Check if required files exist with detailed error messages
-            logger.info(f"Looking for single model at: {model_path}")
+            # Check if required files exist
             if not os.path.exists(model_path):
-                # List available files in the directory for debugging
-                if os.path.exists(models_dir):
-                    available_files = os.listdir(models_dir)
-                    logger.error(f"Single model file not found at: {model_path}")
-                    logger.error(f"Available files in {models_dir}: {available_files}")
-                    raise ModelLoadError(f"Single model file not found: {model_path}. Available files: {available_files}")
-                else:
-                    raise ModelLoadError(f"Models directory does not exist: {models_dir}")
+                raise ModelLoadError(f"Single model file not found: {model_path}")
             
-            logger.info(f"Looking for feature names at: {feature_names_path}")
             if not os.path.exists(feature_names_path):
                 raise ModelLoadError(f"Feature names file not found: {feature_names_path}")
             
@@ -330,23 +292,16 @@ def load_model_and_features():
         
         for model_id, model_config in AVAILABLE_MODELS.items():
             try:
-                model_folder = os.path.normpath(os.path.join(models_dir, model_config['folder']))
-                model_path = os.path.normpath(os.path.join(model_folder, 'student_risk_model.pkl'))
-                feature_names_path = os.path.normpath(os.path.join(model_folder, 'features.pkl'))
-                scaler_path = os.path.normpath(os.path.join(model_folder, 'scaler.pkl'))
+                model_folder = os.path.join(models_dir, model_config['folder'])
+                model_path = os.path.join(model_folder, 'student_risk_model.pkl')
+                feature_names_path = os.path.join(model_folder, 'features.pkl')
+                scaler_path = os.path.join(model_folder, 'scaler.pkl')
                 
-                # Check if files exist with detailed logging
-                logger.info(f"Looking for model {model_id} at: {model_path}")
+                # Check if files exist
                 if not os.path.exists(model_path):
                     logger.warning(f"Model file not found for {model_id} at: {model_path}")
-                    if os.path.exists(model_folder):
-                        available_files = os.listdir(model_folder)
-                        logger.warning(f"Available files in {model_folder}: {available_files}")
-                    else:
-                        logger.warning(f"Model folder does not exist: {model_folder}")
                     continue
                 
-                logger.info(f"Looking for feature names for {model_id} at: {feature_names_path}")
                 if not os.path.exists(feature_names_path):
                     logger.warning(f"Feature names file not found for {model_id} at: {feature_names_path}")
                     continue
@@ -409,9 +364,9 @@ def load_model_and_features():
         # Try to load legacy model as fallback (only in multi-model mode)
         if ENABLE_MULTI_MODEL:
             try:
-                legacy_model_path = os.path.normpath(os.path.join(models_dir, 'student_risk_model.pkl'))
-                legacy_feature_names_path = os.path.normpath(os.path.join(models_dir, 'features.pkl'))
-                legacy_scaler_path = os.path.normpath(os.path.join(models_dir, 'scaler.pkl'))
+                legacy_model_path = os.path.join(models_dir, 'student_risk_model.pkl')
+                legacy_feature_names_path = os.path.join(models_dir, 'features.pkl')
+                legacy_scaler_path = os.path.join(models_dir, 'scaler.pkl')
                 
                 if os.path.exists(legacy_model_path) and os.path.exists(legacy_feature_names_path):
                     legacy_model = joblib.load(legacy_model_path)
@@ -1309,8 +1264,8 @@ def predict_from_csv():
         features_path = None
         
         if model_id:
-            # Use the robust path resolution function
-            models_dir = get_robust_models_path()
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            models_dir = os.path.join(script_dir, 'models')
             
             # Construct model file paths
             if not model_id.endswith('.pkl'):
@@ -1318,14 +1273,14 @@ def predict_from_csv():
             else:
                 model_id_file = model_id
                 
-            potential_model_path = os.path.normpath(os.path.join(models_dir, model_id_file))
+            potential_model_path = os.path.join(models_dir, model_id_file)
             
             if os.path.exists(potential_model_path):
                 model_path = potential_model_path
                 # Look for corresponding scaler and features files
                 model_name = model_id.replace('.pkl', '').replace('_model', '')
-                scaler_path = os.path.normpath(os.path.join(models_dir, 'scaler.pkl'))
-                features_path = os.path.normpath(os.path.join(models_dir, 'features.pkl'))
+                scaler_path = os.path.join(models_dir, 'scaler.pkl')
+                features_path = os.path.join(models_dir, 'features.pkl')
                 logger.info(f"Using custom model: {model_path}")
             else:
                 logger.warning(f"Requested model {model_id} not found at {potential_model_path}, using default model")
