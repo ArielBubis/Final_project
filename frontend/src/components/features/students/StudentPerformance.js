@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Card as AntCard, Row, Col, Empty, Switch, Space, Select } from 'antd';
+import { Card as AntCard, Empty, Switch, Space, Select } from 'antd';
 import styles from '../../../styles/modules/StudentPerformance.module.css';
 import RadarChart from '../visualization/RadarChart';
 import PerformanceMetricsLegend from '../visualization/PerformanceMetricsLegend';
@@ -11,7 +11,9 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
   const { t } = useLanguage();
   const [showClassAverage, setShowClassAverage] = useState(false);
   
-  const radarChartData = student ? generateRadarChartData(student, classAverage, { selectedCourseId: selectedCourse }) : [];
+  const radarChartData = useMemo(() => {
+    return student ? generateRadarChartData(student, classAverage, { selectedCourseId: selectedCourse }) : [];
+  }, [student, classAverage, selectedCourse]);
   // Diagnostic: log imported component types to help catch undefined imports that cause React to crash
   // (This will be removed after root cause is fixed)
   if (process.env.NODE_ENV !== 'production') {
@@ -56,13 +58,23 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     // Helper to find metric entry from radarChartData by normalized metric name
     const findMetric = (name) => radarChartData.find(m => m.metric.toLowerCase().includes(name.toLowerCase())) || null;
 
-    // Calculate average score excluding courses with grade = 0
+    // Calculate average score excluding courses with no meaningful activity
     const calculateAverageScore = (studentData) => {
         const courses = studentData.courses || [];
         let totalScore = 0;
         let validCourses = 0;
         
         courses.forEach(course => {
+            // Check if course has meaningful activity (not just an empty enrollment)
+            const hasAssignments = Array.isArray(course?.assignments) && course.assignments.length > 0;
+            const hasModules = Array.isArray(course?.modules) && course.modules.length > 0;
+            const hasSubmittedWork = hasAssignments && course.assignments.some(a => 
+                a?.progress?.submittedAt || a?.progress?.submissionDate
+            );
+            const hasModuleProgress = hasModules && course.modules.some(m => 
+                (m?.progress?.totalExpertiseRate || 0) > 0 || (m?.progress?.completion || 0) > 0
+            );
+            
             // Try multiple possible grade fields
             let grade = null;
             if (course?.summary) {
@@ -72,9 +84,11 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
                 grade = course.averageScore ?? course.grade ?? course.finalGrade ?? course.average ?? course.score ?? null;
             }
             
-            // Only count courses with valid grades > 0
-            if (typeof grade === 'number' && grade > 0) {
-                totalScore += grade;
+            // Include course if: has score > 0, OR has submitted work, OR has module progress
+            const shouldIncludeCourse = (typeof grade === 'number' && grade > 0) || hasSubmittedWork || hasModuleProgress;
+            
+            if (shouldIncludeCourse) {
+                totalScore += grade || 0;
                 validCourses++;
             }
         });
@@ -89,18 +103,42 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
         let totalTime = 0;
         
         courses.forEach(course => {
-            // Try multiple possible time fields
-            let timeSpent = null;
-            if (course?.summary) {
-                timeSpent = course.summary.totalTimeSpent ?? course.summary.timeSpent ?? null;
-            }
-            if (timeSpent === null) {
-                timeSpent = course.totalTimeSpent ?? course.timeSpent ?? 0;
-            }
+            // Check if course has meaningful activity (not just an empty enrollment)
+            const hasAssignments = Array.isArray(course?.assignments) && course.assignments.length > 0;
+            const hasModules = Array.isArray(course?.modules) && course.modules.length > 0;
+            const hasSubmittedWork = hasAssignments && course.assignments.some(a => 
+                a?.progress?.submittedAt || a?.progress?.submissionDate
+            );
+            const hasModuleProgress = hasModules && course.modules.some(m => 
+                (m?.progress?.totalExpertiseRate || 0) > 0 || (m?.progress?.completion || 0) > 0
+            );
             
-            // Add time if it's a valid number
-            if (typeof timeSpent === 'number' && timeSpent > 0) {
-                totalTime += timeSpent;
+            // Check score
+            const score = course?.summary?.overallScore ?? 
+                         course?.summary?.averageScore ?? 
+                         course?.summary?.average ?? 
+                         course?.averageScore ?? 
+                         course?.grade ?? 
+                         course?.finalGrade ?? 
+                         course?.score ?? 0;
+            
+            // Include course if: has score > 0, OR has submitted work, OR has module progress
+            const shouldIncludeCourse = (typeof score === 'number' && score > 0) || hasSubmittedWork || hasModuleProgress;
+            
+            if (shouldIncludeCourse) {
+                // Try multiple possible time fields
+                let timeSpent = null;
+                if (course?.summary) {
+                    timeSpent = course.summary.totalTimeSpent ?? course.summary.timeSpent ?? null;
+                }
+                if (timeSpent === null) {
+                    timeSpent = course.totalTimeSpent ?? course.timeSpent ?? 0;
+                }
+                
+                // Add time if it's a valid number
+                if (typeof timeSpent === 'number' && timeSpent > 0) {
+                    totalTime += timeSpent;
+                }
             }
         });
         
@@ -110,7 +148,6 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     const overall = findMetric('overall') || {};
     const completion = findMetric('completion') || {};
     const submission = findMetric('submission') || {};
-    const expertise = findMetric('expertise') || {};
     const time = findMetric('time') || {};
 
   // Use corrected average calculation when showing all courses
@@ -120,7 +157,6 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
     
     const completionVal = typeof completion.value === 'number' ? Math.round(completion.value) : Math.round(student.completionRate || 0);
     const submissionVal = typeof submission.value === 'number' ? Math.round(submission.value) : Math.round(student.submissionRate || 0);
-    const expertiseVal = typeof expertise.value === 'number' ? Math.round(expertise.value) : Math.round(student.expertiseRate || 0);
 
     // Time: calculate total when "All Courses" selected, otherwise use radar chart data
     const studentTimeMinutes = selectedCourse === 'all' 

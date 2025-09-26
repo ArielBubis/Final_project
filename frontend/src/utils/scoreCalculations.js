@@ -270,9 +270,22 @@ export const calculateStudentMetrics = (studentData, options = {}) => {
   studentData.courses.forEach(course => {
     const m = metricsFromCourse(course);
     if (!m) return;
-    // consider courses with a valid score
-    if (typeof m.avg === 'number') {
-      totalScore += m.avg;
+    
+    // Check if course has meaningful activity (not just an empty enrollment)
+    const hasAssignments = Array.isArray(course?.assignments) && course.assignments.length > 0;
+    const hasModules = Array.isArray(course?.modules) && course.modules.length > 0;
+    const hasSubmittedWork = hasAssignments && course.assignments.some(a => 
+      a?.progress?.submittedAt || a?.progress?.submissionDate
+    );
+    const hasModuleProgress = hasModules && course.modules.some(m => 
+      (m?.progress?.totalExpertiseRate || 0) > 0 || (m?.progress?.completion || 0) > 0
+    );
+    
+    // Include course if: has score > 0, OR has submitted work, OR has module progress
+    const shouldIncludeCourse = (typeof m.avg === 'number' && m.avg > 0) || hasSubmittedWork || hasModuleProgress;
+    
+    if (shouldIncludeCourse) {
+      totalScore += m.avg || 0;
       totalCompletion += m.completion || 0;
       totalSubmission += m.submission || 0;
       totalExpertise += m.expertise || 0;

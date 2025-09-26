@@ -307,7 +307,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache]);
 
-  // UPDATED: Get students by teacher using new normalized structure
+  // LIGHTWEIGHT: Get basic students by teacher (for main page dashboard)
   const fetchStudentsByTeacher = useCallback(async (teacherUidOrId) => {
     if (!teacherUidOrId) return [];
     
@@ -781,7 +781,77 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache]);
   
-  // NEW: Optimized single student data fetch with comprehensive caching
+  // LIGHTWEIGHT: Get basic student summary (for lists/dashboards)
+  const fetchStudentSummary = useCallback(async (studentId) => {
+    if (!studentId) return null;
+    
+    // Check cache first
+    const cachedData = getFromQueryCache('studentSummary', studentId);
+    if (cachedData) {
+      return cachedData;
+    }
+    
+    try {
+      // Only fetch basic user data and course summaries
+      const [userDoc, enrollments] = await Promise.all([
+        fetchDocumentById('users', studentId),
+        fetchDocuments('enrollments', {
+          filters: [
+            { field: 'studentId', operator: '==', value: studentId },
+            { field: 'status', operator: '==', value: 'active' }
+          ]
+        })
+      ]);
+      
+      if (!userDoc || userDoc.role !== 'student') {
+        return null;
+      }
+      
+      // Get course summaries only (no detailed assignment/module data)
+      const courseIds = enrollments.map(e => e.courseId);
+      const summaries = await Promise.all(
+        courseIds.map(courseId => 
+          fetchDocumentById('studentCourseSummaries', `${studentId}_${courseId}`)
+            .catch(() => null)
+        )
+      );
+      
+      // Calculate basic metrics from summaries
+      const validSummaries = summaries.filter(Boolean);
+      const avgScore = validSummaries.length > 0 
+        ? validSummaries.reduce((sum, s) => sum + (s.overallScore || 0), 0) / validSummaries.length 
+        : 0;
+      const avgCompletion = validSummaries.length > 0
+        ? validSummaries.reduce((sum, s) => sum + (s.completionRate || 0), 0) / validSummaries.length
+        : 0;
+      
+      const summary = {
+        id: studentId,
+        userId: studentId,
+        firstName: userDoc.firstName || 'Unknown',
+        lastName: userDoc.lastName || 'Student',
+        email: userDoc.email || '',
+        courseCount: enrollments.length,
+        averageScore: Math.round(avgScore),
+        completionRate: Math.round(avgCompletion),
+        riskScore: avgScore < 60 ? 80 : avgScore < 70 ? 50 : 20,
+        riskLevel: avgScore < 60 ? 'high' : avgScore < 70 ? 'medium' : 'low',
+        isAtRisk: avgScore < 70,
+        lastAccessed: new Date().toISOString()
+      };
+      
+      updateQueryCache('studentSummary', studentId, summary);
+      return summary;
+      
+    } catch (error) {
+      console.error(`Error fetching student summary for ${studentId}:`, error);
+      return null;
+    }
+  }, [getFromQueryCache, updateQueryCache]);
+
+  // ⚠️ HEAVY FUNCTION - ONLY USE FOR INDIVIDUAL STUDENT DETAIL PAGES
+  // This fetches ALL modules, ALL assignments, and ALL progress data
+  // For lists/dashboards, use fetchStudentSummary instead
   const fetchStudentDetailsCached = useCallback(async (studentId) => {
     if (!studentId) return null;
     
@@ -1153,7 +1223,8 @@ export const DataProvider = ({ children }) => {
     fetchStudentAssignments,
     fetchModuleProgress,
     fetchTeacherDashboard, // NEW
-    fetchStudentDetailsCached, // NEW: Optimized student details
+    fetchStudentSummary, // LIGHTWEIGHT: For lists/dashboards
+    fetchStudentDetailsCached, // HEAVY: For individual student pages only
     fetchAllStudents,
     fetchAllAssignments,
     fetchAllModules,

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./SideBar";
-import Mainpage from "../pages/Dashboard";
+import Mainpage from "./Mainpage";
 import Login from "../pages/LoginPage";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import TeacherManagement from "./features/admin/TeacherManagement";
