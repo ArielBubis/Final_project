@@ -173,13 +173,13 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     DataFrame with original data and predictions added
     """
     
-    # Set default model paths
+    # Set default model paths with cross-platform compatibility
     if model_path is None:
-        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'student_risk_model.pkl')
+        model_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'models', 'student_risk_model.pkl'))
     if scaler_path is None:
-        scaler_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'scaler.pkl')
+        scaler_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'models', 'scaler.pkl'))
     if features_path is None:
-        features_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'features.pkl')
+        features_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'models', 'features.pkl'))
     
     # Load the data
     if input_df is not None:
