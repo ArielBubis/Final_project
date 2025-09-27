@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Card as AntCard, Empty, Switch, Space, Select } from 'antd';
+import React, { useMemo } from 'react';
+import { Card as AntCard, Empty, Select } from 'antd';
 import styles from '../../../styles/modules/StudentPerformance.module.css';
 import RadarChart from '../visualization/RadarChart';
 import PerformanceMetricsLegend from '../visualization/PerformanceMetricsLegend';
@@ -9,7 +9,6 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 
 const StudentPerformance = ({ student, classAverage = null, style, selectedCourse = 'all', onCourseChange = () => {} }) => {
   const { t } = useLanguage();
-  const [showClassAverage, setShowClassAverage] = useState(false);
   
   const radarChartData = useMemo(() => {
     return student ? generateRadarChartData(student, classAverage, { selectedCourseId: selectedCourse }) : [];
@@ -219,17 +218,6 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
               ]}
               style={{ width: 200, marginRight: '16px' }}
             />
-            <Space>
-              <span className={styles.toggleLabel}>
-                {t('PerformanceMetrics', 'Show Class Average')}
-              </span>
-              <Switch
-                checked={showClassAverage}
-                onChange={setShowClassAverage}
-                size="small"
-                disabled={!classAverage || radarChartData.every(metric => metric.classAverage === 0)}
-              />
-            </Space>
           </div>
         </div>
       }
@@ -244,7 +232,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
               data={radarChartData}
               width={500}
               height={300}
-              showLegend={showClassAverage}
+              showLegend={false}
               studentColor="#722ed1"
               classColor="#82ca9d"
             />
@@ -252,7 +240,7 @@ const StudentPerformance = ({ student, classAverage = null, style, selectedCours
           <div className={styles.legendWrapper}>
             <PerformanceMetricsLegendSafe 
               metrics={performanceMetrics}
-              showComparison={showClassAverage}
+              showComparison={false}
               comparisonData={classAverage}
             />
           </div>
