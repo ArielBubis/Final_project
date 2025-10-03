@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "r
 import Sidebar from "./SideBar";
 import Mainpage from "./Mainpage";
 import Login from "../pages/LoginPage";
+import SettingsPage from "../pages/SettingsPage";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import TeacherManagement from "./features/admin/TeacherManagement";
 import StudentsPage from "./features/students/StudentsPage";
@@ -72,6 +73,7 @@ const AppContent = () => {
               <Route path="/students/:id" element={<Student />} />
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:id" element={<CoursePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
 
               {/* Admin-specific routes */}
               <Route

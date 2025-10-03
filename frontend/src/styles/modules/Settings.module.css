@@ -1,0 +1,240 @@
+/* Settings Page Styles */
+.settingsContainer {
+  padding: 24px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.settingsHeader {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
+}
+
+.settingsContent {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.settingsCard {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  border: none;
+}
+
+.settingsCard .ant-card-head {
+  background-color: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.settingsCard .ant-card-head-title {
+  font-weight: 600;
+  color: #262626;
+}
+
+.settingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.settingLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: #595959;
+}
+
+.settingLabel span {
+  margin-left: 4px;
+}
+
+.profileDisplay {
+  padding: 16px 0;
+}
+
+.profileDisplay .infoItem {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.profileDisplay .infoItem:last-child {
+  border-bottom: none;
+}
+
+.profileDisplay .infoItem strong {
+  display: inline-block;
+  width: 120px;
+  color: #262626;
+  font-weight: 600;
+}
+
+.profileDisplay .infoItem span {
+  color: #595959;
+  margin-left: 8px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.infoItem strong {
+  color: #262626;
+  font-size: 0.9rem;
+}
+
+.infoItem span {
+  color: #8c8c8c;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+/* Form Styles */
+.settingsCard .ant-form-item-label > label {
+  font-weight: 500;
+  color: #262626;
+}
+
+.settingsCard .ant-input {
+  border-radius: 6px;
+}
+
+.settingsCard .ant-btn-primary {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.settingsCard .ant-btn-primary:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+/* Switch Styles */
+.settingsCard .ant-switch {
+  background-color: #bfbfbf;
+}
+
+.settingsCard .ant-switch-checked {
+  background-color: #1890ff;
+}
+
+/* Select Styles */
+.settingsCard .ant-select {
+  border-radius: 6px;
+}
+
+.settingsCard .ant-select-selector {
+  border-radius: 6px !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settingsContainer {
+    padding: 16px;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+  }
+  
+  .settingItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .settingLabel {
+    width: 100%;
+  }
+  
+  .infoItem {
+    text-align: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .settingsContainer {
+    padding: 12px;
+  }
+  
+  .settingsContent {
+    margin: 0;
+  }
+  
+  .title {
+    font-size: 1.25rem;
+  }
+  
+  .subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+/* RTL Support */
+[dir="rtl"] .settingLabel {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .settingItem {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .infoItem {
+  text-align: right;
+}
+
+/* Dark theme support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .settingsContainer {
+    background-color: #141414;
+  }
+  
+  .title {
+    color: #1890ff;
+  }
+  
+  .subtitle {
+    color: #a6a6a6;
+  }
+  
+  .settingsCard {
+    background-color: #1f1f1f;
+    border-color: #434343;
+  }
+  
+  .settingsCard .ant-card-head {
+    background-color: #262626;
+    border-bottom-color: #434343;
+  }
+  
+  .settingLabel {
+    color: #d9d9d9;
+  }
+  
+  .infoItem strong {
+    color: #d9d9d9;
+  }
+  
+  .infoItem span {
+    color: #8c8c8c;
+  }
+}
