@@ -58,6 +58,20 @@ const ResetPassword = () => {
             <div className={styles.loginContainer}>
                 <div className={styles.loginBox} dir={dir}>
                     <div className={styles.loginLeft}>
+                        <div className={styles.backButtonWrapper}>
+                            <Button
+                                variant="ghost"
+                                size="small"
+                                onClick={() => navigate("/login")}
+                                disabled={loading}
+                                className={styles.backButton}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 6 }}>
+                                    <path d="M11.25 15L6.75 9L11.25 3" stroke="#2c3e50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                <span>{t("ResetPassword", "Back")}</span>
+                            </Button>
+                        </div>
                         <div className={styles.loginLogo}>
                             <img
                                 src="/REVODUCATE-LOGO.png"
@@ -82,23 +96,15 @@ const ResetPassword = () => {
                             {success && <p style={{ color: '#27ae60', textAlign: 'center', marginTop: 10 }}>{success}</p>}
                             <div className={styles.loginButtonWrapper}>
                                 <Button
-                                    label={loading ? t("ResetPassword", "Sending...") : t("ResetPassword", "Send Reset Link")}
                                     type="submit"
                                     variant="primary"
                                     size="wide"
                                     disabled={loading || !!success}
-                                />
+                                >
+                                    {loading ? t("ResetPassword", "Sending...") : t("ResetPassword", "Submit")}
+                                </Button>
                             </div>
                         </form>
-                        <div style={{ textAlign: 'center', marginTop: 20 }}>
-                            <Button
-                                label={t("ResetPassword", "Back to Login")}
-                                variant="secondary"
-                                size="wide"
-                                onClick={() => navigate("/login")}
-                                disabled={loading}
-                            />
-                        </div>
                         <div style={{ textAlign: 'center', marginTop: 24 }}>
                             <button
                                 className={styles.languageButton}

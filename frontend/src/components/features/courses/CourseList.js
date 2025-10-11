@@ -28,7 +28,7 @@ const CourseList = ({ courses, title }) => {
         <div className={styles.courseListContainer}>
             <h2 className={styles.title}>{title}</h2>
             <div className={styles.courseGrid}>
-                {filteredCourses.map((course) => (
+                {courses.map((course) => (
                     <div key={course.id}>
                         <CourseCard course={course} />
                     </div>

@@ -35,7 +35,7 @@ def load_csv_data(data_dir=None):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # Go up two levels: backend/ml -> backend -> project_root
         project_root = os.path.dirname(os.path.dirname(current_dir))
-        data_dir = os.path.join(project_root, 'data', 'csv')
+        data_dir = os.path.join(project_root, 'data')
     
     try:
         # Load all CSV files

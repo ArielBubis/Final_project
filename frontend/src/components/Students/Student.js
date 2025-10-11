@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import styles from '../../styles/modules/Students.module.css';
 import { useStudentData } from '../../hooks/useStudentData'; // Use optimized hook from root hooks
 import { useRiskAssessment } from '../../hooks/useRiskAssessment';
-import { getCourseRiskData } from '../../services/riskPredictionService';
+import { getCourseRiskData, getAtRiskStudents } from '../../services/riskPredictionService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { getStudentName } from '../../utils/studentUtils';
@@ -20,6 +20,7 @@ const Student = () => {
   const [showDebug, setShowDebug] = useState(false); // Set to false in production
   const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
   const [courseRiskData, setCourseRiskData] = useState([]);
+  const [mlRiskData, setMlRiskData] = useState([]); // ML risk predictions data
   const [riskDataLoading, setRiskDataLoading] = useState(true);
   const [classAverageData, setClassAverageData] = useState(null);
   const [allStudentsData, setAllStudentsData] = useState([]);
@@ -36,22 +37,37 @@ const Student = () => {
   // Separate risk assessment calculation - breaking circular dependencies
   const riskAssessment = useRiskAssessment(student);
   
-  // Fetch course-specific risk data
+  // Fetch course-specific risk data and ML risk predictions
   useEffect(() => {
-    const fetchCourseRiskData = async () => {
+    const fetchRiskData = async () => {
       try {
         setRiskDataLoading(true);
-        const riskData = await getCourseRiskData();
+        
+        // Fetch both traditional risk data and ML predictions in parallel
+        const [riskData, mlPredictions] = await Promise.all([
+          getCourseRiskData(),
+          getAtRiskStudents().catch(err => {
+            console.warn('ML predictions not available:', err);
+            return { success: false, students: [] };
+          })
+        ]);
+        
         setCourseRiskData(riskData);
+        
+        // Set ML risk data if available
+        if (mlPredictions.success && mlPredictions.students) {
+          setMlRiskData(mlPredictions.students);
+        }
+        
       } catch (error) {
-        console.error('Error fetching course risk data:', error);
+        console.error('Error fetching risk data:', error);
         setCourseRiskData([]);
       } finally {
         setRiskDataLoading(false);
       }
     };
 
-    fetchCourseRiskData();
+    fetchRiskData();
   }, []);
   
   // Fetch all students data for class average calculation
@@ -231,6 +247,7 @@ const Student = () => {
                   course={course}
                   studentId={id}
                   riskData={courseRiskData}
+                  mlRiskData={mlRiskData}
                 />
               </Col>
             ))

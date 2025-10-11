@@ -127,6 +127,7 @@ const CreatePredictionPrompt = ({ onPredictionComplete, visible = true }) => {
       <div style={{ padding: '0 20px 20px' }}>
         <Paragraph style={{ fontSize: 16, marginBottom: 24 }}>
           No CSV prediction data was found. Generate new risk predictions to see at-risk students analysis.
+          Make sure you have the data in the /data in csv formant (Should be the same data uploaded to the firestore)
         </Paragraph>
 
         {error && (

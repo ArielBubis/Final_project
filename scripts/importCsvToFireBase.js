@@ -744,7 +744,7 @@ function extractLastName(fullName) {
 }
 
 // Run the import
-const csvFolder = path.join(__dirname, '../data/csv');
+const csvFolder = path.join(__dirname, '../data');
 importCsvToFirebase(csvFolder);
 
 // Add this function to calculate and import student module progress

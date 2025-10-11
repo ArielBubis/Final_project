@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Card as AntCard, Spin, Empty, Alert, Button, Select, Row, Col } from 'antd';
+import { Card as AntCard, Spin, Empty, Select, Row, Col } from 'antd';
 import { useParams, useNavigate } from 'react-router-dom';
 import styles from '../../../styles/modules/Students.module.css';
 import { useStudentData } from '../../../hooks/useStudentData'; // Use optimized hook from root hooks
 import { useRiskAssessment } from '../../../hooks/useRiskAssessment';
-import { getCourseRiskData } from '../../../services/riskPredictionService';
+import { getCourseRiskData, getAtRiskStudents } from '../../../services/riskPredictionService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useData } from '../../../contexts/DataContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getStudentName } from '../../../utils/studentUtils';
 import { calculateClassAverages } from '../../../utils/dataProcessingUtils';
-import DebugCard from './DebugCard';
+// import DebugCard from './DebugCard';
 import StudentInfo from './StudentInfo';
 import StudentPerformance from './StudentPerformance';
 import CoursePerformanceCard from './CoursePerformanceCard';
@@ -20,9 +20,10 @@ const Student = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [showDebug, setShowDebug] = useState(false); // Set to false in production
+  // const [showDebug, setShowDebug] = useState(false); // Set to false in production
   const [selectedCourse, setSelectedCourse] = useState('all'); // Course filter state
   const [courseRiskData, setCourseRiskData] = useState([]);
+  const [mlRiskData, setMlRiskData] = useState([]); // ML risk predictions data
   const [riskDataLoading, setRiskDataLoading] = useState(true);
   const [classAverageData, setClassAverageData] = useState(null);
   const [allStudentsData, setAllStudentsData] = useState([]);
@@ -39,22 +40,37 @@ const Student = () => {
   // Separate risk assessment calculation - breaking circular dependencies
   const riskAssessment = useRiskAssessment(student);
   
-  // Fetch course-specific risk data
+  // Fetch course-specific risk data and ML risk predictions
   useEffect(() => {
-    const fetchCourseRiskData = async () => {
+    const fetchRiskData = async () => {
       try {
         setRiskDataLoading(true);
-        const riskData = await getCourseRiskData();
+        
+        // Fetch both traditional risk data and ML predictions in parallel
+        const [riskData, mlPredictions] = await Promise.all([
+          getCourseRiskData(),
+          getAtRiskStudents().catch(err => {
+            console.warn('ML predictions not available:', err);
+            return { success: false, students: [] };
+          })
+        ]);
+        
         setCourseRiskData(riskData);
+        
+        // Set ML risk data if available
+        if (mlPredictions.success && mlPredictions.students) {
+          setMlRiskData(mlPredictions.students);
+        }
+        
       } catch (error) {
-        console.error('Error fetching course risk data:', error);
+        console.error('Error fetching risk data:', error);
         setCourseRiskData([]);
       } finally {
         setRiskDataLoading(false);
       }
     };
 
-    fetchCourseRiskData();
+    fetchRiskData();
   }, []);
   
   // Fetch all students data for class average calculation
@@ -147,19 +163,19 @@ const Student = () => {
     return <Spin size="large" tip="Loading student details..." />;
   }
   
-  if (error) {
-    return (
-      <div>
-        <Alert
-          message="Error Loading Student Data"
-          description={error}
-          type="error"
-          showIcon
-        />
-        <DebugCard debugInfo={debugInfo} show={showDebug} />
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div>
+  //       <Alert
+  //         message="Error Loading Student Data"
+  //         description={error}
+  //         type="error"
+  //         showIcon
+  //       />
+  //       <DebugCard debugInfo={debugInfo} show={showDebug} />
+  //     </div>
+  //   );
+  // }
   if (!enrichedStudent) {
     return <Empty description="No student data found" />;
   }
@@ -176,9 +192,37 @@ const Student = () => {
   return (
     <div className={styles.studentsPageContainer}>
       <div className={styles.breadcrumb}>
-        <a onClick={() => navigate('/mainpage')}>{t("Navigation", "Dashboard")}</a>
+        <button 
+          type="button"
+          onClick={() => navigate('/mainpage')}
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            color: '#1890ff', 
+            cursor: 'pointer', 
+            padding: 0, 
+            textDecoration: 'underline',
+            font: 'inherit'
+          }}
+        >
+          {t("Navigation", "Dashboard")}
+        </button>
         <span className={styles.breadcrumbSeparator}>/</span>
-        <a onClick={() => navigate('/students')}>{t("StudentsPage", "Students")}</a>
+        <button 
+          type="button"
+          onClick={() => navigate('/students')}
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            color: '#1890ff', 
+            cursor: 'pointer', 
+            padding: 0, 
+            textDecoration: 'underline',
+            font: 'inherit'
+          }}
+        >
+          {t("StudentsPage", "Students")}
+        </button>
         <span className={styles.breadcrumbSeparator}>/</span>
         <span className={styles.currentPage}>{getStudentName(enrichedStudent)}</span>
       </div>
@@ -241,6 +285,7 @@ const Student = () => {
                   course={course}
                   studentId={id}
                   riskData={courseRiskData}
+                  mlRiskData={mlRiskData}
                 />
               </Col>
             ))

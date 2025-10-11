@@ -89,7 +89,7 @@ def train_risk_model():
     os.makedirs(model_dir, exist_ok=True)
     
     # Save model (entire pipeline for consistency)
-    model_path = os.path.join(model_dir, 'at_risk_rf_model.pkl')
+    model_path = os.path.join(model_dir, 'student_risk_model.pkl')
     joblib.dump(pipeline, model_path)
     print(f"\nPipeline (model + scaler) saved to: {model_path}")
 

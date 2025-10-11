@@ -1,8 +1,9 @@
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./SideBar";
-import Mainpage from "../pages/Dashboard";
+import Mainpage from "./Mainpage";
 import Login from "../pages/LoginPage";
+import SettingsPage from "../pages/SettingsPage";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import TeacherManagement from "./features/admin/TeacherManagement";
 import StudentsPage from "./features/students/StudentsPage";
@@ -72,6 +73,7 @@ const AppContent = () => {
               <Route path="/students/:id" element={<Student />} />
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:id" element={<CoursePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
 
               {/* Admin-specific routes */}
               <Route

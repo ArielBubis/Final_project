@@ -60,6 +60,31 @@ export const generateRadarChartData = (studentData, classAverage = null, options
     coursesToConsider = courses.filter(c => c.id === selectedCourseId);
   } else if (selectedCourseName && selectedCourseName !== 'all') {
     coursesToConsider = courses.filter(c => (c.courseName === selectedCourseName || c.name === selectedCourseName));
+  } else {
+    // When showing "All Courses", filter out courses where the student has no meaningful activity
+    coursesToConsider = courses.filter(course => {
+      // Check if course has any assignments or modules the student has interacted with
+      const hasAssignments = Array.isArray(course?.assignments) && course.assignments.length > 0;
+      const hasModules = Array.isArray(course?.modules) && course.modules.length > 0;
+      const hasSubmittedWork = hasAssignments && course.assignments.some(a => 
+        a?.progress?.submittedAt || a?.progress?.submissionDate
+      );
+      const hasModuleProgress = hasModules && course.modules.some(m => 
+        (m?.progress?.totalExpertiseRate || 0) > 0 || (m?.progress?.completion || 0) > 0
+      );
+      
+      // Check if there's a meaningful score (not just 0 from no activity)
+      const score = course?.summary?.overallScore ?? 
+                   course?.summary?.averageScore ?? 
+                   course?.summary?.average ?? 
+                   course?.averageScore ?? 
+                   course?.grade ?? 
+                   course?.finalGrade ?? 
+                   course?.score ?? 0;
+      
+      // Include course if: has score > 0, OR has submitted work, OR has module progress
+      return (typeof score === 'number' && score > 0) || hasSubmittedWork || hasModuleProgress;
+    });
   }
 
   // Fallback: compute submissionRate from assignments if not provided

@@ -162,7 +162,7 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     output_path : str, optional
         Path to save the output CSV with predictions
     model_path : str, optional
-        Path to the saved model (default: models/at_risk_rf_model.pkl)
+        Path to the saved model (default: models/student_risk_model.pkl)
     scaler_path : str, optional
         Path to the saved scaler (default: models/scaler.pkl)
     features_path : str, optional
@@ -175,7 +175,7 @@ def predict_at_risk_for_dataset(input_path=None, input_df=None, output_path=None
     
     # Set default model paths
     if model_path is None:
-        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'at_risk_rf_model.pkl')
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'student_risk_model.pkl')
     if scaler_path is None:
         scaler_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'scaler.pkl')
     if features_path is None:
@@ -356,7 +356,7 @@ def predict_risk_from_raw_data(data_dir=None, output_path=None, model_path=None,
     output_path : str, optional
         Path to save predictions (default: auto-generate)
     model_path : str, optional
-        Path to the model file (default: models/at_risk_rf_model.pkl)
+        Path to the model file (default: models/student_risk_model.pkl)
     scaler_path : str, optional
         Path to the scaler file (default: models/scaler.pkl)
     features_path : str, optional

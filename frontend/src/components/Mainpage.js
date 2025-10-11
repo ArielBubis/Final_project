@@ -12,8 +12,8 @@ import {
   RobotOutlined,
 } from '@ant-design/icons';
 import { getStudentName } from '../utils/studentUtils';
-import CourseList from './Courses/CourseList';
-import StudentList from './Students/StudentList';
+import CourseList from './features/courses/CourseList';
+import StudentList from './features/students/StudentList';
 import MLRiskStudentList from './features/students/MLRiskStudentList';
 import { formatTimestampForDisplay } from '../utils/firebaseUtils';
 import styles from '../styles/modules/MainPage.module.css';
@@ -28,6 +28,7 @@ const MainPage = () => {
     const {
         fetchTeacherCourses,
         fetchStudentsByTeacher,
+        fetchStudentSummary,
         fetchCourseStats,
         fetchTeacherDashboard,
         loading: dataLoading,
@@ -130,12 +131,13 @@ const MainPage = () => {
                 );
                 
                 console.log('Courses with stats:', coursesWithStats.length);
-                  // Fetch students for the teacher
+                
+                // Fetch students for the teacher - using existing function which should be lightweight
                 console.log('Fetching students...');
                 const teacherStudents = await fetchStudentsByTeacher(currentUser?.uid);
                 console.log('Found students:', teacherStudents?.length || 0);
                 
-                // Students are now pre-formatted by DataContext, no need for transformation here
+                // Use the students as-is from fetchStudentsByTeacher (should already be formatted)
                 const formattedStudents = teacherStudents || [];
 
                 // Get teacher analytics if available
@@ -238,7 +240,7 @@ const MainPage = () => {
                         <Alert 
                             type="warning" 
                             showIcon 
-                            message="ML service unavailable - showing fallback scores where needed" 
+                            message="Model is missing from backend/models folder. To train a model go to this link: https://colab.research.google.com/drive/124Tc_TnAGpkGgHMw82S7wwZzxbUOz0EJ - showing fallback scores where needed" 
                             style={{ marginTop: 8 }}
                         />
                     )}
@@ -289,13 +291,13 @@ const MainPage = () => {
                             showInfo={false}
                         />
                     </Card>
-                    <Card className={styles.metricCard}>
+                    {/* <Card className={styles.metricCard}>
                         <Statistic
                             title={t("Mainpage", "Upcoming Assigments")}
                             value={dashboardMetrics.upcomingAssignments}
                             prefix={<ClockCircleOutlined />}
                         />
-                    </Card>
+                    </Card> */}
                 </div>
             )}
 
