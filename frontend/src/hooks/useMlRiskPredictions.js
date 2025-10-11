@@ -47,24 +47,56 @@ export const useMlRiskPredictions = () => {
                             if (!isNaN(parsed)) numericGradeLevel = parsed; // ignore letters like 'A'
                         }
 
+                        const courses = (student.courses || []).map(course => ({
+                            id: course.id,
+                            name: course.name || course.courseName,
+                            assignments: (course.assignments || []).map(a => ({
+                                // Only send minimal required progress structure
+                                progress: {
+                                    totalScore: Number(a.progress?.totalScore ?? a.score ?? 0),
+                                    totalTime: Number(a.progress?.totalTime ?? a.timeSpent ?? 0),
+                                    isLate: Boolean(a.progress?.isLate ?? a.isLate ?? false)
+                                }
+                            }))
+                        }));
+
+                        // Skip students with no course data or no assignments
+                        if (courses.length === 0) {
+                            console.warn(`Skipping student ${student.id} - no course data`);
+                            return {
+                                ...student,
+                                mlRiskScore: 0,
+                                mlRiskLevel: 'unknown',
+                                mlRiskFactors: ['No course data available'],
+                                mlIsAtRisk: false,
+                                skippedReason: 'No course data'
+                            };
+                        }
+
+                        // Check if any course has assignments with valid data
+                        const hasValidAssignments = courses.some(course => 
+                            course.assignments && course.assignments.length > 0
+                        );
+                        
+                        if (!hasValidAssignments) {
+                            console.warn(`Skipping student ${student.id} - has courses but no assignment data`);
+                            return {
+                                ...student,
+                                mlRiskScore: 0,
+                                mlRiskLevel: 'unknown',
+                                mlRiskFactors: ['No assignment data available'],
+                                mlIsAtRisk: false,
+                                skippedReason: 'No assignment data'
+                            };
+                        }
+
                         const studentData = {
                             studentId: student.id,
                             studentName: student.name,
                             gradeLevel: numericGradeLevel,
                             averageScore: Number(student.performance || student.scores?.average || 0),
                             completionRate: Number(student.completion || student.completionRate || 0),
-                            courses: (student.courses || []).map(course => ({
-                                id: course.id,
-                                name: course.name || course.courseName,
-                                assignments: (course.assignments || []).map(a => ({
-                                    // Only send minimal required progress structure
-                                    progress: {
-                                        totalScore: Number(a.progress?.totalScore ?? a.score ?? 0),
-                                        totalTime: Number(a.progress?.totalTime ?? a.timeSpent ?? 0),
-                                        isLate: Boolean(a.progress?.isLate ?? a.isLate ?? false)
-                                    }
-                                }))
-                            }))
+                            courses: courses
                         };
                                                 
                         const riskAssessment = await getEnhancedRiskAssessment(studentData, true);

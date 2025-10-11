@@ -49,34 +49,43 @@ export const useStudentData = (studentId) => {
         
         // Enhance with risk assessment if needed
         if (studentData.isAtRisk === false && studentData.riskScore === 0 && studentData.courses.length > 0) {
-          try {
-            console.log('Computing risk assessment...');
-            requestCount++;
-            
-            const { getEnhancedRiskAssessment } = await import('../services/riskPredictionService');
-            
-            const riskData = {
-              averageScore: studentData.averageScore,
-              completionRate: studentData.completionRate,
-              submissionRate: studentData.submissionRate,
-              missingAssignments: studentData.missingAssignments,
-              daysSinceLastAccess: studentData.daysSinceLastAccess,
-              courses: studentData.courses,
-              lastAccessed: studentData.lastAccessed
-            };
-            
-            const riskAssessment = await getEnhancedRiskAssessment(riskData, true);
-            
-            // Update student data with risk assessment
-            studentData.isAtRisk = riskAssessment.isAtRisk;
-            studentData.riskScore = riskAssessment.score;
-            studentData.riskLevel = riskAssessment.level;
-            studentData.riskReasons = riskAssessment.factors;
-            
-            console.log(`Risk assessment completed: ${riskAssessment.level} risk (${riskAssessment.score})`);
-          } catch (riskError) {
-            console.warn('Failed to get risk assessment, using defaults:', riskError);
-            // Keep the default risk values from the cached data
+          // Check if any course has assignments with valid data
+          const hasValidAssignments = studentData.courses.some(course => 
+            course.assignments && course.assignments.length > 0
+          );
+          
+          if (!hasValidAssignments) {
+            console.log('Student has courses but no assignment data, skipping ML risk assessment');
+          } else {
+            try {
+              console.log('Computing risk assessment...');
+              requestCount++;
+              
+              const { getEnhancedRiskAssessment } = await import('../services/riskPredictionService');
+              
+              const riskData = {
+                averageScore: studentData.averageScore,
+                completionRate: studentData.completionRate,
+                submissionRate: studentData.submissionRate,
+                missingAssignments: studentData.missingAssignments,
+                daysSinceLastAccess: studentData.daysSinceLastAccess,
+                courses: studentData.courses,
+                lastAccessed: studentData.lastAccessed
+              };
+              
+              const riskAssessment = await getEnhancedRiskAssessment(riskData, true);
+              
+              // Update student data with risk assessment
+              studentData.isAtRisk = riskAssessment.isAtRisk;
+              studentData.riskScore = riskAssessment.score;
+              studentData.riskLevel = riskAssessment.level;
+              studentData.riskReasons = riskAssessment.factors;
+              
+              console.log(`Risk assessment completed: ${riskAssessment.level} risk (${riskAssessment.score})`);
+            } catch (riskError) {
+              console.warn('Failed to get risk assessment, using defaults:', riskError);
+              // Keep the default risk values from the cached data
+            }
           }
         }
         
@@ -450,7 +459,34 @@ export const useStudentData = (studentId) => {
         lastAccessed: lastAccessed ? lastAccessed.toISOString() : new Date().toISOString()
       };
       
-      const riskAssessment = await getEnhancedRiskAssessment(studentDataForRisk, true);
+      let riskAssessment;
+      
+      // Check if we have valid course and assignment data before making ML request
+      if (validCoursesData.length === 0) {
+        console.log('Student has no course data, using default risk assessment');
+        riskAssessment = {
+          score: 0,
+          level: 'unknown',
+          factors: ['No course data available'],
+          isAtRisk: false
+        };
+      } else {
+        const hasValidAssignments = validCoursesData.some(course => 
+          course.assignments && course.assignments.length > 0
+        );
+        
+        if (!hasValidAssignments) {
+          console.log('Student has courses but no assignment data, using default risk assessment');
+          riskAssessment = {
+            score: 0,
+            level: 'unknown',
+            factors: ['No assignment data available'],
+            isAtRisk: false
+          };
+        } else {
+          riskAssessment = await getEnhancedRiskAssessment(studentDataForRisk, true);
+        }
+      }
 
       const fallbackStudentData = {
         id: studentId,
