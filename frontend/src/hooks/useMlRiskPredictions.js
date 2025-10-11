@@ -66,10 +66,7 @@ export const useMlRiskPredictions = () => {
                                 }))
                             }))
                         };
-                        
-                        // Debug: log key fields for validation
-                        // console.debug('ML payload', { studentId: student.id, gradeLevel: numericGradeLevel, courseCount: studentData.courses.length });
-                        
+                                                
                         const riskAssessment = await getEnhancedRiskAssessment(studentData, true);
                         
                         return {
@@ -87,7 +84,7 @@ export const useMlRiskPredictions = () => {
                 })
             );
             
-            // Do not pre-filter low risk here; let downstream component decide. Sort by ML risk.
+            // Sort by ML risk.
             const riskStudents = studentsWithPredictions
                 .filter(s => s.mlRiskScore !== undefined)
                 .sort((a, b) => b.mlRiskScore - a.mlRiskScore);

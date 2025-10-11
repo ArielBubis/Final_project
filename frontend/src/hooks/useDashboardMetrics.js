@@ -47,7 +47,6 @@ export const useDashboardMetrics = (dashboardData, courses, students) => {
             }
         }).length;
         
-        // Count assignments - FIXED: use assignmentCount from course stats
         const upcomingAssignments = courses.reduce((count, course) =>
             count + (course.assignmentCount || course.upcomingAssignments || 0), 0);
             

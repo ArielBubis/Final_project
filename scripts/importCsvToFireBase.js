@@ -23,7 +23,7 @@ async function importCsvToFirebase(csvFolder) {
       studentAssignments: true,
       studentCourseSummaries: true,
       teacherDashboards: true,
-      studentModules: true // Add this new option
+      studentModules: true 
     };
     
     // Load all CSV data first
@@ -183,7 +183,7 @@ async function importCsvToFirebase(csvFolder) {
       }), record => `${record.studentId}_${record.courseId}`);
     }
 
-    // 5. Import Student Assignment Progress - UPDATED
+    // 5. Import Student Assignment Progress 
     if (importOptions.studentAssignments && csvData['studentAssignments.csv']) {
       console.log('Importing student assignments...');
       
@@ -290,7 +290,7 @@ async function importCsvToFirebase(csvFolder) {
       }
     }
 
-    // 6. Import Student Course Summaries - UPDATED
+    // 6. Import Student Course Summaries
     if (importOptions.studentCourseSummaries && csvData['studentCourses.csv']) {
       console.log('Importing student course summaries...');
       
@@ -344,7 +344,7 @@ async function importCsvToFirebase(csvFolder) {
       }
     }
 
-    // Helper function to calculate course statistics - NEW
+    // Helper function to calculate course statistics
     function calculateCourseStatistics(courseId, csvData) {
       const courseAssignments = csvData['assignments.csv']?.filter(a => {
         const module = csvData['modules.csv']?.find(m => m.id === a.moduleId);
@@ -371,7 +371,7 @@ async function importCsvToFirebase(csvFolder) {
       };
     }
 
-    // 7. Generate Teacher Dashboards - UPDATED
+    // 7. Generate Teacher Dashboards 
     if (importOptions.teacherDashboards && csvData['teachers.csv']) {
       console.log('Generating teacher dashboards...');
       
@@ -394,7 +394,7 @@ async function importCsvToFirebase(csvFolder) {
         teacherCourses.forEach(course => {
           const stats = calculateCourseStatistics(course.id, csvData);
           totalStudents += stats.totalStudents;
-          totalActiveStudents += Math.floor(stats.totalStudents * 0.8); // Assume 80% are active
+          totalActiveStudents += Math.floor(stats.totalStudents * 0.8);
           averageCompletionRate += stats.completionRate;
         });
         
@@ -524,7 +524,6 @@ async function enhanceAssignmentModuleMapping(csvData) {
   return { assignmentModuleMap, moduleAssignmentMap };
 }
 
-// New function to import courses with enhanced data
 async function importCoursesWithEnhancedData(csvData) {
   console.log('Importing enhanced courses with assignment and module data...');
   
@@ -536,7 +535,6 @@ async function importCoursesWithEnhancedData(csvData) {
     const parsedStudents = parseArray(courseRecord.students);
     const parsedModules = parseArray(courseRecord.modules);
     
-    // Create enhanced course document
     const courseDoc = {
       courseName: courseRecord.name,
       description: courseRecord.description,
@@ -559,8 +557,7 @@ async function importCoursesWithEnhancedData(csvData) {
     const courseRef = db.collection('courses').doc(courseId);
     await courseRef.set(courseDoc);
     
-    // Import modules with enhanced data
-    let courseModules = []; // Define courseModules variable here
+    let courseModules = []; 
     if (csvData['modules.csv']) {
       courseModules = csvData['modules.csv'].filter(m => m.courseId === courseId);
       
@@ -750,7 +747,7 @@ function extractLastName(fullName) {
 const csvFolder = path.join(__dirname, '../data/csv');
 importCsvToFirebase(csvFolder);
 
-// Add this new function to calculate and import student module progress
+// Add this function to calculate and import student module progress
 async function importStudentModuleProgress(csvData) {
   const studentModuleMap = new Map();
   

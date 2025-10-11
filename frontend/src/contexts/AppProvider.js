@@ -12,17 +12,16 @@ const ComposeProviders = ({ providers = [], children }) => {
   }, children);
 };
 
-// Compose contexts without deep nesting
 export const AppProvider = ({ children }) => {
   return (
     <ComposeProviders
       providers={[
-        AuthProvider,      // Auth should be first as it's most fundamental
-        LanguageProvider,  // Language should be early as it's used by many components
-        DataProvider,      // Data depends on Auth
+        AuthProvider,      
+        LanguageProvider,  
+        DataProvider,     
         PerformanceProvider,
         UIProvider,
-        // Add new providers here easily
+
       ]}
     >
       {children}

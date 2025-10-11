@@ -39,7 +39,6 @@ app = Flask(__name__)
 # )
 logger = logging.getLogger(__name__)
 
-# Enable CORS with more permissive settings for development
 CORS(app, resources={
     r"/api/*": {
         "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -49,11 +48,8 @@ CORS(app, resources={
     }
 })
 
-# Alternative: More permissive CORS for development (uncomment if above doesn't work)
-# CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], 
-#      supports_credentials=True, methods=["GET", "POST", "OPTIONS"])
 
-# Add a simple health check endpoint
+# health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Simple health check endpoint"""
@@ -137,32 +133,32 @@ current_model_type = '1_3'  # Default model
 feature_names = None
 scaler = None
 
-# Available model configurations
+# Available model configurations (not used)
 AVAILABLE_MODELS = {
     '1_3': {
         'name': '1-3 Months Early Warning',
         'description': 'Predicts risk based on first 3 months of data',
         'months_required': 3,
         'folder': 'model_1_3_20250919_114922'
-    },
-    '1_6': {
-        'name': '1-6 Months Prediction',
-        'description': 'Predicts risk based on first 6 months of data',
-        'months_required': 6,
-        'folder': 'model_1_6_20250919_130455'
-    },
-    '1_9': {
-        'name': '1-9 Months Prediction',
-        'description': 'Predicts risk based on first 9 months of data',
-        'months_required': 9,
-        'folder': 'model_1_9_20250919_130809'
-    },
-    '1_12': {
-        'name': '1-12 Months Full Academic Year',
-        'description': 'Predicts risk based on full academic year data',
-        'months_required': 12,
-        'folder': 'model_1_12_20250919_131121'
-    }
+    }#,
+    # '1_6': {
+    #     'name': '1-6 Months Prediction',
+    #     'description': 'Predicts risk based on first 6 months of data',
+    #     'months_required': 6,
+    #     'folder': 'model_1_6_20250919_130455'
+    # },
+    # '1_9': {
+    #     'name': '1-9 Months Prediction',
+    #     'description': 'Predicts risk based on first 9 months of data',
+    #     'months_required': 9,
+    #     'folder': 'model_1_9_20250919_130809'
+    # },
+    # '1_12': {
+    #     'name': '1-12 Months Full Academic Year',
+    #     'description': 'Predicts risk based on full academic year data',
+    #     'months_required': 12,
+    #     'folder': 'model_1_12_20250919_131121'
+    # }
 }
 
 def convert_to_json_serializable(obj):
@@ -420,49 +416,49 @@ def validate_input_data(data):
                 raise DataValidationError(f"Field {field} must be a number")
     
     return data
-    """Validate incoming request data"""
-    if not data:
-        raise DataValidationError("Request body is empty")
+    # """Validate incoming request data"""
+    # if not data:
+    #     raise DataValidationError("Request body is empty")
     
-    if not isinstance(data, dict):
-        raise DataValidationError("Request data must be a JSON object")
+    # if not isinstance(data, dict):
+    #     raise DataValidationError("Request data must be a JSON object")
     
-    # Check for required fields or provide defaults
-    if 'courses' not in data:
-        logger.warning("No courses provided in request, using empty list")
-        data['courses'] = []
+    # # Check for required fields or provide defaults
+    # if 'courses' not in data:
+    #     logger.warning("No courses provided in request, using empty list")
+    #     data['courses'] = []
     
-    if not isinstance(data['courses'], list):
-        raise DataValidationError("'courses' must be an array")
+    # if not isinstance(data['courses'], list):
+    #     raise DataValidationError("'courses' must be an array")
     
-    # Validate course structure
-    for i, course in enumerate(data['courses']):
-        if not isinstance(course, dict):
-            raise DataValidationError(f"Course {i} must be an object")
+    # # Validate course structure
+    # for i, course in enumerate(data['courses']):
+    #     if not isinstance(course, dict):
+    #         raise DataValidationError(f"Course {i} must be an object")
         
-        if 'assignments' in course and not isinstance(course['assignments'], list):
-            raise DataValidationError(f"Course {i} assignments must be an array")
+    #     if 'assignments' in course and not isinstance(course['assignments'], list):
+    #         raise DataValidationError(f"Course {i} assignments must be an array")
         
-        # Validate assignments
-        assignments = course.get('assignments', [])
-        for j, assignment in enumerate(assignments):
-            if not isinstance(assignment, dict):
-                raise DataValidationError(f"Course {i}, assignment {j} must be an object")
+    #     # Validate assignments
+    #     assignments = course.get('assignments', [])
+    #     for j, assignment in enumerate(assignments):
+    #         if not isinstance(assignment, dict):
+    #             raise DataValidationError(f"Course {i}, assignment {j} must be an object")
             
-            progress = assignment.get('progress', {})
-            if not isinstance(progress, dict):
-                raise DataValidationError(f"Course {i}, assignment {j} progress must be an object")
+    #         progress = assignment.get('progress', {})
+    #         if not isinstance(progress, dict):
+    #             raise DataValidationError(f"Course {i}, assignment {j} progress must be an object")
     
-    # Validate optional numeric fields
-    numeric_fields = ['averageScore', 'completionRate', 'gradeLevel']
-    for field in numeric_fields:
-        if field in data:
-            try:
-                float(data[field])
-            except (ValueError, TypeError):
-                raise DataValidationError(f"'{field}' must be a number")
+    # # Validate optional numeric fields
+    # numeric_fields = ['averageScore', 'completionRate', 'gradeLevel']
+    # for field in numeric_fields:
+    #     if field in data:
+    #         try:
+    #             float(data[field])
+    #         except (ValueError, TypeError):
+    #             raise DataValidationError(f"'{field}' must be a number")
     
-    return data
+    # return data
 
 def suggest_interventions(risk_score):
     """
@@ -531,14 +527,14 @@ def suggest_interventions(risk_score):
 def preprocess_student_data_for_prediction(data, feature_names):
     """
     Transform incoming student data to match the exact training data format.
-    This function creates the same features as the training pipeline using 6-month features.
+    This function creates the same features as the training pipeline using dynamic month features
+    based on the current model's requirements.
     
-    Expected model features:
-    - Score_Month_1, Score_Month_2, Score_Month_3, Score_Month_4, Score_Month_5, Score_Month_6
-    - TimeSpent_Month_1, TimeSpent_Month_2, TimeSpent_Month_3, TimeSpent_Month_4, TimeSpent_Month_5, TimeSpent_Month_6
-    - totalTimeSpentMinutes, gradeLevel, late_submission_rate
-    - avg_score_month_1_to_6, avg_time_month_1_to_6, score_variance_month_1_to_6, time_variance_month_1_to_6
-    - time_score_ratio_month_1_to_6, engagement_month_1_to_6, weighted_score_month_1_to_6, score_trend_month_1_to_6
+    Expected model features vary by model:
+    - 3-month model: Score_Month_1 to 3, TimeSpent_Month_1 to 3, avg_score_month_1_to_3, etc.
+    - 6-month model: Score_Month_1 to 6, TimeSpent_Month_1 to 6, avg_score_month_1_to_6, etc.
+    - 9-month model: Score_Month_1 to 9, TimeSpent_Month_1 to 9, avg_score_month_1_to_9, etc.
+    - 12-month model: Score_Month_1 to 12, TimeSpent_Month_1 to 12, avg_score_month_1_to_12, etc.
     """
     if not feature_names:
         raise PreprocessingError("Feature names not available")
@@ -550,6 +546,16 @@ def preprocess_student_data_for_prediction(data, feature_names):
         # Validate feature names
         if len(feature_names) == 0:
             raise PreprocessingError("Feature names list is empty")
+        
+        # Get the number of months required for the current model
+        if current_model_type in models:
+            months_required = models[current_model_type]['config']['months_required']
+        else:
+            # Fallback to 3 months (base model)
+            months_required = 3
+            logger.warning(f"Could not determine months_required for model {current_model_type}, using default 3 months")
+        
+        logger.info(f"Using {months_required} months for preprocessing based on model {current_model_type}")
         
         # Initialize all features with default values
         processed_data = pd.DataFrame(columns=feature_names, dtype=float)
@@ -567,9 +573,9 @@ def preprocess_student_data_for_prediction(data, feature_names):
             raise PreprocessingError("Courses must be a list")
         
         # Process assignment data to simulate the CSV structure used in training
-        # We'll aggregate assignment data by simulated months (first 6 months)
-        monthly_scores = [[], [], [], [], [], []]  # For months 1, 2, 3, 4, 5, 6
-        monthly_times = [[], [], [], [], [], []]   # For months 1, 2, 3, 4, 5, 6
+        # Create dynamic arrays based on the model's month requirements
+        monthly_scores = [[] for _ in range(months_required)]
+        monthly_times = [[] for _ in range(months_required)]
         
         total_time = 0
         late_submissions = 0
@@ -623,9 +629,9 @@ def preprocess_student_data_for_prediction(data, feature_names):
                     if is_late:
                         late_submissions += 1
                     
-                    # Distribute assignments across 6 months for early warning features
+                    # Distribute assignments across dynamic months based on model requirements
                     # Use assignment index to determine month (simulate chronological order)
-                    month_idx = assignment_idx % 6  # Cycles through 0, 1, 2, 3, 4, 5 (representing months 1, 2, 3, 4, 5, 6)
+                    month_idx = assignment_idx % months_required  # Cycles through 0 to (months_required-1)
                     monthly_scores[month_idx].append(score)
                     monthly_times[month_idx].append(time_spent)
                     
@@ -633,11 +639,11 @@ def preprocess_student_data_for_prediction(data, feature_names):
                     logger.warning(f"Error processing course {course_idx}, assignment {assignment_idx}: {str(e)}")
                     continue
         
-        # Calculate monthly cumulative scores and time spent for first 6 months
+        # Calculate monthly cumulative scores and time spent for dynamic months
         cumulative_scores = []
         monthly_time_totals = []
         
-        for month_idx in range(6):
+        for month_idx in range(months_required):
             # Calculate cumulative average score up to this month
             all_scores_up_to_month = []
             all_time_up_to_month = 0
@@ -688,77 +694,87 @@ def preprocess_student_data_for_prediction(data, feature_names):
         
         # Calculate early warning features (matching the training pipeline)
         try:
-            # Early average score (first 6 months)
-            if 'avg_score_month_1_to_6' in feature_names:
+            # Dynamic feature names based on months_required
+            avg_score_feature = f'avg_score_month_1_to_{months_required}'
+            avg_time_feature = f'avg_time_month_1_to_{months_required}'
+            score_variance_feature = f'score_variance_month_1_to_{months_required}'
+            time_variance_feature = f'time_variance_month_1_to_{months_required}'
+            time_score_ratio_feature = f'time_score_ratio_month_1_to_{months_required}'
+            engagement_feature = f'engagement_month_1_to_{months_required}'
+            weighted_score_feature = f'weighted_score_month_1_to_{months_required}'
+            score_trend_feature = f'score_trend_month_1_to_{months_required}'
+            
+            # Early average score (dynamic months)
+            if avg_score_feature in feature_names:
                 non_zero_scores = [s for s in cumulative_scores if s > 0]
                 if non_zero_scores:
-                    processed_data.loc[0, 'avg_score_month_1_to_6'] = np.mean(non_zero_scores)
+                    processed_data.loc[0, avg_score_feature] = np.mean(non_zero_scores)
                 else:
-                    processed_data.loc[0, 'avg_score_month_1_to_6'] = 0
+                    processed_data.loc[0, avg_score_feature] = 0
             
-            # Early average time (first 6 months)
-            if 'avg_time_month_1_to_6' in feature_names:
-                processed_data.loc[0, 'avg_time_month_1_to_6'] = np.mean(monthly_time_totals)
+            # Early average time (dynamic months)
+            if avg_time_feature in feature_names:
+                processed_data.loc[0, avg_time_feature] = np.mean(monthly_time_totals)
             
             # Early score variance (consistency indicator)
-            if 'score_variance_month_1_to_6' in feature_names:
+            if score_variance_feature in feature_names:
                 non_zero_scores = [s for s in cumulative_scores if s > 0]
                 if len(non_zero_scores) > 1:
-                    processed_data.loc[0, 'score_variance_month_1_to_6'] = np.var(non_zero_scores)
+                    processed_data.loc[0, score_variance_feature] = np.var(non_zero_scores)
                 else:
-                    processed_data.loc[0, 'score_variance_month_1_to_6'] = 0
+                    processed_data.loc[0, score_variance_feature] = 0
             
             # Early time variance
-            if 'time_variance_month_1_to_6' in feature_names:
+            if time_variance_feature in feature_names:
                 if len(monthly_time_totals) > 1:
-                    processed_data.loc[0, 'time_variance_month_1_to_6'] = np.var(monthly_time_totals)
+                    processed_data.loc[0, time_variance_feature] = np.var(monthly_time_totals)
                 else:
-                    processed_data.loc[0, 'time_variance_month_1_to_6'] = 0
+                    processed_data.loc[0, time_variance_feature] = 0
             
             # Time-to-score efficiency ratio
-            if 'time_score_ratio_month_1_to_6' in feature_names:
-                avg_score = processed_data.loc[0, 'avg_score_month_1_to_6'] if 'avg_score_month_1_to_6' in feature_names else np.mean([s for s in cumulative_scores if s > 0]) or 1
-                avg_time = processed_data.loc[0, 'avg_time_month_1_to_6'] if 'avg_time_month_1_to_6' in feature_names else np.mean(monthly_time_totals)
+            if time_score_ratio_feature in feature_names:
+                avg_score = processed_data.loc[0, avg_score_feature] if avg_score_feature in feature_names else np.mean([s for s in cumulative_scores if s > 0]) or 1
+                avg_time = processed_data.loc[0, avg_time_feature] if avg_time_feature in feature_names else np.mean(monthly_time_totals)
                 
                 if avg_score > 0:
-                    processed_data.loc[0, 'time_score_ratio_month_1_to_6'] = avg_time / avg_score
+                    processed_data.loc[0, time_score_ratio_feature] = avg_time / avg_score
                 else:
-                    processed_data.loc[0, 'time_score_ratio_month_1_to_6'] = 0
+                    processed_data.loc[0, time_score_ratio_feature] = 0
             
             # Early engagement (proportion of months with activity)
-            if 'engagement_month_1_to_6' in feature_names:
+            if engagement_feature in feature_names:
                 active_months = sum(1 for t in monthly_time_totals if t > 0)
-                processed_data.loc[0, 'engagement_month_1_to_6'] = active_months / 6
+                processed_data.loc[0, engagement_feature] = active_months / months_required
             
             # Weighted early score (more recent months weighted higher)
-            if 'weighted_score_month_1_to_6' in feature_names:
-                weights = np.array([1, 2, 3, 4, 5, 6])
+            if weighted_score_feature in feature_names:
+                weights = np.array(range(1, months_required + 1))  # [1, 2, 3, ...] up to months_required
                 valid_scores = [(score, weight) for score, weight in zip(cumulative_scores, weights) if score > 0]
                 
                 if valid_scores:
                     weighted_sum = sum(score * weight for score, weight in valid_scores)
                     weight_sum = sum(weight for _, weight in valid_scores)
-                    processed_data.loc[0, 'weighted_score_month_1_to_6'] = weighted_sum / weight_sum
+                    processed_data.loc[0, weighted_score_feature] = weighted_sum / weight_sum
                 else:
-                    processed_data.loc[0, 'weighted_score_month_1_to_6'] = 0
+                    processed_data.loc[0, weighted_score_feature] = 0
             
-            # Early trend (slope of scores over first 6 months)
-            if 'score_trend_month_1_to_6' in feature_names:
+            # Early trend (slope of scores over dynamic months)
+            if score_trend_feature in feature_names:
                 valid_data = [(i+1, score) for i, score in enumerate(cumulative_scores) if score > 0]
                 
                 if len(valid_data) >= 2:
                     months, scores = zip(*valid_data)
                     slope, _, _, _, _ = stats.linregress(months, scores)
-                    processed_data.loc[0, 'score_trend_month_1_to_6'] = slope if np.isfinite(slope) else 0
+                    processed_data.loc[0, score_trend_feature] = slope if np.isfinite(slope) else 0
                 else:
-                    processed_data.loc[0, 'score_trend_month_1_to_6'] = 0
+                    processed_data.loc[0, score_trend_feature] = 0
             
             # Override with provided summary data if available
             if 'averageScore' in data:
                 try:
                     avg_score = float(data['averageScore'])
-                    if 'avg_score_month_1_to_6' in feature_names and np.isfinite(avg_score):
-                        processed_data.loc[0, 'avg_score_month_1_to_6'] = avg_score
+                    if avg_score_feature in feature_names and np.isfinite(avg_score):
+                        processed_data.loc[0, avg_score_feature] = avg_score
                 except (ValueError, TypeError):
                     logger.warning("Invalid averageScore provided, ignoring")
             
@@ -767,8 +783,8 @@ def preprocess_student_data_for_prediction(data, feature_names):
                     completion_rate = float(data['completionRate'])
                     if 0 <= completion_rate <= 100:
                         completion_ratio = completion_rate / 100.0
-                        if 'engagement_month_1_to_6' in feature_names:
-                            processed_data.loc[0, 'engagement_month_1_to_6'] = completion_ratio
+                        if engagement_feature in feature_names:
+                            processed_data.loc[0, engagement_feature] = completion_ratio
                     else:
                         logger.warning("Completion rate out of range (0-100), ignoring")
                 except (ValueError, TypeError):

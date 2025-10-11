@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Login function - memoize with useCallback
+  // Login function 
   const login = useCallback(async (email, password) => {
     try {
       setError("");
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Logout function - memoize with useCallback
+  // Logout function 
   const logout = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         console.log("User data:", userData);
-        // Check roles and return the appropriate one
+        // Check roles and return the appropriate one didn't use in the final version
         if (userData.roles) {
           if (userData.roles.admin) return "admin";
           if (userData.roles.teacher) return "teacher";
@@ -69,12 +69,12 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      // Default to student instead of user if no specific role is found
+      // Default to teacher instead of user if no specific role is found
       // This ensures we only provide valid roles for the Sidebar component
-      return "student";
+      return "teacher";
     } catch (error) {
       console.error("Error getting user role:", error);
-      return "student"; // Default fallback role
+      return "teacher"; // Default fallback role
     }
   }, []);
 

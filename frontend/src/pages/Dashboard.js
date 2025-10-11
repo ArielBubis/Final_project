@@ -65,15 +65,15 @@ const MainPage = () => {
         // Fallback to calculated metrics if no dashboard data
         if (!courses.length && !students.length) return null;
         
-        // Calculate average course completion - FIXED: use averageCompletion instead of progress
+        // Calculate average course completion 
         const avgCompletion = courses.length > 0 ? 
             courses.reduce((sum, course) => sum + (course.averageCompletion || course.progress || 0), 0) / courses.length : 0;
         
-        // Calculate average student performance - FIXED: handle scores object properly
+        // Calculate average student performance 
         const avgPerformance = students.length > 0 ? 
             students.reduce((sum, student) => sum + (student.performance || student.scores?.average || 0), 0) / students.length : 0;
         
-        // Count active students in the last 7 days - FIXED: handle date parsing
+        // Count active students in the last 7 days -
         const now = new Date();
         const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
         const activeStudents = students.filter(student => {
@@ -274,7 +274,6 @@ const MainPage = () => {
     const handleModelChange = async (newModel) => {
         setSelectedModel(newModel);
         
-        // Re-run ML predictions with the new model if we have students
         if (students.length > 0) {
             await getMlRiskPredictions(students, newModel?.id);
         }
@@ -285,17 +284,13 @@ const MainPage = () => {
             try {
                 setLoading(true);
                 setError(null);
-        // Health check for ML service (non-blocking)
         checkHealth().then(res => setMlServiceStatus(res));
                 
                 console.log('MainPage: Starting data fetch for user:', currentUser?.email);
                 
-                // NEW: Try to get pre-computed dashboard data first
-                // FIXED: Now properly handles UID-to-teacher-ID mapping in DataContext
                 let teacherDashboard = null;
                 if (currentUser?.uid) {
                     try {
-                        // The fetchTeacherDashboard function now handles UID-to-teacher-ID lookup
                         teacherDashboard = await fetchTeacherDashboard(currentUser.uid);
                         console.log('Dashboard data loaded:', teacherDashboard);
                         setDashboardData(teacherDashboard);

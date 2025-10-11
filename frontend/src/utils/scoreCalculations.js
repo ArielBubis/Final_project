@@ -184,13 +184,7 @@ export const calculateRiskAssessment = (data, isStudentLevel = false) => {
 }; 
 
 /**
- * Calculate student-level performance metrics, optionally scoped to a single course.
- *
- * This function is pure and returns the same metric keys that the UI expects when
- * rendering performance summaries and radar charts. When a course selector is
- * provided, the metrics are computed only from that course's data. When no
- * selector is given (or the selector equals 'all'), the student's metrics are
- * aggregated (AVERAGE) across all their courses — matching the current default behavior.
+ * Calculate student-level performance metrics
  *
  * @param {Object} studentData - The full student performance object (may include .courses[])
  * @param {Object} [options] - Optional parameters

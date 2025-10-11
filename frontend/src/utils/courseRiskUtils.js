@@ -213,9 +213,8 @@ export const formatCourseRiskData = (courseRisk) => {
     confidence: courseRisk.prediction_confidence || 'Unknown',
     probability: parseFloat(courseRisk.at_risk_probability || 0),
     finalScore: parseFloat(courseRisk.finalScore || 0),
-    lateSubmissionRate: parseFloat(courseRisk.late_submission_rate || 0) * 100, // Convert to percentage
+    lateSubmissionRate: parseFloat(courseRisk.late_submission_rate || 0) * 100, 
     gradeLevel: courseRisk.gradeLevel,
-    // Additional metrics from CSV
     scoreVariance: parseFloat(courseRisk.score_variance || 0),
     totalTimeSpent: parseFloat(courseRisk.totalTimeSpentMinutes || 0),
     avgMonthlyScore: parseFloat(courseRisk.avg_monthly_score || 0),

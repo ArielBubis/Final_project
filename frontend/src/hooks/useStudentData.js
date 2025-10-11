@@ -317,7 +317,7 @@ export const useStudentData = (studentId) => {
                     lastActivity: moduleProgress.lastActivity
                   });
                   
-                  // Transform to match frontend expectations (same as original useStudentData)
+                  // Transform to match frontend expectations 
                   return {
                     ...module,
                     progress: {
@@ -357,7 +357,7 @@ export const useStudentData = (studentId) => {
         })
       );
 
-      // Filter valid courses and calculate metrics (from original code)
+      // Filter valid courses and calculate metrics 
       const validCoursesData = coursesData.filter(course => {
         const isValid = course && 
           course.summary && 

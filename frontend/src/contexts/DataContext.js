@@ -3,10 +3,39 @@ import { useAuth } from './AuthContext';
 import { fetchDocuments, fetchDocumentById, formatFirebaseTimestamp, fetchSubcollection } from '../utils/firebaseUtils';
 import { formatStudentForUI } from '../utils/studentUtils';
 
-// Create the context
+/**
+ * DataContext - Centralized Data Management for the Learning Management System
+ * 
+ * This context provides a comprehensive data layer for the LMS, handling:
+ * - Student, teacher, and course data management
+ * - Intelligent caching with configurable expiration times
+ * - Firebase/Firestore integration with optimized queries
+ * - Real-time performance metrics and analytics
+ * - Risk assessment data aggregation
+ * 
+ * Key Features:
+ * - Multi-level caching system (short, medium, long-term)
+ * - Batch operations to minimize Firebase calls
+ * - Automatic UID-to-ID resolution for user mapping
+ * - Comprehensive error handling with fallback mechanisms
+ * - Performance optimization through selective data loading
+ * 
+ * @version 2.0.0
+ * @author LMS Development Team
+ */
+
+// Create the DataContext
 const DataContext = createContext(null);
 
-// Custom hook to use the data context
+/**
+ * Custom hook to access DataContext
+ * 
+ * @returns {Object} DataContext value with all data management functions
+ * @throws {Error} If used outside of DataProvider
+ * 
+ * @example
+ * const { fetchStudentsByTeacher, loading, error } = useData();
+ */
 export const useData = () => {
   const context = useContext(DataContext);
   if (!context) {
@@ -15,50 +44,105 @@ export const useData = () => {
   return context;
 };
 
+/**
+ * DataProvider Component - Main Provider for Application Data Management
+ * 
+ * Provides centralized data management for the entire LMS application with
+ * intelligent caching, performance optimization, and comprehensive error handling.
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to receive context
+ * 
+ * @example
+ * <DataProvider>
+ *   <App />
+ * </DataProvider>
+ */
 export const DataProvider = ({ children }) => {
   const { currentUser } = useAuth();
+  
+  // === APPLICATION STATE ===
+  
+  /** Loading state for async operations */
   const [loading, setLoading] = useState(true);
+  
+  /** Error state for error handling and user feedback */
   const [error, setError] = useState(null);
   
-  // Core data state - aligned with new database structure
+  // === CORE DATA STATE ===
+  
+  /** Array of course documents from Firestore */
   const [courses, setCourses] = useState([]);
+  
+  /** Enriched course data with calculated metrics and statistics */
   const [courseData, setCourseData] = useState([]);
   
-  // Enhanced caching system
+  // === CACHING SYSTEM ===
+  
+  /**
+   * Cache timestamps for tracking data freshness
+   * Used to determine when to refetch data vs use cached values
+   */
   const [cacheTimestamps, setCacheTimestamps] = useState({
     courses: null,
     courseData: null,
     teacherDashboards: null
   });
   
-  // Cache for specialized queries
+  /**
+   * Query-specific cache storage
+   * Each cache type uses Map for efficient key-value lookups
+   * with timestamp-based expiration
+   */
   const [queryCache, setQueryCache] = useState({
+    /** Teacher -> Students mapping cache */
     studentsByTeacher: new Map(),
+    /** Teacher -> Courses mapping cache */
     teacherCourses: new Map(),
+    /** Course statistics and metrics cache */
     courseStats: new Map(),
+    /** Student assignment progress cache */
     studentAssignments: new Map(),
+    /** Module completion progress cache */
     moduleProgress: new Map(),
+    /** Teacher dashboard data cache */
     teacherDashboard: new Map(),
+    /** Student course summary cache */
     studentCourseSummaries: new Map(),
+    /** School information cache */
     schools: new Map(),
-    studentDetails: new Map() // Add cache for individual student details
+    /** Detailed student data cache */
+    studentDetails: new Map() 
   });
 
-  // Global data cache to prevent duplicate fetches across components
+  /**
+   * Global data cache for preventing duplicate fetches
+   * Stores frequently accessed data with timestamps
+   */
   const [globalDataCache, setGlobalDataCache] = useState({
     allStudents: null,
     allCourses: null,
     lastFetch: null
   });
   
-  // Use ref to store cache expiration constants
+  /**
+   * Cache expiration configuration
+   * Different data types have different cache durations based on update frequency
+   */
   const cacheExpirationRef = useRef({
-    SHORT: 5 * 60 * 1000, // 5 minutes
-    MEDIUM: 15 * 60 * 1000, // 15 minutes
-    LONG: 60 * 60 * 1000 // 1 hour
+    SHORT: 5 * 60 * 1000,    // 5 minutes - for frequently changing data
+    MEDIUM: 15 * 60 * 1000,  // 15 minutes - for moderately stable data
+    LONG: 60 * 60 * 1000     // 1 hour - for stable reference data
   });
   
-  // Check if cache is expired
+  // === CACHE MANAGEMENT UTILITIES ===
+  
+  /**
+   * Checks if cached data has expired based on timestamps
+   * 
+   * @param {string} cacheType - Type of cache to check (courses, courseData, etc.)
+   * @returns {boolean} True if cache is expired or doesn't exist
+   */
   const isCacheExpired = useCallback((cacheType) => {
     const timestamp = cacheTimestamps[cacheType];
     if (!timestamp) return true;
@@ -69,7 +153,11 @@ export const DataProvider = ({ children }) => {
     return now - timestamp > expirationTime;
   }, [cacheTimestamps]);
   
-  // Helper to update cache timestamps
+  /**
+   * Updates the timestamp for a specific cache type
+   * 
+   * @param {string} cacheType - Type of cache to update timestamp for
+   */
   const updateCacheTimestamp = useCallback((cacheType) => {
     setCacheTimestamps(prevState => ({
       ...prevState,
@@ -77,7 +165,14 @@ export const DataProvider = ({ children }) => {
     }));
   }, []);
   
-  // Helper function to update specific query cache
+  /**
+   * Updates query-specific cache with data and expiration time
+   * 
+   * @param {string} cacheType - Type of query cache (studentsByTeacher, etc.)
+   * @param {string} key - Unique identifier for the cached data
+   * @param {*} value - Data to cache
+   * @param {number|null} expirationTime - Custom expiration time in milliseconds
+   */
   const updateQueryCache = useCallback((cacheType, key, value, expirationTime = null) => {
     const expTime = expirationTime || cacheExpirationRef.current.MEDIUM;
     setQueryCache(prevCache => {
@@ -94,22 +189,27 @@ export const DataProvider = ({ children }) => {
     });
   }, []);
 
-  // Helper: determine if an identifier looks like a Firebase Auth UID (heuristic used previously in multiple places)
+  /**
+   * Determines if a string is likely a Firebase UID
+   * Used for resolving UIDs to internal document IDs
+   * 
+   * @param {string} value - String to check
+   * @returns {boolean} True if the value appears to be a UID
+   */
   const isLikelyUid = useCallback((value) => {
     return value && typeof value === 'string' && !value.includes('@') && value.length > 10;
   }, []);
 
   /**
-   * Resolve a teacher identifier that may be either:
-   *  - A Firestore teacher document ID (already the internal teacherId)
-   *  - A Firebase Auth UID (requires lookup on users collection by uid & role=teacher)
-   * Returns an object { teacherId, found }. If not found (when UID supplied but no match), found=false.
-   * This consolidates previously duplicated code in fetchTeacherDashboard & fetchTeacherCourses.
+   * Resolves a teacher UID to the corresponding document ID in Firestore
+   * Handles the mapping between Firebase Auth UIDs and internal user IDs
+   * 
+   * @param {string} teacherUidOrId - Either a UID or document ID
+   * @returns {Promise<{teacherId: string|null, found: boolean}>} Resolution result
    */
   const resolveTeacherId = useCallback(async (teacherUidOrId) => {
     if (!teacherUidOrId) return { teacherId: null, found: false };
 
-    // Shortcut: if it does not look like a UID, treat it as already the teacher document ID
     if (!isLikelyUid(teacherUidOrId)) {
       return { teacherId: teacherUidOrId, found: true };
     }
@@ -135,7 +235,13 @@ export const DataProvider = ({ children }) => {
     }
   }, [fetchDocuments, isLikelyUid]);
   
-  // Helper function to get from query cache
+  /**
+   * Retrieves data from query cache with automatic expiration handling
+   * 
+   * @param {string} cacheType - Type of query cache to access
+   * @param {string} key - Unique identifier for the cached data
+   * @returns {*|null} Cached data if valid, null if expired or not found
+   */
   const getFromQueryCache = useCallback((cacheType, key) => {
     const cache = queryCache[cacheType];
     if (!cache) return null;
@@ -160,7 +266,11 @@ export const DataProvider = ({ children }) => {
     return cachedEntry.data;
   }, [queryCache]);
   
-  // Clear specific cache or all caches
+  /**
+   * Clears cache data selectively or completely
+   * 
+   * @param {string|null} cacheType - Specific cache to clear, 'all' for everything, or null
+   */
   const clearCache = useCallback((cacheType = null) => {
     if (cacheType) {
       if (cacheType === 'all') {
@@ -216,7 +326,15 @@ export const DataProvider = ({ children }) => {
       }
     }
   }, [cacheTimestamps, queryCache]);
-  // NEW: Get teacher dashboard data
+
+  // === DATA FETCHING FUNCTIONS ===
+
+  /**
+   * Fetches teacher dashboard data with caching
+   * 
+   * @param {string} teacherUidOrId - Teacher UID or document ID
+   * @returns {Promise<Object|null>} Dashboard data or null if not found
+   */
   const fetchTeacherDashboard = useCallback(async (teacherUidOrId) => {
     if (!teacherUidOrId) return null;
     
@@ -227,9 +345,9 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-  // Resolve potential UID to actual teacher document ID
-  const { teacherId: actualTeacherId, found } = await resolveTeacherId(teacherUidOrId);
-  if (!found || !actualTeacherId) return null;
+      // Resolve potential UID to actual teacher document ID
+      const { teacherId: actualTeacherId, found } = await resolveTeacherId(teacherUidOrId);
+      if (!found || !actualTeacherId) return null;
       
       console.log(`Fetching dashboard data for teacher ID: ${actualTeacherId}`);
       const dashboard = await fetchDocumentById('teacherDashboards', actualTeacherId);
@@ -247,7 +365,13 @@ export const DataProvider = ({ children }) => {
       return null;
     }
   }, [getFromQueryCache, updateQueryCache]);
-    // UPDATED: Get courses by teacher using new structure
+  /**
+   * Fetches courses assigned to a specific teacher with intelligent caching
+   * Uses the new normalized structure with teacherIds array
+   * 
+   * @param {string} teacherUidOrId - Teacher UID or document ID
+   * @returns {Promise<Array>} Array of course objects
+   */
   const fetchTeacherCourses = useCallback(async (teacherUidOrId) => {
     if (!teacherUidOrId) return [];
     
@@ -259,13 +383,12 @@ export const DataProvider = ({ children }) => {
     }
     
     try {
-  // Resolve potential UID to actual teacher document ID
-  const { teacherId: actualTeacherId, found } = await resolveTeacherId(teacherUidOrId);
-  if (!found || !actualTeacherId) return [];
+      // Resolve potential UID to actual teacher document ID
+      const { teacherId: actualTeacherId, found } = await resolveTeacherId(teacherUidOrId);
+      if (!found || !actualTeacherId) return [];
       
       console.log(`Searching for courses with teacher ID: ${actualTeacherId}`);
       
-      // Use the new teacherIds array approach (no more fallback to old structure)
       const coursesQuery = await fetchDocuments('courses', {
         filters: [
           { field: 'teacherIds', operator: 'array-contains', value: actualTeacherId }
@@ -285,7 +408,12 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache]);
   
-  // Helper function to fetch school information
+  /**
+   * Fetches and caches school information by ID
+   * 
+   * @param {string} schoolId - School document ID
+   * @returns {Promise<Object|null>} School data or null if not found
+   */
   const fetchSchoolInfo = useCallback(async (schoolId) => {
     if (!schoolId) return null;
     
@@ -307,7 +435,20 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache]);
 
-  // UPDATED: Get students by teacher using new normalized structure
+  /**
+   * Fetches students assigned to a specific teacher using normalized structure
+   * 
+   * This function:
+   * 1. Resolves teacher UID to document ID
+   * 2. Finds all courses taught by the teacher
+   * 3. Gets active enrollments for those courses
+   * 4. Fetches student user data and performance summaries
+   * 5. Aggregates metrics across all courses
+   * 6. Formats data for UI consistency
+   * 
+   * @param {string} teacherUidOrId - Teacher UID or document ID
+   * @returns {Promise<Array>} Array of formatted student objects with performance data
+   */
   const fetchStudentsByTeacher = useCallback(async (teacherUidOrId) => {
     if (!teacherUidOrId) return [];
     
@@ -487,7 +628,18 @@ export const DataProvider = ({ children }) => {
     }
   }, [fetchTeacherCourses, fetchSchoolInfo, getFromQueryCache, updateQueryCache]);
   
-  // UPDATED: Get course statistics using new structure
+  /**
+   * Fetches comprehensive course statistics with performance metrics
+   * 
+   * Calculates and returns:
+   * - Student enrollment counts
+   * - Activity metrics (7-day and 30-day active users)
+   * - Average scores and completion rates
+   * - Assignment and module counts
+   * 
+   * @param {string} courseId - Course document ID
+   * @returns {Promise<Object|null>} Course statistics object or null if not found
+   */
   const fetchCourseStats = useCallback(async (courseId) => {
     if (!courseId) return null;
     
@@ -576,7 +728,19 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache]);
   
-  // UPDATED: Get student assignments using new normalized structure
+  /**
+   * Fetches all assignments for a specific student across all enrolled courses
+   * 
+   * Process flow:
+   * 1. Get student's active enrollments
+   * 2. Fetch assignments from all enrolled courses (subcollections)
+   * 3. Get student's progress data for each assignment
+   * 4. Combine assignment metadata with progress data
+   * 5. Calculate status based on dates and submission state
+   * 
+   * @param {string} studentId - Student document ID
+   * @returns {Promise<Array>} Array of assignment objects with progress data
+   */
   const fetchStudentAssignments = useCallback(async (studentId) => {
     if (!studentId) return [];
     
@@ -705,7 +869,13 @@ export const DataProvider = ({ children }) => {
       return [];
     }
   }, [getFromQueryCache, updateQueryCache]);
-    // UPDATED: Get module progress using new structure
+  /**
+   * Fetches module progress for a student in a specific course
+   * 
+   * @param {string} studentId - Student document ID
+   * @param {string} courseId - Course document ID
+   * @returns {Promise<Array>} Array of module objects with progress data
+   */
   const fetchModuleProgress = useCallback(async (studentId, courseId) => {
     if (!studentId || !courseId) return [];
     
@@ -737,12 +907,10 @@ export const DataProvider = ({ children }) => {
               description: module.description || '',
               sequenceNumber: module.sequenceNumber || 0,
               isRequired: module.isRequired || false,
-              // Map new schema fields to expected format
               completed: progressDoc?.status === 'completed',
               completion: progressDoc?.completionRate || 0,
               expertiseRate: progressDoc?.moduleScore || 0,
               lastAccessed: progressDoc?.lastActivity || null,
-              // Include additional data from new schema
               totalTimeSpent: progressDoc?.totalTimeSpentMinutes || 0,
               riskLevel: progressDoc?.riskLevel || 'low',
               assignmentProgress: progressDoc?.assignmentProgress || []
@@ -781,7 +949,21 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache]);
   
-  // NEW: Optimized single student data fetch with comprehensive caching
+  /**
+   * Fetches comprehensive student details with optimized performance
+   * 
+   * This is the most comprehensive student data fetching function, providing:
+   * - Complete user profile information
+   * - All enrolled courses with detailed progress
+   * - Aggregated performance metrics
+   * - Risk assessment data
+   * - Module and assignment progress across all courses
+   * 
+   * Uses aggressive caching and batch operations for optimal performance.
+   * 
+   * @param {string} studentId - Student document ID
+   * @returns {Promise<Object|null>} Complete student object with all related data
+   */
   const fetchStudentDetailsCached = useCallback(async (studentId) => {
     if (!studentId) return null;
     
@@ -1042,7 +1224,14 @@ export const DataProvider = ({ children }) => {
     }
   }, [getFromQueryCache, updateQueryCache, fetchSchoolInfo, cacheExpirationRef]);
   
-  // SIMPLIFIED: Admin functions for backward compatibility
+  // === LEGACY ADMIN FUNCTIONS ===
+  // Maintained for backward compatibility
+  
+  /**
+   * Fetches all students from the system (admin function)
+   * @deprecated Use fetchStudentsByTeacher for teacher-specific data
+   * @returns {Promise<Array>} Array of all student users
+   */
   const fetchAllStudents = useCallback(async () => {
     try {
       setLoading(true);
@@ -1059,6 +1248,11 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
   
+  /**
+   * Fetches all assignments from the system (admin function)
+   * @deprecated Assignments are now stored as subcollections
+   * @returns {Promise<Array>} Empty array (assignments are in subcollections)
+   */
   const fetchAllAssignments = useCallback(async () => {
     try {
       setLoading(true);
@@ -1074,6 +1268,11 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
   
+  /**
+   * Fetches all modules from the system (admin function)
+   * @deprecated Modules are now stored as subcollections
+   * @returns {Promise<Array>} Empty array (modules are in subcollections)
+   */
   const fetchAllModules = useCallback(async () => {
     try {
       setLoading(true);
@@ -1089,7 +1288,12 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
   
-  // Load initial data
+  // === INITIALIZATION EFFECT ===
+  
+  /**
+   * Loads initial application data when component mounts or user changes
+   * Handles course data fetching and creates backward-compatible courseData
+   */
   useEffect(() => {
     const loadInitialData = async () => {
       if (!currentUser) return;
@@ -1132,36 +1336,25 @@ export const DataProvider = ({ children }) => {
     loadInitialData();
   }, [currentUser, courses.length, courseData.length, isCacheExpired, updateCacheTimestamp]);
   
-  // Expose context value
   const value = {
-    // Data - simplified for new structure
-    students: [], // Deprecated - use fetchStudentsByTeacher
-    teachers: [], // Deprecated - users collection handles this
     courses,
-    assignments: [], // Deprecated - stored as subcollections
-    modules: [], // Deprecated - stored as subcollections
     courseData,
-    
-    // Status
     loading,
     error,
-    
-    // Functions
     fetchStudentsByTeacher,
     fetchTeacherCourses,
     fetchCourseStats,
     fetchStudentAssignments,
     fetchModuleProgress,
-    fetchTeacherDashboard, // NEW
-    fetchStudentDetailsCached, // NEW: Optimized student details
+    fetchTeacherDashboard,
+    fetchStudentDetailsCached,
     fetchAllStudents,
     fetchAllAssignments,
     fetchAllModules,
     clearCache,
-    
-    // Admin functions for backward compatibility
     loadAdminData: fetchAllStudents
   };
   
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
+
