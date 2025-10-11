@@ -55,7 +55,7 @@ StudentCard.propTypes = {
         id: PropTypes.string.isRequired,
         name: PropTypes.string.isRequired,
         grade: PropTypes.string.isRequired,
-        lastActive: PropTypes.string.isRequired,
+        lastActive: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         performance: PropTypes.number.isRequired
     }).isRequired
 };

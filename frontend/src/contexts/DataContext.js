@@ -1121,7 +1121,7 @@ export const DataProvider = ({ children }) => {
             overallScore: 0,
             completionRate: 0,
             totalTimeSpent: 0,
-            lastAccessed: new Date()
+            lastAccessed: new Date().toISOString()
           },
           modules: modules.map(module => ({
             ...module,

@@ -267,7 +267,7 @@ export const useStudentData = (studentId) => {
               overallScore: 0,
               completionRate: 0,
               totalTimeSpent: 0,
-              lastAccessed: new Date()
+              lastAccessed: new Date().toISOString()
             };
 
             // Get modules for this course
